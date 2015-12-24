@@ -1,0 +1,7 @@
+*.pyc
+*.pyo
+*.rdb
+.DS_Store
+server_conf.py
+Icon\r
+Icon$\r
