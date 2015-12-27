@@ -50,3 +50,7 @@
 		* Note that people tend to want to do something when you specifically tell them not to!
 * The admin page is not restricted in any way.
 	* Anyone who knows the url, can access the admin page.
+
+## Versions
+### Version 1.0.0
+* Initial Release
