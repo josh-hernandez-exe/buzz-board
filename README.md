@@ -54,3 +54,6 @@
 ## Versions
 ### Version 1.0.0
 * Initial Release
+
+### Version 1.0.1
+* Made the http server be threaded, note that the class `BaseHTTPServer.HTTPServer` is single threaded

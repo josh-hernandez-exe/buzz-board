@@ -5,9 +5,12 @@ import json
 import sys
 import os
 from urlparse import urlparse
-import BaseHTTPServer
-from SimpleHTTPServer import SimpleHTTPRequestHandler
 from threading import Thread
+
+from BaseHTTPServer import HTTPServer
+from SocketServer import ThreadingMixIn
+from SimpleHTTPServer import SimpleHTTPRequestHandler
+
 
 from server_conf import (
     HTTP_HOST_NAME,
@@ -28,6 +31,17 @@ redis_con = RedisWrapper()
 
 OP_HISTORY = []
 OP_FUTURE = []
+
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """
+    Handle requests in a separate thread.
+
+    *******************************************
+    Note: that ThreadingMixIn must come before HTTPServer
+    in the superclass list or this won't work as intended.
+    *******************************************
+    """
+
 
 class MyHandler(SimpleHTTPRequestHandler):
 
@@ -229,7 +243,7 @@ def start_http_server():
 
     HandlerClass.protocol_version = "HTTP/1.0"
 
-    httpd = BaseHTTPServer.HTTPServer(
+    httpd = ThreadedHTTPServer(
         server_address=(HTTP_HOST_NAME,HTTP_PORT_NUMBER), 
         RequestHandlerClass=HandlerClass,
     )
