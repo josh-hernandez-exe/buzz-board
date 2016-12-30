@@ -44,7 +44,7 @@ function questionOff(){
 function initalizeQuestionStatus(){
     $.ajax({
         type: "GET",
-        url: '/scoreboard_interactions.json'
+        url: '/scoreboard/state'
     })
     .done(function(data){
 

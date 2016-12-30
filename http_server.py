@@ -1,16 +1,12 @@
 #!/usr/bin/python
-import ssl 
 import time
 import json
 import sys
 import os
-from urlparse import urlparse
-from threading import Thread
 
 from BaseHTTPServer import HTTPServer
 from SocketServer import ThreadingMixIn
 from SimpleHTTPServer import SimpleHTTPRequestHandler
-
 
 from server_conf import (
     HTTP_HOST_NAME,
@@ -31,6 +27,7 @@ redis_con = RedisWrapper()
 
 OP_HISTORY = []
 OP_FUTURE = []
+scoreboard_state = {}
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """
@@ -60,6 +57,13 @@ class MyHandler(SimpleHTTPRequestHandler):
            self.end_headers()
            did_handel_request = True
 
+        elif self.path == "/scoreboard/state":
+           self.send_response(200)
+           self.send_header('content-type','json')
+           self.end_headers()
+           self.wfile.write(json.dumps(scoreboard_state))
+           did_handel_request = True
+
         if not did_handel_request:
             SimpleHTTPRequestHandler.do_GET(self)
 
@@ -68,100 +72,120 @@ class MyHandler(SimpleHTTPRequestHandler):
 
         data_string = self.rfile.read(int(self.headers['Content-Length']))
         data = json.loads(data_string)
-        print data
+        print data_string
 
         if data["userType"] == "player":
 
-            if redis_con.get_is_question_listening() == 0:
-                # Question is not active
-                # Ignore
-                if __debug__:
-                    print "Question is not active"
-
-            elif data["team"] not in TEAM_LIST:
-                # Not a valid team name
-                # Ignore
-                if __debug__:
-                    print "This is not a valid team."                
-
-            elif redis_con.get_buzzer(data["team"]) == BUZZER_NOT_PRESSED:
-                # Your team has not been noted as having
-                # buzzed in.
-
-                if redis_con.get_is_buzzer_listening() == 0:
-                    # Buzzer is not listening
-                    # Someone else has buzzed in
-                    if __debug__:
-                        print "Someone else has buzzed in"
-
-                else:
-                    # You are the first person to buzz in
-                    redis_con.set_buzzer(data["team"], BUZZER_PRESSED)
-                    redis_con.set_is_buzzer_listening(0)
-                    update_board_state()
-                    if __debug__:
-                        print "You are the first person to buzz in!"
-
-            else:
-                if __debug__:
-                    print "You have already sucessfully buzzed in."
+            handle_player_post_request(data)
 
         elif data["userType"] == "admin":
-            
-            try:
-                data["value"] = int(data["value"])
-            except:
-                data["value"] = 0
 
-            if data["operation"] == "questionListening":
-
-                if data["value"] == 1:
-                    # We want to start listening
-                    # Reinitialize the state
-                    for team in TEAM_LIST:
-                        redis_con.set_buzzer(team, 0)
-
-                    redis_con.set_is_buzzer_listening(1)
-
-                redis_con.set_is_question_listening(data["value"])
-
-            elif data["operation"] == "keepListening":
-                if redis_con.get_is_question_listening():
-                    redis_con.set_is_buzzer_listening(1)
-
-                    for team in TEAM_LIST:
-                        if redis_con.get_buzzer(team) == BUZZER_PRESSED:
-                            redis_con.set_buzzer(team, BUZZER_PRESSED_FAILED)
-
-
-            elif data["operation"] == "resetBuzzer":
-                if redis_con.get_is_question_listening():
-                    redis_con.set_is_buzzer_listening(1)
-                    for team in TEAM_LIST:
-                        redis_con.set_buzzer(team, 0)
-
-            elif data["operation"] in ["add","sub","set"]:
-                handle_score_opperation(
-                    team=data["team"],
-                    operation=data["operation"],
-                    value=data["value"],
-                )
-
-            elif data["operation"] == "undo":
-                handle_undo()
-
-            elif data["operation"] == "redo" :
-                handle_redo()
-
-            else:
-                pass
-
-            update_board_state()
+            handle_admin_post_request(data)
 
         else:
             print "Not excepted userType"
 
 HandlerClass = MyHandler
+
+
+def handle_player_post_request(data):
+    if "team" not in data:
+        # Ignore
+        if __debug__:
+            print "There is no team field in the data passed in."
+
+    if data["team"] not in TEAM_LIST:
+        # Ignore
+        if __debug__:
+            print "This is not a valid team."
+
+    elif not redis_con.get_is_question_listening():
+        # Question is not active
+        # Ignore
+        if __debug__:
+            print "Question is not active"
+
+    elif not redis_con.get_is_buzzer_listening():
+        if __debug__:
+            print "Someone else has already buzzed in."
+
+    else:
+        team_buzzer_status = redis_con.get_buzzer(data["team"])
+
+        if team_buzzer_status == BUZZER_NOT_PRESSED:
+            # No one has buzzed in yet, including you
+            if __debug__:
+                print "You have buzzed in!"
+            redis_con.set_is_buzzer_listening(0)
+            redis_con.set_buzzer(data["team"], BUZZER_PRESSED)
+            update_board_state()
+
+        elif __debug__:
+
+            if team_buzzer_status == BUZZER_PRESSED:
+                if __debug__:
+                    print "You have already sucessfully buzzed in."
+            elif team_buzzer_status == BUZZER_PRESSED_FAILED:
+                if __debug__:
+                    print "You had your chance."
+
+            else:
+                print "THIS SHOULD NEVER HAPPEN!"
+
+def handle_admin_post_request(data):
+    try:
+        data["value"] = int(data["value"])
+    except:
+        data["value"] = 0
+
+    if data["operation"] == "questionListening":
+
+        if data["value"] == 1:
+            # We want to start listening
+            # Reinitialize the state
+            for team in TEAM_LIST:
+                redis_con.set_buzzer(team, 0)
+
+            redis_con.set_is_buzzer_listening(1)
+
+        redis_con.set_is_question_listening(data["value"])
+
+    elif data["operation"] == "keepListening":
+        if redis_con.get_is_question_listening():
+
+            for team in TEAM_LIST:
+                if redis_con.get_buzzer(team) == BUZZER_PRESSED:
+                    redis_con.set_buzzer(team, BUZZER_PRESSED_FAILED)
+
+            # Only begin listening after resetting the buzzer states for the teams
+            redis_con.set_is_buzzer_listening(1)
+
+    elif data["operation"] == "resetBuzzer":
+        if redis_con.get_is_question_listening():
+
+            for team in TEAM_LIST:
+                redis_con.set_buzzer(team, 0)
+
+            # Only begin listening after resetting the buzzer states for the teams
+            redis_con.set_is_buzzer_listening(1)
+
+    elif data["operation"] in ["add","sub","set"]:
+        handle_score_opperation(
+            team=data["team"],
+            operation=data["operation"],
+            value=data["value"],
+        )
+
+    elif data["operation"] == "undo":
+        handle_undo()
+
+    elif data["operation"] == "redo" :
+        handle_redo()
+
+    else:
+        pass
+
+    update_board_state()
 
 
 def _handle_score_opperation_helper(team,operation,value):
@@ -213,6 +237,7 @@ def handle_redo():
 
 
 def update_board_state():
+    global scoreboard_state
     state = {}
 
     state["question"] = int(redis_con.get_is_question_listening())
@@ -222,11 +247,7 @@ def update_board_state():
         state[team]["score"] = redis_con.get_score(team)
         state[team]["buzzer"] = int(redis_con.get_buzzer(team))
 
-    state_json_str = json.dumps(state)
-    with open("scoreboard_interactions.json","w") as ff:
-        print>>ff,state_json_str
-
-    return state
+    scoreboard_state = state
 
 def create_team_list_json():
     team_list_json_str = json.dumps(TEAM_LIST)
@@ -248,11 +269,6 @@ def start_http_server():
         RequestHandlerClass=HandlerClass,
     )
 
-    #httpd.socket = ssl.wrap_socket(
-    #    sock=httpd.socket, 
-    #    certfile='path/to/localhost.pem', 
-    #    server_side=True
-    #)
 
     print time.asctime(), "Server Starts - %s:%s" % (HTTP_HOST_NAME, HTTP_PORT_NUMBER)
     try:
@@ -260,7 +276,8 @@ def start_http_server():
     except KeyboardInterrupt:
         pass
     httpd.server_close()
-    print time.asctime(), "Server Stops - %s:%s" % (HOST_NAME, HTTP_PORT_NUMBER)
+    print ""
+    print time.asctime(), "Server Stops - %s:%s" % (HTTP_HOST_NAME, HTTP_PORT_NUMBER)
 
 if __name__ == "__main__":
 	start_http_server()

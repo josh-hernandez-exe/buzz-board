@@ -76,7 +76,7 @@ function getTeamList(){
 function updateState(){
     $.ajax({
         type: "GET",
-        url: '/scoreboard_interactions.json'
+        url: '/scoreboard/state'
     })
     .done( function(data){
         // Remember that this is a callback asynchronously executed!
@@ -133,11 +133,11 @@ function updateState(){
     });
 
     updateCount+=1;
-    if(updateCount>=1000){
+    if(updateCount>=600){
         window.location.reload();
     }
 
-    setTimeout(updateState,333);
+    setTimeout(updateState,500);
 }
 
 
