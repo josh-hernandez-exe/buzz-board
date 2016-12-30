@@ -94,7 +94,7 @@ def handle_player_post_request(data):
         if __debug__:
             print "There is no team field in the data passed in."
 
-    if data["team"] not in TEAM_LIST:
+    elif data["team"] not in TEAM_LIST:
         # Ignore
         if __debug__:
             print "This is not a valid team."
@@ -138,7 +138,12 @@ def handle_admin_post_request(data):
     except:
         data["value"] = 0
 
-    if data["operation"] == "questionListening":
+    if "operation" not in data:
+        # Ignore
+        if __debug__:
+            print "No admin operation was specified."
+
+    elif data["operation"] == "questionListening":
 
         if data["value"] == 1:
             # We want to start listening
@@ -170,11 +175,22 @@ def handle_admin_post_request(data):
             redis_con.set_is_buzzer_listening(1)
 
     elif data["operation"] in ["add","sub","set"]:
-        handle_score_opperation(
-            team=data["team"],
-            operation=data["operation"],
-            value=data["value"],
-        )
+
+        if "team" not in data:
+            # Ignore
+            if __debug__:
+                print "There is no team field in the data passed in."
+
+        elif data["team"] not in TEAM_LIST:
+            # Ignore
+            if __debug__:
+                print "This is not a valid team."
+        else:
+            handle_score_opperation(
+                team=data["team"],
+                operation=data["operation"],
+                value=data["value"],
+            )
 
     elif data["operation"] == "undo":
         handle_undo()
