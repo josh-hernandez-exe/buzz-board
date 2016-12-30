@@ -250,6 +250,11 @@ def update_board_state():
     scoreboard_state = state
 
 def create_team_list_json():
+
+    assert all( " " not in team_name for team_name in TEAM_LIST)
+    assert all( "\t" not in team_name for team_name in TEAM_LIST)
+    assert all( "\n" not in team_name for team_name in TEAM_LIST)
+
     team_list_json_str = json.dumps(TEAM_LIST)
     with open("team_list.json","w") as ff:
         print>>ff,team_list_json_str
