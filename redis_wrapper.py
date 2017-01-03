@@ -74,7 +74,7 @@ class RedisWrapper(object):
 
     def _set_int_helper(self,key,value,_format):
         is_int(value,raise_exception=True)
-        return self._set_helper(key,value,_format)
+        return self._set_helper(key,int(value),_format)
 
 
 

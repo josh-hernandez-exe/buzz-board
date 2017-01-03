@@ -116,7 +116,7 @@ def handle_player_post_request(data):
             # No one has buzzed in yet, including you
             if __debug__:
                 print "You have buzzed in!"
-            redis_con.set_is_buzzer_listening(0)
+            redis_con.set_is_buzzer_listening(False)
             redis_con.set_buzzer(data["team"], BUZZER_PRESSED)
             update_board_state()
 
@@ -145,15 +145,17 @@ def handle_admin_post_request(data):
 
     elif data["operation"] == "questionListening":
 
-        if data["value"] == 1:
+        set_to_listen = bool(data["value"])
+
+        if set_to_listen:
             # We want to start listening
             # Reinitialize the state
             for team in TEAM_LIST:
-                redis_con.set_buzzer(team, 0)
+                redis_con.set_buzzer(team, BUZZER_NOT_PRESSED)
 
-            redis_con.set_is_buzzer_listening(1)
+            redis_con.set_is_buzzer_listening(True)
 
-        redis_con.set_is_question_listening(data["value"])
+        redis_con.set_is_question_listening(set_to_listen)
 
     elif data["operation"] == "keepListening":
         if redis_con.get_is_question_listening():
@@ -163,16 +165,16 @@ def handle_admin_post_request(data):
                     redis_con.set_buzzer(team, BUZZER_PRESSED_FAILED)
 
             # Only begin listening after resetting the buzzer states for the teams
-            redis_con.set_is_buzzer_listening(1)
+            redis_con.set_is_buzzer_listening(True)
 
     elif data["operation"] == "resetBuzzer":
         if redis_con.get_is_question_listening():
 
             for team in TEAM_LIST:
-                redis_con.set_buzzer(team, 0)
+                redis_con.set_buzzer(team, BUZZER_NOT_PRESSED)
 
             # Only begin listening after resetting the buzzer states for the teams
-            redis_con.set_is_buzzer_listening(1)
+            redis_con.set_is_buzzer_listening(True)
 
     elif data["operation"] in ["add","sub","set"]:
 
