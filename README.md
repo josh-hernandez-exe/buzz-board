@@ -57,3 +57,6 @@
 
 ### Version 1.0.1
 * Made the http server be threaded, note that the class `BaseHTTPServer.HTTPServer` is single threaded
+
+### Version 1.0.2
+* The scoreboard meta data is no logger written to file and read from file, but now just kept in memory. This has increased the response time of the scoreboard page.
