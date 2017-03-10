@@ -7,7 +7,7 @@ var inncorectAnswerSound = new Audio("/incorectAnswer.mp3");
 function generateCard(team,score){
     var cardTemplate;
     cardTemplate = ' \
-    <div class="col s12 m3"> \
+    <div class="col s12 m4 l3"> \
         <div class="card blue-grey" id="scoreboard-card-'+team+'"> \
             <div class="card-content white-text"> \
               <span class="card-title">'+team+'</span> \
