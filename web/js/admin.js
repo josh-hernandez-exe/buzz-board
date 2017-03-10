@@ -1,21 +1,38 @@
 var TEAM_LIST = [""];
 var oldState = null;
-var questionListening = false;
-var currentTeam = null;
+var isBuzzerListening = false;
 var operation = null;
+var teamSelected = {};
 
+function generateTeamButton(team) {
+    var teamButtonTemplate;
+    // teamButtonTemplate = '<a class="waves-effect waves-light btn-large disabled" id="team-select-'+team+'">'+team+'</a>'
 
-function generateDropDownTeamTemplate(team){
-    var template = "";
+    teamButtonTemplate = '\
+        <div class="col s4 m3 l2">\
+            <p>\
+            <a class="waves-effect waves-light btn-large disabled" id="team-select-'+team+'">'+team+'</a>\
+            </p>\
+        </div>\
+    ';
 
-    template = '<li><a href="javascript:setTeam('+"'"+team+"'"+')">'+team+'</a></li>'
-    return template
+    return teamButtonTemplate;
 }
 
-
 function setTeam(teamName){
-    currentTeam = teamName;
+    Object.keys(teamSelected).forEach(function(element,index,array) {
+        teamSelected[element] = false;
+    });
+    teamSelected[teamName] = true;
     $('#score-team').text(teamName);
+}
+
+function selectedToArray() {
+    var isSelected = [];
+    Object.keys(teamSelected).forEach(function(element,index,array) {
+        if (teamSelected[element]) isSelected.push(element);
+    });
+    return isSelected;
 }
 
 function clearScoreOptions(){
@@ -26,18 +43,21 @@ function clearScoreOptions(){
 }
 
 function enableButton(idName){
-    var enabledClass = "waves-effect waves-light btn-large";
-    $('#'+idName).attr('class',enabledClass);
+    $('#'+idName).removeClass('disabled');
+}
+
+function disableButton(idName) {
+    $('#'+idName).addClass('disabled');
 }
 
 function questionOn(){
-    $("#question").attr("class","waves-effect waves-light btn-large teal");
-    questionListening = true;
+    $("#buzzerListening").attr("class","waves-effect waves-light btn-large teal");
+    isBuzzerListening = true;
 }
 
 function questionOff(){
-    $("#question").attr("class","waves-effect waves-light btn-large red");
-    questionListening = false;
+    $("#buzzerListening").attr("class","waves-effect waves-light btn-large red");
+    isBuzzerListening = false;
 }
 
 
@@ -57,22 +77,28 @@ function initalizeQuestionStatus(){
     });
 }
 
-function teamSetUp(TEAM_LIST){
-    TEAM_LIST.forEach(function(element, index, array){
-        $("#team-select-dropdown")
-            .append($(generateDropDownTeamTemplate(element)));
+function teamSetUp(teamList){
+    teamList.forEach(function(element, index, array){
+        teamSelected[element] = false;
+        var teamSelectButtonID = 'team-select-'+element;
+        $("#team-select-grid")
+            .append($(generateTeamButton(element)));
+        $('#'+teamSelectButtonID).on("click",function(){
+            if (teamSelected[element]) disableButton(teamSelectButtonID);
+            else enableButton(teamSelectButtonID);
+            teamSelected[element] = !teamSelected[element]
+        });
     });
 }
 
-function getTeamList(){
+function getConfig(){
     response = $.ajax({
         type: "GET",
-        url: '/team_list.json'
+        url: '/buzzer_config'
     })
     .done( function(data){
-        TEAM_LIST = data;
-        console.log(TEAM_LIST);
-        teamSetUp(TEAM_LIST);
+        buzzerConfig = data
+        teamSetUp(buzzerConfig.teams);
     })
     .fail(function( jqXHR, textStatus ) {
         console.log(jqXHR);
@@ -84,26 +110,26 @@ $(function(){
     console.log("Loading");
 
     initalizeQuestionStatus()
-    getTeamList()
+    getConfig()
 
-    $('#question').on("click",function(){
-        if(questionListening){
+    $('#buzzerListening').on("click",function(){
+        if(isBuzzerListening){
             questionOff();
         }
         else{
             questionOn();
         }
         var listeningInt = 0;
-        if(questionListening){
+        if(isBuzzerListening){
             listeningInt=1;
         }
         $.ajax({
             type: "POST",
             url: '/',
             data: JSON.stringify({
-                team:currentTeam,
+                teams:selectedToArray(),
                 userType:"admin",
-                operation:"questionListening",
+                operation:"buzzerListening",
                 value:listeningInt
             }),
             success: function(){},
@@ -117,7 +143,7 @@ $(function(){
             type: "POST",
             url: '/',
             data: JSON.stringify({
-                team:currentTeam,
+                teams:selectedToArray(),
                 userType:"admin",
                 operation:"keepListening",
                 value:""
@@ -132,7 +158,7 @@ $(function(){
             type: "POST",
             url: '/',
             data: JSON.stringify({
-                team:currentTeam,
+                teams:selectedToArray(),
                 userType:"admin",
                 operation:"resetBuzzer",
                 value:""
@@ -166,7 +192,7 @@ $(function(){
     $('#score-update').on("click",function(){
         console.log("Updating Score");
 
-        if(currentTeam!=null){
+        if(selectedToArray()!=null){
 
             var value = $("#score-value").val();
 
@@ -178,7 +204,7 @@ $(function(){
                 type: "POST",
                 url: '/',
                 data: JSON.stringify({
-                    team:currentTeam,
+                    teams:selectedToArray(),
                     userType:"admin",
                     operation:operation,
                     value:value
@@ -195,7 +221,7 @@ $(function(){
             type: "POST",
             url: '/',
             data: JSON.stringify({
-                team:currentTeam,
+                teams:selectedToArray(),
                 userType:"admin",
                 operation:"undo",
                 value:""
@@ -211,7 +237,7 @@ $(function(){
             type: "POST",
             url: '/',
             data: JSON.stringify({
-                team:currentTeam,
+                teams:selectedToArray(),
                 userType:"admin",
                 operation:"redo",
                 value:""
