@@ -16,7 +16,6 @@
     </div>
   </nav>
   <div class="container section no-pad-bot" id="index-banner">
-    <div class="container">
       <br><br>
 
       <div class="row center">
@@ -25,17 +24,22 @@
 
       <br>
 
+      <div class="row left" id="team-select-managment">
+        <a class="waves-effect waves-light btn orange" id="team-select-all">Select All</a>
+        <a class="waves-effect waves-light btn orange" id="team-select-none">Deselect All</a>
+        <a class="waves-effect waves-light btn orange" id="team-select-invert">Invert Selection</a>
+      </div>
+      <div class="row"></div>
+
+      <div class="row center" id="team-select-grid">
+      <!-- Team Select Grid Structure -->
+      <!-- The team names gets filled in dynamically by javascript / jquery -->
+      </div>
+      
+      <br><br>
+      <input placeholder="Value" id="score-value" type="tel" class="validate">
+      
       <div class="row center">
-
-        <div class="row center" id="team-select-grid">
-        <!-- Team Select Grid Structure -->
-        <!-- The team names gets filled in dynamically by javascript / jquery -->
-        </div>
-
-        <br><br>
-
-        <input placeholder="Value" id="score-value" type="tel" class="validate">
-
         <br>
         <a class="waves-effect waves-light btn-large disabled" id="score-add">Add</a>
         <a class="waves-effect waves-light btn-large disabled" id="score-sub">Sub</a>
@@ -50,8 +54,6 @@
       </div>
 
       <br><br>
-
-    </div>
 
       <div class="row center">
         <a class="waves-effect waves-light btn-large blue" id="keepListening">Keep Listening</a>

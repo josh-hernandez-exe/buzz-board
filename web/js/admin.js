@@ -1,3 +1,4 @@
+var buzzerConfig;
 var oldState = null;
 var isBuzzerListening = false;
 var operation = null;
@@ -5,25 +6,16 @@ var teamSelected = {};
 
 function generateTeamButton(team) {
     var teamButtonTemplate;
-    // teamButtonTemplate = '<a class="waves-effect waves-light btn-large disabled" id="team-select-'+team+'">'+team+'</a>'
 
     teamButtonTemplate = '\
         <div class="col s4 m3 l2">\
             <p>\
-                <a class="waves-effect waves-light btn-large disabled" id="team-select-'+team+'">'+team+'</a>\
+                <a class="waves-effect waves-light btn-large disabled" id="button-team-select-'+team+'">'+team+'</a>\
             </p>\
         </div>\
     ';
 
     return teamButtonTemplate;
-}
-
-function setTeam(teamName){
-    Object.keys(teamSelected).forEach(function(element,index,array) {
-        teamSelected[element] = false;
-    });
-    teamSelected[teamName] = true;
-    $('#score-team').text(teamName);
 }
 
 function areAnySelected() {
@@ -80,9 +72,6 @@ function initalizeQuestionStatus(){
         url: '/scoreboard/state'
     })
     .done(function(data){
-
-        console.log(data)
-
         if(parseInt(data["question"]) == 0) questionOff();
         else questionOn();
     });
@@ -91,14 +80,39 @@ function initalizeQuestionStatus(){
 function teamSetUp(teamList){
     teamList.forEach(function(element, index, array){
         teamSelected[element] = false;
-        var teamSelectButtonID = 'team-select-'+element;
+        var teamSelectButtonID = 'button-team-select-'+element;
         $("#team-select-grid")
             .append($(generateTeamButton(element)));
         $('#'+teamSelectButtonID).on("click",function(){
             if (teamSelected[element]) disableButton(teamSelectButtonID);
             else enableButton(teamSelectButtonID);
-            teamSelected[element] = !teamSelected[element]
+            teamSelected[element] = !teamSelected[element];
         });
+    });
+}
+
+function teamSelectAll(teamList) {
+    teamList.forEach(function(element, index, array){
+        var teamSelectButtonID = 'button-team-select-'+element;
+        if (!teamSelected[element]) enableButton(teamSelectButtonID);
+        teamSelected[element] = true;
+    });
+}
+
+function teamDeselectAll(teamList) {
+    teamList.forEach(function(element, index, array){
+        var teamSelectButtonID = 'button-team-select-'+element;
+        if (teamSelected[element]) disableButton(teamSelectButtonID);
+        teamSelected[element] = false;
+    });
+}
+
+function teamInvertAll(teamList) {
+    teamList.forEach(function(element, index, array){
+        var teamSelectButtonID = 'button-team-select-'+element;
+        if (teamSelected[element]) disableButton(teamSelectButtonID);
+        else enableButton(teamSelectButtonID);
+        teamSelected[element] = !teamSelected[element];
     });
 }
 
@@ -255,4 +269,18 @@ $(function(){
             dataType: "json"
         });
     });
+
+    $('#team-select-all').on('click', function(){
+        teamSelectAll(buzzerConfig.teams)
+    });
+
+    $('#team-select-none').on('click', function(){
+        teamDeselectAll(buzzerConfig.teams)
+    });
+
+    $('#team-select-invert').on('click', function(){
+        teamInvertAll(buzzerConfig.teams)
+    });
+
+
 })
