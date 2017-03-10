@@ -37,7 +37,11 @@
       </div>
       
       <br><br>
-      <input placeholder="Value" id="score-value" type="tel" class="validate">
+
+      <div class="row center" id="score-slider-section">
+      <!-- If valid configutations are set, we will dynamically add the slider -->
+      </div>
+      <input placeholder="Value" id="score-value" type="tel" class="validate" onchange="changeInputScoreValue(this.value)">
       
       <div class="row center">
         <br>

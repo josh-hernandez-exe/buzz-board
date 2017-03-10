@@ -18,12 +18,58 @@ function generateTeamButton(team) {
     return teamButtonTemplate;
 }
 
+function generateSlider(minValue, maxValue, incrementValue) {
+    return '<input id="score-slider" type="range" min="'+minValue+'" max="'+maxValue+'" step="'+incrementValue+'"><br>';
+}
+
+function buildSlider(sliderConfig) {
+    if (!sliderConfig) return;
+    var minValue = sliderConfig.min;
+    var maxValue = sliderConfig.max;
+    var incrementValue = sliderConfig.increment;
+
+    if (typeof minValue !== 'number') return;
+    if (typeof maxValue !== 'number') return;
+    if (typeof incrementValue !== 'number') incrementValue = 5;
+
+    if (minValue > maxValue) return;
+
+    $('#score-slider-section')
+        .append('<div class="col s1           "><a class="waves-effect waves-light btn" id="button-score-decrement">-</a></div>')
+        .append('<div class="col s1 offset-s10"><a class="waves-effect waves-light btn" id="button-score-increment">+</a></div>')
+        .append(generateSlider(minValue, maxValue, incrementValue));
+
+    $('#score-slider').on('input change',function(){
+        changeInputScoreValue(this.value)
+    });
+    $('#button-score-decrement').on('click',function(){
+        changeInputScoreValue(Number($('#score-slider').val()) - incrementValue);
+    });
+    $('#button-score-increment').on('click',function(){
+        changeInputScoreValue( Number($('#score-slider').val()) + incrementValue);
+    });
+}
+
+function changeInputScoreValue(newValue) {
+    $('#score-value').val(newValue)
+
+    var sliderObject = $('#score-slider');
+    if (sliderObject) {
+        var newSliderValue = newValue;
+        if (newSliderValue > buzzerConfig.slider.max) newSliderValue = buzzerConfig.slider.max
+        if (newSliderValue < buzzerConfig.slider.min) newSliderValue = buzzerConfig.slider.min
+        sliderObject.val(newSliderValue);
+    }
+}
+
+
 function areAnySelected() {
     for (var teamName of Object.keys(teamSelected)) {
         if (teamSelected[teamName]) return true;
     }
     return false;
 }
+
 
 function selectedToArray() {
     var isSelected = [];
@@ -124,6 +170,7 @@ function getConfig(){
     .done( function(data){
         buzzerConfig = data
         teamSetUp(buzzerConfig.teams);
+        buildSlider(buzzerConfig.slider)
     })
     .fail(function( jqXHR, textStatus ) {
         console.log(jqXHR);
