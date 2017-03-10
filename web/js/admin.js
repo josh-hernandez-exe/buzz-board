@@ -76,7 +76,7 @@ function buildPresetScores(presetConfig) {
     if (!isValid) return;
 
     function generatePresetScoreButton(value) {
-        return '<div class="col s2"><a class="waves-effect waves-light btn orange" id="button-score-preset-'+value+'">'+value+'</a></div>'
+        return '<div class="col s3 m2"><a class="waves-effect waves-light btn orange" id="button-score-preset-'+value+'">'+value+'</a></div>'
     }
 
     presetConfig.forEach(function(value) {
