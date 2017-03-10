@@ -41,13 +41,22 @@
       <div class="row center" id="score-slider-section">
       <!-- If valid configutations are set, we will dynamically add the slider -->
       </div>
-      <input placeholder="Value" id="score-value" type="tel" class="validate" onchange="changeInputScoreValue(this.value)">
+
+      <div class="row center" id="score-preset-section">
+      <!-- If valid configutations are set, we will dynamically the preset buttons -->
+      </div>
+
+
+      <div class="row center" id="score-input-display-section">
+        <!-- I chose the 'tel' type for the input so that the number pad keyboard would appear on mobile devices -->
+        <input placeholder="Value" id="score-value" type="tel" class="validate" onchange="changeInputScoreValue(this.value)">
+      </div>
       
       <div class="row center">
         <br>
-        <a class="waves-effect waves-light btn-large disabled" id="score-add">Add</a>
-        <a class="waves-effect waves-light btn-large disabled" id="score-sub">Sub</a>
-        <a class="waves-effect waves-light btn-large disabled" id="score-set">Set</a>
+        <a class="waves-effect waves-light btn disabled" id="score-add">Add</a>
+        <a class="waves-effect waves-light btn disabled" id="score-sub">Sub</a>
+        <a class="waves-effect waves-light btn disabled" id="score-set">Set</a>
 
         <br><br>
 

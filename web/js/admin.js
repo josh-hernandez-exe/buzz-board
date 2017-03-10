@@ -10,16 +10,12 @@ function generateTeamButton(team) {
     teamButtonTemplate = '\
         <div class="col s4 m3 l2">\
             <p>\
-                <a class="waves-effect waves-light btn-large disabled" id="button-team-select-'+team+'">'+team+'</a>\
+                <a class="waves-effect waves-light btn disabled" id="button-team-select-'+team+'">'+team+'</a>\
             </p>\
         </div>\
     ';
 
     return teamButtonTemplate;
-}
-
-function generateSlider(minValue, maxValue, incrementValue) {
-    return '<input id="score-slider" type="range" min="'+minValue+'" max="'+maxValue+'" step="'+incrementValue+'"><br>';
 }
 
 function buildSlider(sliderConfig) {
@@ -33,6 +29,10 @@ function buildSlider(sliderConfig) {
     if (typeof incrementValue !== 'number') incrementValue = 5;
 
     if (minValue > maxValue) return;
+
+    function generateSlider(minValue, maxValue, incrementValue) {
+        return '<input id="score-slider" type="range" min="'+minValue+'" max="'+maxValue+'" step="'+incrementValue+'"><br>';
+    }
 
     $('#score-slider-section')
         .append('<div class="col s1           "><a class="waves-effect waves-light btn" id="button-score-decrement">-</a></div>')
@@ -50,6 +50,8 @@ function buildSlider(sliderConfig) {
     });
 }
 
+
+
 function changeInputScoreValue(newValue) {
     $('#score-value').val(newValue)
 
@@ -62,6 +64,32 @@ function changeInputScoreValue(newValue) {
     }
 }
 
+function buildPresetScores(presetConfig) {
+    if (!presetConfig) return;
+    if (!Array.isArray(presetConfig)) return;
+
+    var isValid = true;
+    presetConfig.forEach(function(value) {
+        if(typeof value !== 'number') isValid = false;
+    });
+
+    if (!isValid) return;
+
+    function generatePresetScoreButton(value) {
+        return '<div class="col s2"><a class="waves-effect waves-light btn orange" id="button-score-preset-'+value+'">'+value+'</a></div>'
+    }
+
+    presetConfig.forEach(function(value) {
+        var buttonID = 'button-score-preset-'+value
+        $('#score-preset-section')
+            .append(generatePresetScoreButton(value))
+
+        $('#'+buttonID).on('click', function(){
+            changeInputScoreValue(value)
+        });
+    });
+
+}
 
 function areAnySelected() {
     for (var teamName of Object.keys(teamSelected)) {
@@ -171,6 +199,7 @@ function getConfig(){
         buzzerConfig = data
         teamSetUp(buzzerConfig.teams);
         buildSlider(buzzerConfig.slider)
+        buildPresetScores(buzzerConfig.score_presets)
     })
     .fail(function( jqXHR, textStatus ) {
         console.log(jqXHR);
