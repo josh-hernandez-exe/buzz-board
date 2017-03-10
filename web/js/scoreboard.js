@@ -1,4 +1,4 @@
-var TEAM_LIST = [""];
+var buzzerConfig;
 var oldState = null;
 var updateCount = 0;
 var buzzInSound = new Audio("/buzzIn.mp3");
@@ -38,7 +38,7 @@ function failedBuzzer(team){
 
 
 function resetBuzzer(){
-    TEAM_LIST.forEach(function(element, index, array){
+    buzzerConfig.teams.forEach(function(element, index, array){
         $("#scoreboard-card-"+element).attr("class","card blue-grey")
     });
 }
@@ -47,8 +47,8 @@ function setScore(team,value){
     $("#scoreboard-score-"+team).text(value)
 }
 
-function teamSetUp(TEAM_LIST){
-    TEAM_LIST.forEach(function(element, index, array){
+function teamSetUp(teamList){
+    teamList.forEach(function(element, index, array){
         $("#scoreboard-collection")
             .append($(generateCard(element,0)))
     });
@@ -57,15 +57,14 @@ function teamSetUp(TEAM_LIST){
 }
 
 
-function getTeamList(){
+function getConfig(){
     response = $.ajax({
         type: "GET",
-        url: '/team_list.json'
+        url: '/buzzer_config'
     })
     .done( function(data){
-        TEAM_LIST = data;
-        console.log(TEAM_LIST);
-        teamSetUp(TEAM_LIST);
+        buzzerConfig = data
+        teamSetUp(buzzerConfig.teams);
     })
     .fail(function( jqXHR, textStatus ) {
         console.log(jqXHR);
@@ -93,7 +92,7 @@ function updateState(){
             questionOn();
         }
 
-        TEAM_LIST.forEach(function(element, index, array){
+        buzzerConfig.teams.forEach(function(element, index, array){
             var score = data[element]["score"];
             var buzzer = data[element]["buzzer"];
             setScore(element,score);
@@ -143,5 +142,5 @@ function updateState(){
 
 $(function(){
     console.log("Loading");
-    getTeamList();
+    getConfig();
 });

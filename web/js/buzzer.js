@@ -1,4 +1,4 @@
-var TEAM_LIST = [""];
+var buzzerConfig;
 var currentTeam = null;
 
 function generateTeamSelectorTemplate(team){
@@ -15,8 +15,8 @@ function setTeam(team){
     document.location.hash=team;
 }
 
-function teamSetUp(TEAM_LIST){
-       TEAM_LIST.forEach(function(element, index, array){
+function teamSetUp(teamList){
+       teamList.forEach(function(element, index, array){
         $("#slide-out")
             .append($(generateTeamSelectorTemplate(element)));
     });
@@ -26,15 +26,14 @@ function teamSetUp(TEAM_LIST){
 }
 
 
-function getTeamList(){
+function getConfig(){
     response = $.ajax({
         type: "GET",
-        url: '/team_list.json'
+        url: '/buzzer_config'
     })
     .done( function(data){
-        TEAM_LIST = data;
-        console.log(TEAM_LIST);
-        teamSetUp(TEAM_LIST);
+        buzzerConfig = data
+        teamSetUp(buzzerConfig.teams);
     })
     .fail(function( jqXHR, textStatus ) {
         console.log(jqXHR);
@@ -44,7 +43,7 @@ function getTeamList(){
 
 $(function(){
     console.log("Loading");
-    getTeamList();
+    getConfig();
 
     $('#buzzer').on("click",function(){
         console.log("Buzzing In");
