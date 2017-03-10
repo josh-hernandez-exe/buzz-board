@@ -1,4 +1,3 @@
-var TEAM_LIST = [""];
 var oldState = null;
 var isBuzzerListening = false;
 var operation = null;
@@ -11,7 +10,7 @@ function generateTeamButton(team) {
     teamButtonTemplate = '\
         <div class="col s4 m3 l2">\
             <p>\
-            <a class="waves-effect waves-light btn-large disabled" id="team-select-'+team+'">'+team+'</a>\
+                <a class="waves-effect waves-light btn-large disabled" id="team-select-'+team+'">'+team+'</a>\
             </p>\
         </div>\
     ';
@@ -27,6 +26,13 @@ function setTeam(teamName){
     $('#score-team').text(teamName);
 }
 
+function areAnySelected() {
+    for (var teamName of Object.keys(teamSelected)) {
+        if (teamSelected[teamName]) return true;
+    }
+    return false;
+}
+
 function selectedToArray() {
     var isSelected = [];
     Object.keys(teamSelected).forEach(function(element,index,array) {
@@ -36,28 +42,35 @@ function selectedToArray() {
 }
 
 function clearScoreOptions(){
-    var disabledClass = "waves-effect waves-light btn-large disabled";
-    $('#score-add').attr('class',disabledClass);
-    $('#score-sub').attr('class',disabledClass);
-    $('#score-set').attr('class',disabledClass);
+    disableButton('score-add')
+    disableButton('score-sub')
+    disableButton('score-set')
 }
 
 function enableButton(idName){
-    $('#'+idName).removeClass('disabled');
+    var buttonObject = $('#'+idName);
+    if (buttonObject.hasClass('disabled')) buttonObject.removeClass('disabled');
 }
 
 function disableButton(idName) {
-    $('#'+idName).addClass('disabled');
+    var buttonObject = $('#'+idName);
+    if (!buttonObject.hasClass('disabled')) buttonObject.addClass('disabled');
 }
 
 function questionOn(){
-    $("#buzzerListening").attr("class","waves-effect waves-light btn-large teal");
     isBuzzerListening = true;
+    var buttonObject = $("#buzzerListening");
+    if (buttonObject.hasClass('disabled')) buttonObject.removeClass('disabled');
+    if (buttonObject.hasClass('red')) buttonObject.removeClass('red');
+    if (!buttonObject.hasClass('teal')) buttonObject.addClass('teal');
 }
 
 function questionOff(){
-    $("#buzzerListening").attr("class","waves-effect waves-light btn-large red");
     isBuzzerListening = false;
+    var buttonObject = $("#buzzerListening");
+    if (buttonObject.hasClass('disabled')) buttonObject.removeClass('disabled');
+    if (buttonObject.hasClass('teal')) buttonObject.removeClass('teal');
+    if (!buttonObject.hasClass('red')) buttonObject.addClass('red');
 }
 
 
@@ -68,12 +81,10 @@ function initalizeQuestionStatus(){
     })
     .done(function(data){
 
-        if(parseInt(data["question"]) == 0){
-            questionOff();
-        
-        }else{
-            questionOn();
-        }
+        console.log(data)
+
+        if(parseInt(data["question"]) == 0) questionOff();
+        else questionOn();
     });
 }
 
@@ -168,8 +179,6 @@ $(function(){
         });
     });
 
-
-
     $('#score-add').on("click",function(){
         clearScoreOptions();
         enableButton("score-add");
@@ -188,12 +197,10 @@ $(function(){
         operation = "set";
     });
 
-
     $('#score-update').on("click",function(){
         console.log("Updating Score");
 
-        if(selectedToArray()!=null){
-
+        if(areAnySelected()){
             var value = $("#score-value").val();
 
             if(value==null||value===""){
@@ -212,6 +219,8 @@ $(function(){
                 success: function(){},
                 dataType: "json"
             });
+        } else {
+            window.alert("You have no teams selected");
         }
     });
 
