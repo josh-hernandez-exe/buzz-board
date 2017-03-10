@@ -3,16 +3,12 @@ import time
 import json
 import sys
 import os
+from collections import defaultdict
 
 from BaseHTTPServer import HTTPServer
 from SocketServer import ThreadingMixIn
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 
-from server_conf import (
-    HTTP_HOST_NAME,
-    HTTP_PORT_NUMBER,
-    TEAM_LIST,
-)
 from redis_wrapper import (
     RedisWrapper,
     BUZZER_NOT_PRESSED,
@@ -28,6 +24,21 @@ redis_con = RedisWrapper()
 OP_HISTORY = []
 OP_FUTURE = []
 scoreboard_state = {}
+client_buzzer_config = {}
+
+def parse_config():
+    global config
+    global HTTP_HOST_NAME
+    global HTTP_PORT_NUMBER
+    global TEAM_LIST
+
+    with open("./config.json") as flink:
+        config = json.loads(flink.read())
+
+    HTTP_HOST_NAME = config['http']['hostname']
+    HTTP_PORT_NUMBER = config['http']['port']
+    TEAM_LIST = config['teams']
+
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """
@@ -62,6 +73,13 @@ class MyHandler(SimpleHTTPRequestHandler):
            self.send_header('content-type','json')
            self.end_headers()
            self.wfile.write(json.dumps(scoreboard_state))
+           did_handel_request = True
+
+        elif self.path == "/buzzer_config":
+           self.send_response(200)
+           self.send_header('content-type','json')
+           self.end_headers()
+           self.wfile.write(json.dumps(client_buzzer_config))
            did_handel_request = True
 
         if not did_handel_request:
@@ -143,7 +161,7 @@ def handle_admin_post_request(data):
         if __debug__:
             print "No admin operation was specified."
 
-    elif data["operation"] == "questionListening":
+    elif data["operation"] == "buzzerListening":
 
         set_to_listen = bool(data["value"])
 
@@ -178,18 +196,22 @@ def handle_admin_post_request(data):
 
     elif data["operation"] in ["add","sub","set"]:
 
-        if "team" not in data:
+        if "teams" not in data:
             # Ignore
             if __debug__:
-                print "There is no team field in the data passed in."
+                print "There is no teams field in the data passed in."
 
-        elif data["team"] not in TEAM_LIST:
+        elif isinstance(data["teams"], list) and any(team_name not in TEAM_LIST for team_name in data["teams"]):
             # Ignore
             if __debug__:
-                print "This is not a valid team."
+                print "This is not a valid team in the list passed."
+                print data["teams"]
+                for team in data["teams"]:
+                    print team, team in TEAM_LIST
+
         else:
             handle_score_opperation(
-                team=data["team"],
+                teams=data["teams"],
                 operation=data["operation"],
                 value=data["value"],
             )
@@ -206,30 +228,42 @@ def handle_admin_post_request(data):
     update_board_state()
 
 
-def _handle_score_opperation_helper(team,operation,value):
+def _handle_score_opperation_helper(teams,operation,value):
 
     if operation == "add":
-        redis_con.increment_score(team, value)
+        pass
 
     elif operation == "sub":
-        redis_con.increment_score(team, -value)
+        value *= -1
 
     elif operation == "set":
         raise Exception()
 
+    else:
+        raise Exception()
 
-def handle_score_opperation(team,operation,value):
+    for team in teams:
+        redis_con.increment_score(team, value)
+
+def handle_score_opperation(teams,operation,value):
 
     if operation == "set":
-        old_score = redis_con.get_score(team)
-        diff = value - old_score
-        new_operation = "add" if diff >= 0 else "sub"
+        new_args = defaultdict(list)
+        for team in teams:
+            old_score = redis_con.get_score(team)
+            diff = value - old_score
+            new_operation = "add" if diff >= 0 else "sub"
+            diff = abs(diff)
+            new_args[diff,new_operation].append(team)
 
-        return handle_score_opperation(team, new_operation, abs(diff))
+        for (new_value,new_operation),teams in new_args.iteritems():
+            handle_score_opperation(teams, new_operation, new_value)
 
-    _handle_score_opperation_helper(team,operation, value)
+        return
 
-    OP_HISTORY.append( (team,operation,value) )
+    _handle_score_opperation_helper(teams,operation, value)
+
+    OP_HISTORY.append( (teams,operation,value) )
 
     while OP_FUTURE:
         OP_FUTURE.pop()
@@ -267,22 +301,24 @@ def update_board_state():
 
     scoreboard_state = state
 
-def create_team_list_json():
+def create_buzzer_config_json():
+    global client_buzzer_config
 
     assert all( " " not in team_name for team_name in TEAM_LIST)
     assert all( "\t" not in team_name for team_name in TEAM_LIST)
     assert all( "\n" not in team_name for team_name in TEAM_LIST)
 
-    team_list_json_str = json.dumps(TEAM_LIST)
-    with open("team_list.json","w") as ff:
-        print>>ff,team_list_json_str
+    temp = dict(config)
+    del temp['http']
+
+    client_buzzer_config = temp
 
 def start_http_server():
     # HTTP SERVER SETUP
 
-    os.chdir("web/")
 
-    create_team_list_json()
+    parse_config()
+    create_buzzer_config_json()
     update_board_state()
 
     HandlerClass.protocol_version = "HTTP/1.0"
@@ -295,6 +331,7 @@ def start_http_server():
 
     print time.asctime(), "Server Starts - %s:%s" % (HTTP_HOST_NAME, HTTP_PORT_NUMBER)
     try:
+        os.chdir("web/")
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
