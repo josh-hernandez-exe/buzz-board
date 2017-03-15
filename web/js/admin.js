@@ -43,14 +43,16 @@ function buildSlider(sliderConfig) {
         changeInputScoreValue(this.value)
     });
     $('#button-score-decrement').on('click',function(){
-        changeInputScoreValue(Number($('#score-slider').val()) - incrementValue);
+        changeInputScoreValue( getCurrentScoreValue() - incrementValue);
     });
     $('#button-score-increment').on('click',function(){
-        changeInputScoreValue( Number($('#score-slider').val()) + incrementValue);
+        changeInputScoreValue( getCurrentScoreValue() + incrementValue);
     });
 }
 
-
+function getCurrentScoreValue() {
+    return Number($('#score-value').val());
+}
 
 function changeInputScoreValue(newValue) {
     $('#score-value').val(newValue)
