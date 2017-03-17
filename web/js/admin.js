@@ -4,6 +4,7 @@ var isBuzzerListening = false;
 var operation = null;
 var teamSelected = {};
 var curScaleFactor = 1.0;
+var errorToastDisplayDuration = 4000 // ms
 
 function generateTeamButton(team) {
     var teamButtonTemplate;
@@ -32,7 +33,7 @@ function buildSlider(sliderConfig) {
     if (minValue > maxValue) return;
 
     function generateSlider(minValue, maxValue, incrementValue) {
-        return '<input class="col s12" id="score-slider" type="range" min="'+minValue+'" max="'+maxValue+'" step="'+incrementValue+'"><br>';
+        return '<input class="col s12" id="score-slider" type="range" min="'+minValue+'" max="'+maxValue+'" step="'+incrementValue+'">';
     }
 
     $('#score-slider-section')
@@ -363,22 +364,28 @@ $(function() {
     $('#score-update').on("click", () => {
         console.log("Updating Score");
 
-        if(areAnySelected()){
-            $.ajax({
-                type: "POST",
-                url: '/',
-                data: JSON.stringify({
-                    teams:selectedToArray(),
-                    userType:"admin",
-                    operation:operation,
-                    value:getCurrentScaledScoreValue()
-                }),
-                success: () => {},
-                dataType: "json"
-            });
-        } else {
-            window.alert("You have no teams selected");
+        if(!areAnySelected()) {
+            Materialize.toast("You have no teams selected", errorToastDisplayDuration);
+            return;
         }
+
+        if(operation === null) {
+            Materialize.toast("You have not selected an operation", errorToastDisplayDuration);
+            return;
+        }
+
+        $.ajax({
+            type: "POST",
+            url: '/',
+            data: JSON.stringify({
+                teams:selectedToArray(),
+                userType:"admin",
+                operation:operation,
+                value:getCurrentScaledScoreValue()
+            }),
+            success: () => {},
+            dataType: "json"
+        });
     });
 
     $('#score-undo').on("click", () => {

@@ -1,5 +1,6 @@
 var buzzerConfig;
 var currentTeam = null;
+var errorToastDisplayDuration = 4000 // ms
 
 function generateTeamSelectorTemplate(team){
     var template = "";
@@ -47,6 +48,11 @@ $(function(){
 
     $('#buzzer').on("click", () => {
         console.log("Buzzing In");
+
+        if (currentTeam === null) {
+            Materialize.toast("You have not selected a team", errorToastDisplayDuration);
+            return;
+        }
 
         $.ajax({
             type: "POST",

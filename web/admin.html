@@ -16,8 +16,6 @@
     </div>
   </nav>
   <div class="container section no-pad-bot" id="index-banner">
-      <br>
-
       <div id="buzzer-control-section">
         <div class="row center">
           <a class="waves-effect waves-light btn-large disabled" id="buzzerListening">Buzzer Listening</a>
@@ -29,9 +27,8 @@
         </div>
 
         <li class="divider"></li>
+        <br>
       </div>
-
-      <br>
 
       <div class="row left" id="team-select-managment">
         <a class="waves-effect waves-light btn orange" id="team-select-all">Select All</a>
@@ -53,7 +50,6 @@
       <!-- If valid configutations are set, we will dynamically add the preset buttons -->
       </div>
 
-
       <div class="row center" id="score-input-display-section">
         <!-- I chose the 'tel' type for the input so that the number pad keyboard would appear on mobile devices -->
         <input placeholder="Value" id="score-value" type="tel" class="validate" onchange="changeInputScoreValue(this.value)">
@@ -61,11 +57,9 @@
 
       <div class="row center" id="score-select-scale-factor-section">
       <!-- If valid configutations are set, we will dynamically add the scale factor drop down-->
-
       </div>
       
       <div class="row center">
-        <br>
         <a class="waves-effect waves-light btn disabled" id="score-add">Add</a>
         <a class="waves-effect waves-light btn disabled" id="score-sub">Sub</a>
         <a class="waves-effect waves-light btn disabled" id="score-set">Set</a>
@@ -73,6 +67,7 @@
         <br><br>
 
         <a class="waves-effect waves-light btn-large orange" id="score-update">Update</a>
+
         <br><br>
         <a class="waves-effect waves-light btn-large orange" id="score-undo">Undo</a>
         <a class="waves-effect waves-light btn-large orange" id="score-redo">Redo</a>
