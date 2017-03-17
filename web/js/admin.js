@@ -126,26 +126,19 @@ function buildScaleFactorDropDown(scaleFactorConfig) {
         inDuration: 300,
         outDuration: 225,
         constrainWidth: false, // Does not change width of dropdown to that of the activator
-        hover: true, // Activate on hover
+        hover: false, // Activate on hover, makes mobile click twice
         gutter: 0, // Spacing from edge
         belowOrigin: false, // Displays dropdown below the button
         alignment: 'left', // Displays dropdown with edge aligned to the left of button
         stopPropagation: false // Stops event propagation
     });
 
-    var dropDownObject = $('#score-scale-factor-dropdown-content');
-
-
-
-    function generateDropDownTeamTemplate(value){
-        return '<option value="'+value+'">'+'x '+value+'</option>';
-        return '<li><a id">'+value+'</a></li>'
-    }
-
     function changeScaleFactor(value) {
         scaleFactorButton.text('x '+value);
         curScaleFactor = Number(value);
     }
+
+    var dropDownObject = $('#score-scale-factor-dropdown-content');
 
     scaleFactorConfig.forEach((value) => {
         var idStringValue = value.toString().replace('.','d');
