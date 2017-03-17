@@ -38,16 +38,16 @@ function buildSlider(sliderConfig) {
 
     $('#score-slider-section')
         .append([
-            '<div class="left-align col s1">',
-            '<a class="waves-effect waves-light btn" id="button-score-decrement">-</a>',
-            '</div>'
+            '<a class="waves-effect waves-light btn-large" id="button-score-decrement">-</a>'
         ].join(''))
         .append([
-            '<div class="right-align col s1 push-m10 push-s8">',
-            '<a class="waves-effect waves-light btn" id="button-score-increment">+</a>',
-            '</div>'
+            '<a class="waves-effect waves-light btn-large" id="button-score-increment">+</a>'
         ].join(''))
+        .append('<div class="row"></div>')
         .append(generateSlider(minValue, maxValue, incrementValue));
+
+    $('#button-score-decrement').css('float','left');
+    $('#button-score-increment').css('float','right');
 
     var scoreSlider = $('#score-slider');
 
