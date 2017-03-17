@@ -40,14 +40,14 @@ function buildSlider(sliderConfig) {
         .append('<div class="col s1 offset-s10"><a class="waves-effect waves-light btn" id="button-score-increment">+</a></div>')
         .append(generateSlider(minValue, maxValue, incrementValue));
 
-    $('#score-slider').on('input change',function(){
+    $('#score-slider').on('input change',() => {
         changeInputScoreValue(this.value)
     });
-    $('#button-score-decrement').on('click',function(){
-        changeInputScoreValue( getCurrentScoreValue() - incrementValue);
+    $('#button-score-decrement').on('click',() => {
+        changeInputScoreValue(getCurrentScoreValue() - incrementValue);
     });
-    $('#button-score-increment').on('click',function(){
-        changeInputScoreValue( getCurrentScoreValue() + incrementValue);
+    $('#button-score-increment').on('click',() => {
+        changeInputScoreValue(getCurrentScoreValue() + incrementValue);
     });
 }
 
@@ -76,7 +76,7 @@ function buildPresetScores(presetConfig) {
     if (!Array.isArray(presetConfig)) return;
 
     var isValid = true;
-    presetConfig.forEach(function(value) {
+    presetConfig.forEach((value) => {
         if(typeof value !== 'number') isValid = false;
     });
 
@@ -177,7 +177,7 @@ function areAnySelected() {
 
 function selectedToArray() {
     var isSelected = [];
-    Object.keys(teamSelected).forEach(function(element,index,array) {
+    Object.keys(teamSelected).forEach((element,index,array) => {
         if (teamSelected[element]) isSelected.push(element);
     });
     return isSelected;
@@ -221,19 +221,19 @@ function initalizeQuestionStatus(){
         type: "GET",
         url: '/scoreboard/state'
     })
-    .done(function(data){
+    .done((data) => {
         if(parseInt(data["question"]) == 0) questionOff();
         else questionOn();
     });
 }
 
 function teamSetUp(teamList){
-    teamList.forEach(function(element, index, array){
+    teamList.forEach((element, index, array) => {
         teamSelected[element] = false;
         var teamSelectButtonID = 'button-team-select-'+element;
         $("#team-select-grid")
             .append($(generateTeamButton(element)));
-        $('#'+teamSelectButtonID).on("click",function(){
+        $('#'+teamSelectButtonID).on('click', () => {
             if (teamSelected[element]) disableButton(teamSelectButtonID);
             else enableButton(teamSelectButtonID);
             teamSelected[element] = !teamSelected[element];
@@ -242,7 +242,7 @@ function teamSetUp(teamList){
 }
 
 function teamSelectAll(teamList) {
-    teamList.forEach(function(element, index, array){
+    teamList.forEach((element, index, array) => {
         var teamSelectButtonID = 'button-team-select-'+element;
         if (!teamSelected[element]) enableButton(teamSelectButtonID);
         teamSelected[element] = true;
@@ -250,7 +250,7 @@ function teamSelectAll(teamList) {
 }
 
 function teamDeselectAll(teamList) {
-    teamList.forEach(function(element, index, array){
+    teamList.forEach((element, index, array) => {
         var teamSelectButtonID = 'button-team-select-'+element;
         if (teamSelected[element]) disableButton(teamSelectButtonID);
         teamSelected[element] = false;
@@ -258,7 +258,7 @@ function teamDeselectAll(teamList) {
 }
 
 function teamInvertAll(teamList) {
-    teamList.forEach(function(element, index, array){
+    teamList.forEach((element, index, array) => {
         var teamSelectButtonID = 'button-team-select-'+element;
         if (teamSelected[element]) disableButton(teamSelectButtonID);
         else enableButton(teamSelectButtonID);
@@ -271,25 +271,26 @@ function getConfig(){
         type: "GET",
         url: '/buzzer_config'
     })
-    .done( function(data){
+    .done((data) => {
         buzzerConfig = data
         teamSetUp(buzzerConfig.teams);
         buildSlider(buzzerConfig.slider)
         buildPresetScores(buzzerConfig.score_presets)
+        buildScaleFactorDropDown(buzzerConfig.score_scale_factors)
     })
-    .fail(function( jqXHR, textStatus ) {
+    .fail((jqXHR, textStatus) => {
         console.log(jqXHR);
-        console.log( "Request failed: " + textStatus );
+        console.log("Request failed: " + textStatus);
     });
 }
 
-$(function(){
+$(function() {
     console.log("Loading");
 
     initalizeQuestionStatus()
     getConfig()
 
-    $('#buzzerListening').on("click",function(){
+    $('#buzzerListening').on("click", () =>{
         if(isBuzzerListening){
             questionOff();
         }
@@ -309,13 +310,13 @@ $(function(){
                 operation:"buzzerListening",
                 value:listeningInt
             }),
-            success: function(){},
+            success: () => {},
             dataType: "json"
         });
 
     });
 
-    $('#keepListening').on("click",function(){
+    $('#keepListening').on("click", () =>{
         $.ajax({
             type: "POST",
             url: '/',
@@ -325,12 +326,12 @@ $(function(){
                 operation:"keepListening",
                 value:""
             }),
-            success: function(){},
+            success: () => {},
             dataType: "json"
         });
     });
 
-    $('#resetBuzzer').on("click",function(){
+    $('#resetBuzzer').on("click", () =>{
         $.ajax({
             type: "POST",
             url: '/',
@@ -340,30 +341,30 @@ $(function(){
                 operation:"resetBuzzer",
                 value:""
             }),
-            success: function(){},
+            success: () => {},
             dataType: "json"
         });
     });
 
-    $('#score-add').on("click",function(){
+    $('#score-add').on("click", () => {
         clearScoreOptions();
         enableButton("score-add");
         operation = "add";
     });
 
-    $('#score-sub').on("click",function(){
+    $('#score-sub').on("click", () => {
         clearScoreOptions();
         enableButton("score-sub");
         operation = "sub";
     });
 
-    $('#score-set').on("click",function(){
+    $('#score-set').on("click", () => {
         clearScoreOptions();
         enableButton("score-set")
         operation = "set";
     });
 
-    $('#score-update').on("click",function(){
+    $('#score-update').on("click", () => {
         console.log("Updating Score");
 
         if(areAnySelected()){
@@ -376,7 +377,7 @@ $(function(){
                     operation:operation,
                     value:getCurrentScaledScoreValue()
                 }),
-                success: function(){},
+                success: () => {},
                 dataType: "json"
             });
         } else {
@@ -384,7 +385,7 @@ $(function(){
         }
     });
 
-    $('#score-undo').on("click",function(){
+    $('#score-undo').on("click", () => {
         console.log("Undoing Last Operation");
         $.ajax({
             type: "POST",
@@ -395,12 +396,12 @@ $(function(){
                 operation:"undo",
                 value:""
             }),
-            success: function(){},
+            success: () => {},
             dataType: "json"
         });
     });
 
-    $('#score-redo').on("click",function(){
+    $('#score-redo').on("click", () => {
         console.log("Redoing Last Operation");
         $.ajax({
             type: "POST",
@@ -411,20 +412,20 @@ $(function(){
                 operation:"redo",
                 value:""
             }),
-            success: function(){},
+            success: () => {},
             dataType: "json"
         });
     });
 
-    $('#team-select-all').on('click', function(){
+    $('#team-select-all').on('click', () => {
         teamSelectAll(buzzerConfig.teams)
     });
 
-    $('#team-select-none').on('click', function(){
+    $('#team-select-none').on('click', () => {
         teamDeselectAll(buzzerConfig.teams)
     });
 
-    $('#team-select-invert').on('click', function(){
+    $('#team-select-invert').on('click', () => {
         teamInvertAll(buzzerConfig.teams)
     });
 

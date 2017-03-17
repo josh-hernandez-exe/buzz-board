@@ -16,7 +16,7 @@ function setTeam(team){
 }
 
 function teamSetUp(teamList){
-       teamList.forEach(function(element, index, array){
+       teamList.forEach((element, index, array) => {
         $("#slide-out")
             .append($(generateTeamSelectorTemplate(element)));
     });
@@ -31,13 +31,13 @@ function getConfig(){
         type: "GET",
         url: '/buzzer_config'
     })
-    .done( function(data){
+    .done((data) => {
         buzzerConfig = data
         teamSetUp(buzzerConfig.teams);
     })
-    .fail(function( jqXHR, textStatus ) {
+    .fail((jqXHR, textStatus) => {
         console.log(jqXHR);
-        console.log( "Request failed: " + textStatus );
+        console.log("Request failed: " + textStatus);
     });
 }
 
@@ -45,7 +45,7 @@ $(function(){
     console.log("Loading");
     getConfig();
 
-    $('#buzzer').on("click",function(){
+    $('#buzzer').on("click", () => {
         console.log("Buzzing In");
 
         $.ajax({
@@ -57,7 +57,7 @@ $(function(){
                 operation:"buzzer",
                 value:""
             }),
-            success: function(){},
+            success: () => {},
             dataType: "json"
         });
     })

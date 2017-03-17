@@ -38,7 +38,7 @@ function failedBuzzer(team){
 
 
 function resetBuzzer(){
-    buzzerConfig.teams.forEach(function(element, index, array){
+    buzzerConfig.teams.forEach((element, index, array) => {
         $("#scoreboard-card-"+element).attr("class","card blue-grey")
     });
 }
@@ -48,7 +48,7 @@ function setScore(team,value){
 }
 
 function teamSetUp(teamList){
-    teamList.forEach(function(element, index, array){
+    teamList.forEach((element, index, array) => {
         $("#scoreboard-collection")
             .append($(generateCard(element,0)))
     });
@@ -62,13 +62,13 @@ function getConfig(){
         type: "GET",
         url: '/buzzer_config'
     })
-    .done( function(data){
+    .done((data) => {
         buzzerConfig = data
         teamSetUp(buzzerConfig.teams);
     })
-    .fail(function( jqXHR, textStatus ) {
+    .fail((jqXHR, textStatus) => {
         console.log(jqXHR);
-        console.log( "Request failed: " + textStatus );
+        console.log("Request failed: " + textStatus);
     });
 }
 
@@ -77,7 +77,7 @@ function updateState(){
         type: "GET",
         url: '/scoreboard/state'
     })
-    .done( function(data){
+    .done((data) => {
         // Remember that this is a callback asynchronously executed!
         // Deep copy
         var copyOldState = null;
@@ -92,7 +92,7 @@ function updateState(){
             questionOn();
         }
 
-        buzzerConfig.teams.forEach(function(element, index, array){
+        buzzerConfig.teams.forEach((element, index, array) => {
             var score = data[element]["score"];
             var buzzer = data[element]["buzzer"];
             setScore(element,score);
@@ -126,9 +126,9 @@ function updateState(){
 
         });
     })
-    .fail(function( jqXHR, textStatus ) {
+    .fail((jqXHR, textStatus) => {
         console.log(jqXHR);
-        console.log( "Request failed: " + textStatus );
+        console.log("Request failed: " + textStatus);
     });
 
     updateCount+=1;
