@@ -99,18 +99,18 @@ function buildPresetScores(presetConfig) {
 
 function buildScaleFactorDropDown(scaleFactorConfig) {
     if (!scaleFactorConfig) return;
-    if (!Array.isArray(scaleFactorConfig)) return;
+    if (!('values' in scaleFactorConfig)) return;
+    if (!Array.isArray(scaleFactorConfig.values)) return;
 
     var isValid = true;
-    scaleFactorConfig.forEach((value) => {
+    var scaleFactorArray = scaleFactorConfig.values;
+    scaleFactorArray.forEach((value) => {
         if(typeof value !== 'number') isValid = false;
     });
 
     if (!isValid) return;
 
-    var scoreScaleFactorSection = $('#score-select-scale-factor-section')
-
-    scoreScaleFactorSection
+    $('#score-select-scale-factor-section')
         // add dropdown trigger
         .append('<a class="dropdown-button btn" data-activates="score-scale-factor-dropdown-content" id="score-scale-factor-button">Scale Factor</a>')
         // add dropdown structure
@@ -140,7 +140,7 @@ function buildScaleFactorDropDown(scaleFactorConfig) {
 
     var dropDownObject = $('#score-scale-factor-dropdown-content');
 
-    scaleFactorConfig.forEach((value) => {
+    scaleFactorArray.forEach((value) => {
         var idStringValue = value.toString().replace('.','d');
         var scaleFactorDropdownItemID = 'score-scale-factor-trigger-'+idStringValue;
         var generatedDropdownContent = '<li><a id="'+scaleFactorDropdownItemID+'">'+value+'</a></li>';
@@ -150,10 +150,6 @@ function buildScaleFactorDropDown(scaleFactorConfig) {
             scaleFactorButton.dropdown('close');
         });
     });
-}
-
-function changeScaleFactor(newScaleFactor) {
-    curScaleFactor = newScaleFactor;
 }
 
 function areAnySelected() {
@@ -203,7 +199,6 @@ function questionOff(){
     if (buttonObject.hasClass('teal')) buttonObject.removeClass('teal');
     if (!buttonObject.hasClass('red')) buttonObject.addClass('red');
 }
-
 
 function initalizeQuestionStatus(){
     $.ajax({

@@ -39,6 +39,28 @@ def parse_config():
     HTTP_PORT_NUMBER = config['http']['port']
     TEAM_LIST = config['teams']
 
+    if 'score_scale_factors' in config:
+        # Add unit scale factor to config within 0.1% of 1.00
+        # or 1.000 +- 0.001
+
+        tol = config['score_scale_factors'].get('tol',10**(-3)) # tolerance
+        has_unit_scale_factor = False
+
+        if (
+            'values' not in config['score_scale_factors'] or
+            not isinstance(config['score_scale_factors']['values'], list)
+        ):
+            config['score_scale_factors']['values'] = []
+
+        for scale_factor in config['score_scale_factors']['values']:
+            assert isinstance(scale_factor, (int,float))
+            has_unit_scale_factor = has_unit_scale_factor or abs(scale_factor-1.0) <= tol
+
+        if not has_unit_scale_factor:
+            config['score_scale_factors']['values'].append(1.0)
+
+        config['score_scale_factors']['values'].sort()
+
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """
