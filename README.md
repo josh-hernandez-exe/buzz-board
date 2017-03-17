@@ -1,7 +1,7 @@
-##Dependencies
+## Dependencies
 * redis
 
-##Setup
+## Setup
 * `config.json` (using `example_config.json`)
 * Get your own audio files for `/web/buzzin.mp3` and `/web/incorectAnswer.mp3`
 	* if you don't want audio then change the following lines in `/web/js/scoreboard.js`
@@ -12,17 +12,17 @@
 			`var buzzInSound = null;`
 			`var inncorectAnswerSound = null;`
 
-##Server start
+## Server start
 * start redis
 * start http
 	* Starts the server inside the `web/` directory.
 
-##Interfaces:
+## Interfaces:
 * player (`/`)
 * scoreboard (`/scoreboard`)
 * admin (`/admin`)
 
-##How to use:
+## How to use:
 * Players access `/`
 	* Then they select which team they are apart of.
 	* They press the buzzer when they want to buzz in.
@@ -40,7 +40,7 @@
 	* If they want to reset the buzzer states, they can press the [**RESET BUZZER**] button on the bottom of the page.
 		* Every team will be set to `BUZZER_NOT_PRESSED`
 
-##Security
+## Security
 * There is no security within this web application.
 * It is assumed that players will truthfully select which team they are on
 	* Since you can select which team you are on, you have the ability to pretend to buzz for someone else
