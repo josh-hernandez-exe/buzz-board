@@ -3,6 +3,7 @@ var oldState = null;
 var isBuzzerListening = false;
 var operation = null;
 var teamSelected = {};
+var curScaleFactor = 1.0;
 
 function generateTeamButton(team) {
     var teamButtonTemplate;
@@ -54,6 +55,10 @@ function getCurrentScoreValue() {
     return Number($('#score-value').val());
 }
 
+function getCurrentScaledScoreValue() {
+    return getCurrentScoreValue() * curScaleFactor;
+}
+
 function changeInputScoreValue(newValue) {
     $('#score-value').val(newValue)
 
@@ -81,16 +86,85 @@ function buildPresetScores(presetConfig) {
         return '<div class="col s3 m2"><a class="waves-effect waves-light btn orange" id="button-score-preset-'+value+'">'+value+'</a></div>'
     }
 
-    presetConfig.forEach(function(value) {
+    presetConfig.forEach((value) => {
         var buttonID = 'button-score-preset-'+value
         $('#score-preset-section')
             .append(generatePresetScoreButton(value))
 
-        $('#'+buttonID).on('click', function(){
+        $('#'+buttonID).on('click', () => {
             changeInputScoreValue(value)
         });
     });
+}
 
+function buildScaleFactorDropDown(scaleFactorConfig) {
+    if (!scaleFactorConfig) return;
+    if (!Array.isArray(scaleFactorConfig)) return;
+
+    var isValid = true;
+    scaleFactorConfig.forEach((value) => {
+        if(typeof value !== 'number') isValid = false;
+    });
+
+    if (!isValid) return;
+
+    var scoreScaleFactorSection = $('#score-select-scale-factor-section')
+
+    scoreScaleFactorSection
+        // add dropdown trigger
+        .append('<a class="dropdown-button btn" href="#" data-activates="score-scale-factor-dropdown-content" id="score-scale-factor-button">Scale Factor</a>')
+        // add dropdown structure
+        .append('\
+          <ul id=\'score-scale-factor-dropdown-content\' class=\'dropdown-content\'>\
+          </ul>\
+        ')
+            // <li><a href="#!">one</a></li>\
+            // <li><a href="#!">two</a></li>\
+            // <li class="divider"></li>\
+            // <li><a href="#!">three</a></li>\
+
+    var scaleFactorButton = $('#score-scale-factor-button');
+
+    // Initialization for dropdowns is only necessary if you create them dynamically.
+    scaleFactorButton.dropdown({
+        inDuration: 300,
+        outDuration: 225,
+        constrainWidth: false, // Does not change width of dropdown to that of the activator
+        hover: true, // Activate on hover
+        gutter: 0, // Spacing from edge
+        belowOrigin: false, // Displays dropdown below the button
+        alignment: 'left', // Displays dropdown with edge aligned to the left of button
+        stopPropagation: false // Stops event propagation
+    });
+
+    var dropDownObject = $('#score-scale-factor-dropdown-content');
+
+
+
+    function generateDropDownTeamTemplate(value){
+        return '<option value="'+value+'">'+'x '+value+'</option>';
+        return '<li><a id">'+value+'</a></li>'
+    }
+
+    function changeScaleFactor(value) {
+        scaleFactorButton.text('x '+value);
+        curScaleFactor = Number(value);
+    }
+
+    scaleFactorConfig.forEach((value) => {
+        var idStringValue = value.toString().replace('.','d');
+        var scaleFactorDropdownItemID = 'score-scale-factor-trigger-'+idStringValue;
+        var generatedDropdownContent = '<li><a id="'+scaleFactorDropdownItemID+'">'+value+'</a></li>';
+        dropDownObject.append(generatedDropdownContent);
+        $('#'+scaleFactorDropdownItemID).on('click', () => {
+            changeScaleFactor(value);
+            scaleFactorButton.dropdown('close');
+        });
+    });
+}
+
+function changeScaleFactor(newScaleFactor) {
+    curScaleFactor = newScaleFactor;
 }
 
 function areAnySelected() {
@@ -293,12 +367,6 @@ $(function(){
         console.log("Updating Score");
 
         if(areAnySelected()){
-            var value = $("#score-value").val();
-
-            if(value==null||value===""){
-                value = '0';
-            }
-
             $.ajax({
                 type: "POST",
                 url: '/',
@@ -306,7 +374,7 @@ $(function(){
                     teams:selectedToArray(),
                     userType:"admin",
                     operation:operation,
-                    value:value
+                    value:getCurrentScaledScoreValue()
                 }),
                 success: function(){},
                 dataType: "json"
