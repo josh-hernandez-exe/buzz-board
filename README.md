@@ -31,8 +31,9 @@
 		* When the question state is off (red), then no buzzer input is listened to.
 		* When the question state is on (green), then the first buzzer input is listened to.
 	* Can modify the score on the board.
-		* They select which team they want to modify, and they can add/subtract/set the score.
+		* They select which team (or teams) they want to modify, and they can add/subtract/set the score.
 			* Subtract is redundant, but there for convenience.
+		+ If the config has setup the `score_scale_factors` and are valid, there is a scale factor button that will multiple the value in the text box before applying the operation set.
 	* If someone gets the question wrong they can press the [**KEEP LISTENING**] near the bottom of the page.
 		* This will cause the server to continue listening, but not listen to the people who got the question wrong.
 		* When done so, the team state is of who ever is `BUZZER_PRESSED` is changed to `BUZZER_PRESSED_FAILED`.
@@ -59,3 +60,9 @@
 
 ### Version 1.0.2
 * The scoreboard meta data is no logger written to file and read from file, but now just kept in memory. This has increased the response time of the scoreboard page.
+
+### Version 2.0.0
+* Several Admin Features have been added.
+	- As a result, the configuation data sent from server to client is very different
+	- Multiple teams can be sent in an operation
+		+ A set operation for multiple teams is broken down into several additions and subtractions
