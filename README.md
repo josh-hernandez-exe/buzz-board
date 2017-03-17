@@ -2,8 +2,7 @@
 * redis
 
 ##Setup
-* `server_conf.py` (using `server_conf.py.example`)
-	* currently web sockets are not used
+* `config.json` (using `example_config.json`)
 * Get your own audio files for `/web/buzzin.mp3` and `/web/incorectAnswer.mp3`
 	* if you don't want audio then change the following lines in `/web/js/scoreboard.js`
 		* from:
