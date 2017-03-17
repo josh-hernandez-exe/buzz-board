@@ -92,14 +92,14 @@ class MyHandler(SimpleHTTPRequestHandler):
 
         elif self.path == "/scoreboard/state":
            self.send_response(200)
-           self.send_header('content-type','json')
+           self.send_header('content-type','application/json')
            self.end_headers()
            self.wfile.write(json.dumps(scoreboard_state))
            did_handel_request = True
 
         elif self.path == "/buzzer_config":
            self.send_response(200)
-           self.send_header('content-type','json')
+           self.send_header('content-type','application/json')
            self.end_headers()
            self.wfile.write(json.dumps(client_buzzer_config))
            did_handel_request = True
