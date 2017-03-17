@@ -112,16 +112,12 @@ function buildScaleFactorDropDown(scaleFactorConfig) {
 
     scoreScaleFactorSection
         // add dropdown trigger
-        .append('<a class="dropdown-button btn" href="#" data-activates="score-scale-factor-dropdown-content" id="score-scale-factor-button">Scale Factor</a>')
+        .append('<a class="dropdown-button btn" data-activates="score-scale-factor-dropdown-content" id="score-scale-factor-button">Scale Factor</a>')
         // add dropdown structure
         .append('\
           <ul id=\'score-scale-factor-dropdown-content\' class=\'dropdown-content\'>\
           </ul>\
         ')
-            // <li><a href="#!">one</a></li>\
-            // <li><a href="#!">two</a></li>\
-            // <li class="divider"></li>\
-            // <li><a href="#!">three</a></li>\
 
     var scaleFactorButton = $('#score-scale-factor-button');
 
