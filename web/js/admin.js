@@ -160,6 +160,8 @@ function buildScaleFactorDropDown(scaleFactorConfig) {
             scaleFactorButton.dropdown('close');
         });
     });
+
+    changeScaleFactor(1.0);
 }
 
 function areAnySelected() {
