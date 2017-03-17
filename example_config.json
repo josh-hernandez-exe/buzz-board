@@ -1,0 +1,36 @@
+{
+	"http" :{
+		"hostname": "0.0.0.0",
+		"port": 8080
+	},
+	"teams": [
+		"Team_A",
+		"Team_B",
+		"Team_C",
+		"Team_D",
+		"Team_E",
+		"Team_F",
+		"Team_H",
+		"Team_I",
+		"Team_J"
+	],
+	"score_presets": [
+		100,
+		200,
+		300,
+		400,
+		500
+	],
+	"slider": {
+		"min": 0,
+		"max": 500,
+		"increment": 5
+	},
+	"score_scale_factors": {
+		"values": [
+			0.5,
+			2
+		],
+		"tol": 0.001
+	}
+}

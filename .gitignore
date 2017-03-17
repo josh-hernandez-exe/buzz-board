@@ -2,7 +2,7 @@
 *.pyo
 *.rdb
 .DS_Store
-server_conf.py
+config.json
 Icon\r
 Icon$\r
 README.html

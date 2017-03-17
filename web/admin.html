@@ -15,54 +15,63 @@
     <div class="nav-wrapper container"><a id="logo-container" href="#" class="brand-logo center">Admin</a>
     </div>
   </nav>
-  <div class="section no-pad-bot" id="index-banner">
-    <div class="container">
-      <br><br>
+  <div class="container section no-pad-bot" id="index-banner">
+      <div id="buzzer-control-section">
+        <div class="row center">
+          <a class="waves-effect waves-light btn-large disabled" id="buzzerListening">Buzzer Listening</a>
+        </div>
 
+        <div class="row center">
+          <a class="waves-effect waves-light btn-large blue" id="keepListening">Keep Listening</a>
+          <a class="waves-effect waves-light btn-large blue" id="resetBuzzer">Reset Buzzer</a>
+        </div>
 
+        <li class="divider"></li>
+        <br>
+      </div>
+      <div class="row" id="team-select-managment">
+        <a class="waves-effect waves-light btn orange button-padding" id="team-select-all">Select All</a>
+        <a class="waves-effect waves-light btn orange button-padding" id="team-select-none">Deselect All</a>
+        <a class="waves-effect waves-light btn orange button-padding" id="team-select-invert">Invert Selected</a>
+      </div>
+      <div class="row"></div>
 
-
-      <div class="row center">
-        <a class="waves-effect waves-light btn-large disabled" id="question">Question</a>
+      <div class="row center" id="team-select-grid">
+      <!-- Team Select Grid Structure -->
+      <!-- The team names gets filled in dynamically by javascript / jquery -->
       </div>
 
-      <br>
+      <div class="row center" id="score-slider-section">
+      <!-- If valid configutations are set, we will dynamically add the slider -->
+      </div>
 
+      <div class="row center" id="score-preset-section">
+      <!-- If valid configutations are set, we will dynamically add the preset buttons -->
+      </div>
+
+      <div class="row center" id="score-input-display-section">
+        <!-- I chose the 'tel' type for the input so that the number pad keyboard would appear on mobile devices -->
+        <input placeholder="Value" id="score-value" type="tel" class="validate" onchange="changeInputScoreValue(this.value)">
+      </div>
+
+      <div class="row center" id="score-select-scale-factor-section">
+      <!-- If valid configutations are set, we will dynamically add the scale factor drop down-->
+      </div>
+      
       <div class="row center">
-        <!-- Dropdown Trigger -->
-        <a class='dropdown-button btn' href='#' data-activates='team-select-dropdown' id="score-team">Select Team</a>
-        <br>
-        <!-- Dropdown Structure -->
-        <ul class='dropdown-content' id="team-select-dropdown">
-        <!-- The team names gets filled in dynamically by javascript / jquery -->
-        </ul>
-
-        <br><br>
-
-        <input placeholder="Value" id="score-value" type="tel" class="validate">
-
-        <br>
-        <a class="waves-effect waves-light btn-large disabled" id="score-add">Add</a>
-        <a class="waves-effect waves-light btn-large disabled" id="score-sub">Sub</a>
-        <a class="waves-effect waves-light btn-large disabled" id="score-set">Set</a>
+        <a class="waves-effect waves-light btn disabled" id="score-add">Add</a>
+        <a class="waves-effect waves-light btn disabled" id="score-sub">Sub</a>
+        <a class="waves-effect waves-light btn disabled" id="score-set">Set</a>
 
         <br><br>
 
         <a class="waves-effect waves-light btn-large orange" id="score-update">Update</a>
+
         <br><br>
+
         <a class="waves-effect waves-light btn-large orange" id="score-undo">Undo</a>
         <a class="waves-effect waves-light btn-large orange" id="score-redo">Redo</a>
       </div>
-
-      <br><br>
-
-    </div>
-
-      <div class="row center">
-        <a class="waves-effect waves-light btn-large blue" id="keepListening">Keep Listening</a>
-        <a class="waves-effect waves-light btn-large blue" id="resetBuzzer">Reset Buzzer</a>
-      </div>
-
   </div>
 
 

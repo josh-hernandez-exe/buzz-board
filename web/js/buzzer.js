@@ -1,5 +1,6 @@
-var TEAM_LIST = [""];
+var buzzerConfig;
 var currentTeam = null;
+var errorToastDisplayDuration = 4000 // ms
 
 function generateTeamSelectorTemplate(team){
     var template = "";
@@ -15,8 +16,8 @@ function setTeam(team){
     document.location.hash=team;
 }
 
-function teamSetUp(TEAM_LIST){
-       TEAM_LIST.forEach(function(element, index, array){
+function teamSetUp(teamList){
+       teamList.forEach((element, index, array) => {
         $("#slide-out")
             .append($(generateTeamSelectorTemplate(element)));
     });
@@ -26,28 +27,32 @@ function teamSetUp(TEAM_LIST){
 }
 
 
-function getTeamList(){
+function getConfig(){
     response = $.ajax({
         type: "GET",
-        url: '/team_list.json'
+        url: '/buzzer_config'
     })
-    .done( function(data){
-        TEAM_LIST = data;
-        console.log(TEAM_LIST);
-        teamSetUp(TEAM_LIST);
+    .done((data) => {
+        buzzerConfig = data
+        teamSetUp(buzzerConfig.teams);
     })
-    .fail(function( jqXHR, textStatus ) {
+    .fail((jqXHR, textStatus) => {
         console.log(jqXHR);
-        console.log( "Request failed: " + textStatus );
+        console.log("Request failed: " + textStatus);
     });
 }
 
 $(function(){
     console.log("Loading");
-    getTeamList();
+    getConfig();
 
-    $('#buzzer').on("click",function(){
+    $('#buzzer').on("click", () => {
         console.log("Buzzing In");
+
+        if (currentTeam === null) {
+            Materialize.toast("You have not selected a team", errorToastDisplayDuration);
+            return;
+        }
 
         $.ajax({
             type: "POST",
@@ -58,7 +63,7 @@ $(function(){
                 operation:"buzzer",
                 value:""
             }),
-            success: function(){},
+            success: () => {},
             dataType: "json"
         });
     })
