@@ -144,11 +144,6 @@ function buildScaleFactorDropDown(scaleFactorConfig) {
         stopPropagation: false // Stops event propagation
     });
 
-    function changeScaleFactor(value) {
-        scaleFactorButton.text('x '+value);
-        curScaleFactor = Number(value);
-    }
-
     var dropDownObject = $('#score-scale-factor-dropdown-content');
 
     scaleFactorArray.forEach((value) => {
@@ -163,6 +158,12 @@ function buildScaleFactorDropDown(scaleFactorConfig) {
     });
 
     changeScaleFactor(1.0);
+}
+
+function changeScaleFactor(value) {
+    var scaleFactorButton = $('#score-scale-factor-button');
+    if(scaleFactorButton) scaleFactorButton.text('x '+value);
+    curScaleFactor = Number(value);
 }
 
 function areAnySelected() {
@@ -357,7 +358,8 @@ $(function() {
 
     $('#score-set').on("click", () => {
         clearScoreOptions();
-        enableButton("score-set")
+        enableButton("score-set");
+        changeScaleFactor(1.0);
         operation = "set";
     });
 

@@ -66,3 +66,4 @@
 	- As a result, the configuation data sent from server to client is very different
 	- Multiple teams can be sent in an operation
 		+ A set operation for multiple teams is broken down into several additions and subtractions
+	- The set operation now changes the scaleFactor to `1.0`
