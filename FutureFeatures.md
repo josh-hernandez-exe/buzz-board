@@ -15,6 +15,7 @@
 * Buzzer will get a reply from server they they have buzzed in.
 	* There should be timeout so that the buzzer returns to the normal color.
 * Some refactoring can be done with the class changes done with jQuery.
+* Encode and decode team names properly so that whitespace can be within the team name.
 
 ## Completed
 * ~~ Some refactoring can be done with the class changes done with jQuery. ~~
