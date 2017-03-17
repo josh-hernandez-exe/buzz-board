@@ -40,8 +40,10 @@ function buildSlider(sliderConfig) {
         .append('<div class="col s1 offset-s10"><a class="waves-effect waves-light btn" id="button-score-increment">+</a></div>')
         .append(generateSlider(minValue, maxValue, incrementValue));
 
-    $('#score-slider').on('input change',() => {
-        changeInputScoreValue(this.value)
+    var scoreSlider = $('#score-slider');
+
+    scoreSlider.on('input change',() => {
+        changeInputScoreValue(scoreSlider.val())
     });
     $('#button-score-decrement').on('click',() => {
         changeInputScoreValue(getCurrentScoreValue() - incrementValue);
