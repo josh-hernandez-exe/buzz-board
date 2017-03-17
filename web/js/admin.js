@@ -32,12 +32,20 @@ function buildSlider(sliderConfig) {
     if (minValue > maxValue) return;
 
     function generateSlider(minValue, maxValue, incrementValue) {
-        return '<input id="score-slider" type="range" min="'+minValue+'" max="'+maxValue+'" step="'+incrementValue+'"><br>';
+        return '<input class="col s12" id="score-slider" type="range" min="'+minValue+'" max="'+maxValue+'" step="'+incrementValue+'"><br>';
     }
 
     $('#score-slider-section')
-        .append('<div class="col s1           "><a class="waves-effect waves-light btn" id="button-score-decrement">-</a></div>')
-        .append('<div class="col s1 offset-s10"><a class="waves-effect waves-light btn" id="button-score-increment">+</a></div>')
+        .append([
+            '<div class="left-align col s1">',
+            '<a class="waves-effect waves-light btn" id="button-score-decrement">-</a>',
+            '</div>'
+        ].join(''))
+        .append([
+            '<div class="right-align col s1 push-m10 push-s8">',
+            '<a class="waves-effect waves-light btn" id="button-score-increment">+</a>',
+            '</div>'
+        ].join(''))
         .append(generateSlider(minValue, maxValue, incrementValue));
 
     var scoreSlider = $('#score-slider');
