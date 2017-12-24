@@ -1,14 +1,25 @@
 #!/usr/bin/python
 import sys
+import json
 import inspect
 import subprocess
 from os.path import join
 from threading import Thread
 
 from redis_wrapper import RedisWrapper
-from server_conf import (
-    TEAM_LIST,
-)
+
+TEAM_LIST = None
+
+def parse_config():
+    global TEAM_LIST
+
+    config = None
+
+    with open("./config.json") as flink:
+        config = json.loads(flink.read())
+
+    TEAM_LIST = config['teams']
+
 
 def start_redis_server_helper(
     stdin=None,
@@ -39,7 +50,6 @@ def start_redis_server(
     stdout=sys.stdout,
     stderr=sys.stderr,
 ):
-    
     initilize_thread = Thread(target=initialize_redis_server, args = () )
     initilize_thread.start()
 
@@ -51,4 +61,5 @@ def start_redis_server(
     )
 
 if __name__ == "__main__":
+    parse_config()
     start_redis_server()
