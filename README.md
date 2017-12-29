@@ -60,7 +60,9 @@
 			* Required sub-fields:
 				- `min`
 				- `max`
+			* Optional sub-fields:
 				- `increment`
+					+ Default is set if given.
 		+ `score_scale_factors`
 			* This renders a dropdown for a multiplier that will be applied to the value for the admin operation.
 			* If this entry is not here, then this section on the admin page is **not** rendered.
