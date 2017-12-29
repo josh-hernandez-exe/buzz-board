@@ -12,24 +12,26 @@
 			`var buzzInSound = null;`
 			`var inncorectAnswerSound = null;`
 
-## Server start
+## Server Start
 * start redis
 * start http
 	* Starts the server inside the `web/` directory.
 
-## Interfaces:
+## Interfaces
 * player (`/`)
 * scoreboard (`/scoreboard`)
 * admin (`/admin`)
 
-## How to use:
+## How to Use
 * Players access `/`
 	* Then they select which team they are apart of.
 	* They press the buzzer when they want to buzz in.
 * The admin controls the state of the game. 
 	* Can toggles the listening state with the [**QUESTION**] button.
 		* When the question state is off (red), then no buzzer input is listened to.
+			- The scoreboard top bar will be blue.
 		* When the question state is on (green), then the first buzzer input is listened to.
+			- The scoreboard top bar will be green.
 	* Can modify the score on the board.
 		* They select which team (or teams) they want to modify, and they can add/subtract/set the score.
 			* Subtract is redundant, but there for convenience.
@@ -40,6 +42,42 @@
 		* You will only ever see one team who has the state `BUZZER_PRESSED`.
 	* If they want to reset the buzzer states, they can press the [**RESET BUZZER**] button on the bottom of the page.
 		* Every team will be set to `BUZZER_NOT_PRESSED`
+
+## Configurability
+* Required fields in `config.json`:
+	- `http.hostname`
+	- `http.port`
+	- `teams`
+* Optional fields in `config.json`:
+	- Admin Related:
+		+ `score_presets`
+			* These are quick access buttons for specific score values.
+			* If this entry is not here, then this section on the admin page is **not** rendered.
+		+ `slider`
+			* This renders a slider for quick access to variable score values.
+				- Useful on mobile browsers
+			* If this entry is not here, then this section on the admin page is **not** rendered.
+			* Required sub-fields:
+				- `min`
+				- `max`
+				- `increment`
+		+ `score_scale_factors`
+			* This renders a dropdown for a multiplier that will be applied to the value for the admin operation.
+			* If this entry is not here, then this section on the admin page is **not** rendered.
+			* Required sub-fields:
+				- `values`
+			* Optional sub-fields:
+				- `tol`
+					+ This defines the tolerance for testing floating point number comparison.
+					+ If not present, a default value is used.
+					+ Used to determine if a unitary (`x 1.0`) multiplier is present.
+						* If you have floating point values close to `1.0`, then a smaller `tol` value should be used.
+	- Scoreboard Related:
+		+ `scoreboard.poll`
+			* This specifies the period between polls to the server for scoreboard updates.
+			* If this entry is not here, then the scoreboard will poll at a default rate.
+		+ `scoreboard.refresh_threshold`
+			* If this entry is not here, then the scoreboard will **not** refresh after a specific number of polls to the server.
 
 ## Security
 * There is no security within this web application.

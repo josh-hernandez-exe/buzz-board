@@ -73,8 +73,12 @@ function getConfig(){
 }
 
 function updateState(){
-    var pollPeriod = buzzerConfig.scoreboard.poll || 500;
-    var refreashThreshold = buzzerConfig.scoreboard.refresh_threshold || 1000;
+    var pollPeriod = buzzerConfig.scoreboard.poll;
+    var refreashThreshold = buzzerConfig.scoreboard.refresh_threshold;
+
+    if(typeof pollPeriod !== 'number'){
+        pollPeriod = 500; // default value
+    }
 
     $.ajax({
         type: "GET",
@@ -133,7 +137,7 @@ function updateState(){
     });
 
     updateCount+=1;
-    if(updateCount>=refreashThreshold){
+    if(typeof refreashThreshold === 'number' && updateCount>=refreashThreshold){
         window.location.reload();
     }
 }
