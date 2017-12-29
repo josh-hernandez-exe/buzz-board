@@ -50,6 +50,7 @@
 		* Note that people tend to want to do something when you specifically tell them not to!
 * The admin page is not restricted in any way.
 	* Anyone who knows the url, can access the admin page.
+		- Don't tell your audience.
 
 ## Versions
 ### Version 1.0.0
@@ -67,3 +68,8 @@
 	- Multiple teams can be sent in an operation
 		+ A set operation for multiple teams is broken down into several additions and subtractions
 	- The set operation now changes the scaleFactor to `1.0`
+
+### Version 2.1.0
+* The scoreboard page is configurable inside of the `config.json`. The `example_config.json` should be updated showing how.
+	- The poll period (how often the scoreboard makes a `GET` request to the server for new info) is configurable.
+	- The refresh threshold can be configurable. The scoreboard tracks the number of times it has made requests to the server, when the count exceeds the threshold, the page is refreshed. This is normally an issue when the page is viewed on a mobile browser.
