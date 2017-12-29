@@ -111,3 +111,4 @@
 * The scoreboard page is configurable inside of the `config.json`. The `example_config.json` should be updated showing how.
 	- The poll period (how often the scoreboard makes a `GET` request to the server for new info) is configurable.
 	- The refresh threshold can be configurable. The scoreboard tracks the number of times it has made requests to the server, when the count exceeds the threshold, the page is refreshed. This is normally an issue when the page is viewed on a mobile browser.
+* Added admin feature to select team who has buzzed in (team buzzer state `1`), and select all the teams who have buzzed in but got the wrong answer (team buzzer state `2`).

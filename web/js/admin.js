@@ -74,7 +74,8 @@ function changeInputScoreValue(newValue) {
     $('#score-value').val(newValue)
 
     var sliderObject = $('#score-slider');
-    if (sliderObject) {
+    var sliderExists = typeof buzzerConfig.slider === 'object' && buzzerConfig.slider !== null;
+    if (sliderObject && sliderExists) {
         var newSliderValue = newValue;
         if (newSliderValue > buzzerConfig.slider.max) newSliderValue = buzzerConfig.slider.max
         if (newSliderValue < buzzerConfig.slider.min) newSliderValue = buzzerConfig.slider.min
@@ -176,8 +177,8 @@ function areAnySelected() {
 
 function selectedToArray() {
     var isSelected = [];
-    Object.keys(teamSelected).forEach((element,index,array) => {
-        if (teamSelected[element]) isSelected.push(element);
+    Object.keys(teamSelected).forEach((teamID,index,array) => {
+        if (teamSelected[teamID]) isSelected.push(teamID);
     });
     return isSelected;
 }
@@ -226,41 +227,64 @@ function initalizeQuestionStatus(){
 }
 
 function teamSetUp(teamList){
-    teamList.forEach((element, index, array) => {
-        teamSelected[element] = false;
-        var teamSelectButtonID = 'button-team-select-'+element;
+    teamList.forEach((teamID, index, array) => {
+        teamSelected[teamID] = false;
+        var teamSelectButtonID = 'button-team-select-'+teamID;
         $("#team-select-grid")
-            .append($(generateTeamButton(element)));
+            .append($(generateTeamButton(teamID)));
         $('#'+teamSelectButtonID).on('click', () => {
-            if (teamSelected[element]) disableButton(teamSelectButtonID);
+            if (teamSelected[teamID]) disableButton(teamSelectButtonID);
             else enableButton(teamSelectButtonID);
-            teamSelected[element] = !teamSelected[element];
+            teamSelected[teamID] = !teamSelected[teamID];
         });
     });
 }
 
+function teamSelection(teamID,isSelected) {
+    var teamSelectButtonID = 'button-team-select-'+teamID;
+
+    if (typeof isSelected !== 'boolean'){
+        console.error('`isSelected` variable passed in is not a boolean.')
+        return;
+    }
+
+    teamSelected[teamID] = isSelected;
+    if(isSelected) enableButton(teamSelectButtonID)
+    else disableButton(teamSelectButtonID);
+}
+
 function teamSelectAll(teamList) {
-    teamList.forEach((element, index, array) => {
-        var teamSelectButtonID = 'button-team-select-'+element;
-        if (!teamSelected[element]) enableButton(teamSelectButtonID);
-        teamSelected[element] = true;
+    teamList.forEach((teamID, index, array) => {
+        if (!teamSelected[teamID]) teamSelection(teamID, true);
     });
 }
 
 function teamDeselectAll(teamList) {
-    teamList.forEach((element, index, array) => {
-        var teamSelectButtonID = 'button-team-select-'+element;
-        if (teamSelected[element]) disableButton(teamSelectButtonID);
-        teamSelected[element] = false;
+    teamList.forEach((teamID, index, array) => {
+        if (teamSelected[teamID]) teamSelection(teamID, false);
     });
 }
 
 function teamInvertAll(teamList) {
-    teamList.forEach((element, index, array) => {
-        var teamSelectButtonID = 'button-team-select-'+element;
-        if (teamSelected[element]) disableButton(teamSelectButtonID);
-        else enableButton(teamSelectButtonID);
-        teamSelected[element] = !teamSelected[element];
+    teamList.forEach((teamID, index, array) => {
+        teamSelection(teamID, !teamSelected[teamID]);
+    });
+}
+
+function teamSelectBuzzedState(teamList,buzzerState){
+    $.ajax({
+        type: "GET",
+        url: '/scoreboard/state'
+    })
+    .done((data) => {
+        teamList.forEach((teamID, index, array) => {
+            teamSelection(teamID, data[teamID]["buzzer"]===buzzerState);
+        });
+    })
+    .fail((jqXHR, textStatus) => {
+        console.log(jqXHR);
+        console.log("Request failed: " + textStatus);
+        setTimeout(updateState, pollPeriod);
     });
 }
 
@@ -434,5 +458,12 @@ $(function() {
         teamInvertAll(buzzerConfig.teams)
     });
 
+    $('#team-select-buzzed-in').on('click', () => {
+        teamSelectBuzzedState(buzzerConfig.teams,1);
+    });
+
+    $('#team-select-buzzed-wrong').on('click', () => {
+        teamSelectBuzzedState(buzzerConfig.teams,2);
+    });
 
 })
