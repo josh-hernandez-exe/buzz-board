@@ -32,5 +32,9 @@
 			2
 		],
 		"tol": 0.001
+	},
+	"scoreboard": {
+		"poll": 100,
+		"refresh_threshold": 1000
 	}
 }

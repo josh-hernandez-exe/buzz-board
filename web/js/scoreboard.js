@@ -47,8 +47,8 @@ function setScore(team,value){
     $("#scoreboard-score-"+team).text(value)
 }
 
-function teamSetUp(teamList){
-    teamList.forEach((element, index, array) => {
+function teamSetUp(){
+    buzzerConfig.teams.forEach((element, index, array) => {
         $("#scoreboard-collection")
             .append($(generateCard(element,0)))
     });
@@ -64,7 +64,7 @@ function getConfig(){
     })
     .done((data) => {
         buzzerConfig = data
-        teamSetUp(buzzerConfig.teams);
+        teamSetUp();
     })
     .fail((jqXHR, textStatus) => {
         console.log(jqXHR);
@@ -73,6 +73,9 @@ function getConfig(){
 }
 
 function updateState(){
+    var pollPeriod = buzzerConfig.scoreboard.poll || 500;
+    var refreashThreshold = buzzerConfig.scoreboard.refresh_threshold || 1000;
+
     $.ajax({
         type: "GET",
         url: '/scoreboard/state'
@@ -87,7 +90,6 @@ function updateState(){
 
         if(parseInt(data["question"]) == 0){
             questionOff();
-        
         }else{
             questionOn();
         }
@@ -108,7 +110,6 @@ function updateState(){
                 }
                 gotBuzzer(element);
 
-            
             } else if (buzzer==2){
                 if(copyOldState!=null){
                     if(copyOldState[element]["buzzer"]==1){
@@ -120,25 +121,22 @@ function updateState(){
                 }
                 failedBuzzer(element);
             }
-
-
-        oldState = data;
-
+            oldState = data;
         });
+
+        setTimeout(updateState,pollPeriod);
     })
     .fail((jqXHR, textStatus) => {
         console.log(jqXHR);
         console.log("Request failed: " + textStatus);
+        setTimeout(updateState, pollPeriod);
     });
 
     updateCount+=1;
-    if(updateCount>=600){
+    if(updateCount>=refreashThreshold){
         window.location.reload();
     }
-
-    setTimeout(updateState,500);
 }
-
 
 $(function(){
     console.log("Loading");
