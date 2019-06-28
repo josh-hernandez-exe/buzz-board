@@ -3,7 +3,7 @@ import time
 import json
 import sys
 import os
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 try:
     # python 2
@@ -32,40 +32,70 @@ OP_FUTURE = []
 scoreboard_state = {}
 client_buzzer_config = {}
 
+
+
 def parse_config():
     global config
     global HTTP_HOST_NAME
     global HTTP_PORT_NUMBER
     global TEAM_LIST
+    global TEAM_CONFIG
+    global ADMIN_CONFIG
 
     with open("./config.json") as flink:
-        config = json.loads(flink.read())
+        config = json.loads(
+            flink.read(),
+            object_pairs_hook=OrderedDict,
+        )
 
     HTTP_HOST_NAME = config['http']['hostname']
     HTTP_PORT_NUMBER = config['http']['port']
-    TEAM_LIST = config['teams']
 
-    if 'score_scale_factors' in config:
+    ADMIN_CONFIG = config.get("admin", dict())
+
+    if isinstance(config['teams'], list):
+        TEAM_LIST = config['teams']
+        TEAM_CONFIG = dict()
+
+        # setup null config
+        for team_name in TEAM_LIST:
+            TEAM_CONFIG[team_name] = dict()
+            TEAM_CONFIG[team_name]["key"] = None
+
+    elif isinstance(config['teams'], dict):
+        TEAM_LIST = []
+        TEAM_CONFIG = dict()
+        for team_name, team_config in config['teams'].items():
+            TEAM_LIST.append(team_name)
+            TEAM_CONFIG[team_name] = team_config
+
+    all_teams_with_keys = all(item.get("key", None) for item in TEAM_CONFIG.values() )
+    all_team_with_no_keys = all(not item.get("key", None) for item in TEAM_CONFIG.values() )
+
+    if not (all_teams_with_keys or all_team_with_no_keys):
+        raise Exception("Not all teams have keys. Either all teams should have keys, or all teams should have NOT have them.")
+
+    if 'score_scale_factors' in ADMIN_CONFIG:
         # Add unit scale factor to config within 0.1% of 1.00
         # or 1.000 +- 0.001
 
-        tol = config['score_scale_factors'].get('tol',10**(-3)) # tolerance
+        tol = ADMIN_CONFIG['score_scale_factors'].get('tol',10**(-3)) # tolerance
         has_unit_scale_factor = False
 
         if (
-            'values' not in config['score_scale_factors'] or
-            not isinstance(config['score_scale_factors']['values'], list)
+            'values' not in ADMIN_CONFIG['score_scale_factors'] or
+            not isinstance(ADMIN_CONFIG['score_scale_factors']['values'], list)
         ):
-            config['score_scale_factors']['values'] = []
+            ADMIN_CONFIG['score_scale_factors']['values'] = []
 
-        for scale_factor in config['score_scale_factors']['values']:
+        for scale_factor in ADMIN_CONFIG['score_scale_factors']['values']:
             assert isinstance(scale_factor, (int,float))
             has_unit_scale_factor = has_unit_scale_factor or abs(scale_factor-1.0) <= tol
 
         if not has_unit_scale_factor:
-            config['score_scale_factors']['values'].append(1.0)
+            ADMIN_CONFIG['score_scale_factors']['values'].append(1.0)
 
-        config['score_scale_factors']['values'].sort()
+        ADMIN_CONFIG['score_scale_factors']['values'].sort()
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
@@ -77,7 +107,6 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     in the superclass list or this won't work as intended.
     *******************************************
     """
-
 
 class MyHandler(SimpleHTTPRequestHandler):
 
@@ -114,44 +143,47 @@ class MyHandler(SimpleHTTPRequestHandler):
             SimpleHTTPRequestHandler.do_GET(self)
 
     def do_POST(self):
-        self.send_response(200)
-
         data_string = self.rfile.read(int(self.headers['Content-Length']))
         data = json.loads(data_string)
         print(data_string)
 
         if data["userType"] == "player":
-
-            handle_player_post_request(data)
+            status = handle_player_post_request(self, data)
 
         elif data["userType"] == "admin":
 
-            handle_admin_post_request(data)
+            status = handle_admin_post_request(self, data)
 
         else:
             print("Not excepted userType")
 
+        self.end_headers()
+
 HandlerClass = MyHandler
 
 
-def handle_player_post_request(data):
+def handle_player_post_request(request, data):
     if "team" not in data:
-        # Ignore
+        request.send_response(400)
         if __debug__:
             print("There is no team field in the data passed in.")
-
+        return
     elif data["team"] not in TEAM_LIST:
-        # Ignore
+        request.send_response(400)
         if __debug__:
             print("This is not a valid team.")
+        return
 
-    elif not redis_con.get_is_question_listening():
-        # Question is not active
-        # Ignore
+    elif client_buzzer_config["teams_expect_key"] and data["password"] != TEAM_CONFIG[data["team"]]["key"]:
+        request.send_response(403)
         if __debug__:
-            print("Question is not active")
+            print("Request not authorized.")
+        return
 
-    elif not redis_con.get_is_buzzer_listening():
+
+
+    if not redis_con.get_is_buzzer_listening():
+        request.send_response(409)
         if __debug__:
             print("Someone else has already buzzed in.")
 
@@ -166,30 +198,46 @@ def handle_player_post_request(data):
             redis_con.set_buzzer(data["team"], BUZZER_PRESSED)
             update_board_state()
 
-        elif __debug__:
+            # GOOD REQUEST
+            request.send_response(200)
 
-            if team_buzzer_status == BUZZER_PRESSED:
-                if __debug__:
-                    print("You have already sucessfully buzzed in.")
-            elif team_buzzer_status == BUZZER_PRESSED_FAILED:
-                if __debug__:
-                    print("You had your chance.")
+        else:
+            request.send_response(409)
+            if __debug__:
 
-            else:
-                print("THIS SHOULD NEVER HAPPEN!")
+                if team_buzzer_status == BUZZER_PRESSED:
+                    if __debug__:
+                        print("You have already sucessfully buzzed in.")
+                elif team_buzzer_status == BUZZER_PRESSED_FAILED:
+                    if __debug__:
+                        print("You had your chance.")
 
-def handle_admin_post_request(data):
+                else:
+                    did_error = True
+                    print("THIS SHOULD NEVER HAPPEN!")
+
+def handle_admin_post_request(request, data):
     try:
         data["value"] = int(data["value"])
     except:
         data["value"] = 0
 
+    if client_buzzer_config["admin"]["key"] and data["password"] != ADMIN_CONFIG["key"]:
+        request.send_response(403)
+        print(data["password"],ADMIN_CONFIG["key"])
+        if __debug__:
+            print("Request not authorized.")
+        return
+
     if "operation" not in data:
         # Ignore
+        request.send_response(400)
         if __debug__:
             print("No admin operation was specified.")
+        return
 
-    elif data["operation"] == "buzzerListening":
+    request.send_response(200)
+    if data["operation"] == "buzzerListening":
 
         set_to_listen = bool(data["value"])
 
@@ -249,9 +297,6 @@ def handle_admin_post_request(data):
 
     elif data["operation"] == "redo" :
         handle_redo()
-
-    else:
-        pass
 
     update_board_state()
 
@@ -338,6 +383,21 @@ def create_buzzer_config_json():
 
     temp = dict(config)
     del temp['http']
+
+    if isinstance(config["teams"], dict):
+        temp["teams"] = TEAM_LIST
+        temp["teams_expect_key"] = all(item.get("key", None) for item in TEAM_CONFIG.values() )
+
+    if "admin" in config:
+        temp["admin"] = dict(config["admin"])
+
+        # set to bool, so that client admin page know to display key
+        temp["admin"]["key"] = bool(config["admin"]["key"])
+    else:
+        if not "admin" in config:
+            temp["admin"] = dict()
+
+        temp["admin"]["key"] = False
 
     client_buzzer_config = temp
 

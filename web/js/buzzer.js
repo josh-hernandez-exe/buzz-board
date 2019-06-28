@@ -33,8 +33,11 @@ function getConfig(){
         url: '/buzzer_config'
     })
     .done((data) => {
-        buzzerConfig = data
+        buzzerConfig = data;
         teamSetUp(buzzerConfig.teams);
+        if (buzzerConfig.teams_expect_key === true) {
+            buildKeyInput();
+        }
     })
     .fail((jqXHR, textStatus) => {
         console.log(jqXHR);
@@ -47,12 +50,12 @@ $(function(){
     getConfig();
 
     $('#buzzer').on("click", () => {
-        console.log("Buzzing In");
-
         if (currentTeam === null) {
             Materialize.toast("You have not selected a team", errorToastDisplayDuration);
             return;
         }
+
+        console.log("Buzzing In");
 
         $.ajax({
             type: "POST",
@@ -61,9 +64,17 @@ $(function(){
                 team:currentTeam,
                 userType:"player",
                 operation:"buzzer",
+                password: getBuzzBoardKey(buzzerConfig.teams_expect_key),
                 value:""
             }),
-            success: () => {},
+            success: () => {
+                Materialize.toast("Buzz Accepted", errorToastDisplayDuration);
+            },
+            error: (request, error, errorThrown) => {
+                if (request.status === 403) {
+                    Materialize.toast("Authentication Failed", errorToastDisplayDuration);
+                }
+            },
             dataType: "json"
         });
     })
@@ -79,5 +90,4 @@ $(function(){
 
     // Initalize the side bar
     $('.button-collapse').sideNav();
-
 })

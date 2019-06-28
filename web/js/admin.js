@@ -74,11 +74,11 @@ function changeInputScoreValue(newValue) {
     $('#score-value').val(newValue)
 
     var sliderObject = $('#score-slider');
-    var sliderExists = typeof buzzerConfig.slider === 'object' && buzzerConfig.slider !== null;
+    var sliderExists = typeof buzzerConfig.admin.slider === 'object' && buzzerConfig.admin.slider !== null;
     if (sliderObject && sliderExists) {
         var newSliderValue = newValue;
-        if (newSliderValue > buzzerConfig.slider.max) newSliderValue = buzzerConfig.slider.max
-        if (newSliderValue < buzzerConfig.slider.min) newSliderValue = buzzerConfig.slider.min
+        if (newSliderValue > buzzerConfig.admin.slider.max) newSliderValue = buzzerConfig.admin.slider.max
+        if (newSliderValue < buzzerConfig.admin.slider.min) newSliderValue = buzzerConfig.admin.slider.min
         sliderObject.val(newSliderValue);
     }
 }
@@ -296,9 +296,13 @@ function getConfig(){
     .done((data) => {
         buzzerConfig = data
         teamSetUp(buzzerConfig.teams);
-        buildSlider(buzzerConfig.slider)
-        buildPresetScores(buzzerConfig.score_presets)
-        buildScaleFactorDropDown(buzzerConfig.score_scale_factors)
+        buildSlider(buzzerConfig.admin.slider);
+        buildPresetScores(buzzerConfig.admin.score_presets);
+        buildScaleFactorDropDown(buzzerConfig.admin.score_scale_factors);
+
+        if (buzzerConfig.admin.key === true) {
+            buildKeyInput();
+        }
     })
     .fail((jqXHR, textStatus) => {
         console.log(jqXHR);
@@ -329,10 +333,16 @@ $(function() {
             data: JSON.stringify({
                 teams:selectedToArray(),
                 userType:"admin",
+                password: getBuzzBoardKey(buzzerConfig.admin.key),
                 operation:"buzzerListening",
                 value:listeningInt
             }),
             success: () => {},
+            error: (request, error, errorThrown) => {
+                if (request.status === 403) {
+                    Materialize.toast("Authentication Failed", errorToastDisplayDuration);
+                }
+            },
             dataType: "json"
         });
 
@@ -345,10 +355,16 @@ $(function() {
             data: JSON.stringify({
                 teams:selectedToArray(),
                 userType:"admin",
+                password: getBuzzBoardKey(buzzerConfig.admin.key),
                 operation:"keepListening",
                 value:""
             }),
             success: () => {},
+            error: (request, error, errorThrown) => {
+                if (request.status === 403) {
+                    Materialize.toast("Authentication Failed", errorToastDisplayDuration);
+                }
+            },
             dataType: "json"
         });
     });
@@ -360,10 +376,16 @@ $(function() {
             data: JSON.stringify({
                 teams:selectedToArray(),
                 userType:"admin",
+                password: getBuzzBoardKey(buzzerConfig.admin.key),
                 operation:"resetBuzzer",
                 value:""
             }),
             success: () => {},
+            error: (request, error, errorThrown) => {
+                if (request.status === 403) {
+                    Materialize.toast("Authentication Failed", errorToastDisplayDuration);
+                }
+            },
             dataType: "json"
         });
     });
@@ -406,10 +428,16 @@ $(function() {
             data: JSON.stringify({
                 teams:selectedToArray(),
                 userType:"admin",
+                password: getBuzzBoardKey(buzzerConfig.admin.key),
                 operation:operation,
                 value:getCurrentScaledScoreValue()
             }),
             success: () => {},
+            error: (request, error, errorThrown) => {
+                if (request.status === 403) {
+                    Materialize.toast("Authentication Failed", errorToastDisplayDuration);
+                }
+            },
             dataType: "json"
         });
     });
@@ -422,10 +450,16 @@ $(function() {
             data: JSON.stringify({
                 teams:selectedToArray(),
                 userType:"admin",
+                password: getBuzzBoardKey(buzzerConfig.admin.key),
                 operation:"undo",
                 value:""
             }),
             success: () => {},
+            error: (request, error, errorThrown) => {
+                if (request.status === 403) {
+                    Materialize.toast("Authentication Failed", errorToastDisplayDuration);
+                }
+            },
             dataType: "json"
         });
     });
@@ -438,10 +472,16 @@ $(function() {
             data: JSON.stringify({
                 teams:selectedToArray(),
                 userType:"admin",
+                password: getBuzzBoardKey(buzzerConfig.admin.key),
                 operation:"redo",
                 value:""
             }),
             success: () => {},
+            error: (request, error, errorThrown) => {
+                if (request.status === 403) {
+                    Materialize.toast("Authentication Failed", errorToastDisplayDuration);
+                }
+            },
             dataType: "json"
         });
     });

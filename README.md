@@ -26,7 +26,7 @@
 * Players access `/`
 	* Then they select which team they are apart of.
 	* They press the buzzer when they want to buzz in.
-* The admin controls the state of the game. 
+* The admin controls the state of the game.
 	* Can toggles the listening state with the [**QUESTION**] button.
 		* When the question state is off (red), then no buzzer input is listened to.
 			- The scoreboard top bar will be blue.
@@ -48,12 +48,23 @@
 	- `http.hostname`
 	- `http.port`
 	- `teams`
+		+ there are optional fields within teams.
+		+ You can have a object with the keys being the team names
+			* Each team can have the property `key`, which will add security to the team buzzers.
+				* If `key` is `null` or empty string, it is the same as not having there
+				* With `key` being set, buzzing for a specific team will compare the password to verify.
+					* If the password is wrong, the buzz request is ignored.
 * Optional fields in `config.json`:
 	- Admin Related:
-		+ `score_presets`
+		+ `admin.key`
+			* If `key` is `null`, then anyone who is aware of the admin page can use it.
+			* If `key` is a string, then the admin page will have a password field at the bottom of the page. Any `POST` request made by the admin page will be checked against the password. If the password doesn't match, the `POST` request will be rejected.
+				* Any request that modifies state is a `POST` request.
+				* What this means is that anyone can load the admin page, but anything the admin page requests to do will need the password that is in the config.
+		+ `admin.score_presets`
 			* These are quick access buttons for specific score values.
 			* If this entry is not here, then this section on the admin page is **not** rendered.
-		+ `slider`
+		+ `admin.slider`
 			* This renders a slider for quick access to variable score values.
 				- Useful on mobile browsers
 			* If this entry is not here, then this section on the admin page is **not** rendered.
@@ -63,7 +74,7 @@
 			* Optional sub-fields:
 				- `increment`
 					+ Default is set if given.
-		+ `score_scale_factors`
+		+ `admin.score_scale_factors`
 			* This renders a dropdown for a multiplier that will be applied to the value for the admin operation.
 			* If this entry is not here, then this section on the admin page is **not** rendered.
 			* Required sub-fields:
@@ -82,15 +93,10 @@
 			* If this entry is not here, then the scoreboard will **not** refresh after a specific number of polls to the server.
 
 ## Security
-* There is no security within this web application.
-* It is assumed that players will truthfully select which team they are on
-	* Since you can select which team you are on, you have the ability to pretend to buzz for someone else
-		* If you are playing classic Jeopardy, then you can someone to buzz in when they don't want to.
-	* Its up to you to tell people.
-		* Note that people tend to want to do something when you specifically tell them not to!
-* The admin page is not restricted in any way.
-	* Anyone who knows the url, can access the admin page.
-		- Don't tell your audience.
+There is very **basic** security. OAuth is a better way to do this if we were to do this for real. As a reminder, this is meant for personal use.
+
+This project just uses pre-shared passwords set in the `config.json`. Read more in [Configurability](#Configurability) section. If you use the password based security in this project. You just have to control who know what password. I find this okay for the short term use of an instance of this project.
+
 
 ## Versions
 ### Version 1.0.0
@@ -114,3 +120,7 @@
 	- The poll period (how often the scoreboard makes a `GET` request to the server for new info) is configurable.
 	- The refresh threshold can be configurable. The scoreboard tracks the number of times it has made requests to the server, when the count exceeds the threshold, the page is refreshed. This is normally an issue when the page is viewed on a mobile browser.
 * Added admin feature to select team who has buzzed in (team buzzer state `1`), and select all the teams who have buzzed in but got the wrong answer (team buzzer state `2`).
+
+### Version 3.0
+* Python 3 compatiblity
+* Basic security features
