@@ -53,10 +53,10 @@ def start_redis_server(
     initilize_thread = Thread(target=initialize_redis_server, args = () )
     initilize_thread.start()
 
-    print "Starting Redis Server"
+    print("Starting Redis Server")
     start_redis_server_helper(
-        stdin=stdin, 
-        stdout=stdout, 
+        stdin=stdin,
+        stdout=stdout,
         stderr=stderr,
     )
 

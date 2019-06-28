@@ -5,9 +5,15 @@ import sys
 import os
 from collections import defaultdict
 
-from BaseHTTPServer import HTTPServer
-from SocketServer import ThreadingMixIn
-from SimpleHTTPServer import SimpleHTTPRequestHandler
+try:
+    # python 2
+    from BaseHTTPServer import HTTPServer
+    from SocketServer import ThreadingMixIn
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
+except ModuleNotFoundError:
+    # python 3
+    from http.server import HTTPServer, SimpleHTTPRequestHandler
+    from socketserver import ThreadingMixIn
 
 from redis_wrapper import (
     RedisWrapper,
@@ -94,14 +100,14 @@ class MyHandler(SimpleHTTPRequestHandler):
            self.send_response(200)
            self.send_header('content-type','application/json')
            self.end_headers()
-           self.wfile.write(json.dumps(scoreboard_state))
+           self.wfile.write(json.dumps(scoreboard_state).encode())
            did_handel_request = True
 
         elif self.path == "/buzzer_config":
            self.send_response(200)
            self.send_header('content-type','application/json')
            self.end_headers()
-           self.wfile.write(json.dumps(client_buzzer_config))
+           self.wfile.write(json.dumps(client_buzzer_config).encode())
            did_handel_request = True
 
         if not did_handel_request:
@@ -112,7 +118,7 @@ class MyHandler(SimpleHTTPRequestHandler):
 
         data_string = self.rfile.read(int(self.headers['Content-Length']))
         data = json.loads(data_string)
-        print data_string
+        print(data_string)
 
         if data["userType"] == "player":
 
@@ -123,7 +129,7 @@ class MyHandler(SimpleHTTPRequestHandler):
             handle_admin_post_request(data)
 
         else:
-            print "Not excepted userType"
+            print("Not excepted userType")
 
 HandlerClass = MyHandler
 
@@ -132,22 +138,22 @@ def handle_player_post_request(data):
     if "team" not in data:
         # Ignore
         if __debug__:
-            print "There is no team field in the data passed in."
+            print("There is no team field in the data passed in.")
 
     elif data["team"] not in TEAM_LIST:
         # Ignore
         if __debug__:
-            print "This is not a valid team."
+            print("This is not a valid team.")
 
     elif not redis_con.get_is_question_listening():
         # Question is not active
         # Ignore
         if __debug__:
-            print "Question is not active"
+            print("Question is not active")
 
     elif not redis_con.get_is_buzzer_listening():
         if __debug__:
-            print "Someone else has already buzzed in."
+            print("Someone else has already buzzed in.")
 
     else:
         team_buzzer_status = redis_con.get_buzzer(data["team"])
@@ -155,7 +161,7 @@ def handle_player_post_request(data):
         if team_buzzer_status == BUZZER_NOT_PRESSED:
             # No one has buzzed in yet, including you
             if __debug__:
-                print "You have buzzed in!"
+                print("You have buzzed in!")
             redis_con.set_is_buzzer_listening(False)
             redis_con.set_buzzer(data["team"], BUZZER_PRESSED)
             update_board_state()
@@ -164,13 +170,13 @@ def handle_player_post_request(data):
 
             if team_buzzer_status == BUZZER_PRESSED:
                 if __debug__:
-                    print "You have already sucessfully buzzed in."
+                    print("You have already sucessfully buzzed in.")
             elif team_buzzer_status == BUZZER_PRESSED_FAILED:
                 if __debug__:
-                    print "You had your chance."
+                    print("You had your chance.")
 
             else:
-                print "THIS SHOULD NEVER HAPPEN!"
+                print("THIS SHOULD NEVER HAPPEN!")
 
 def handle_admin_post_request(data):
     try:
@@ -181,7 +187,7 @@ def handle_admin_post_request(data):
     if "operation" not in data:
         # Ignore
         if __debug__:
-            print "No admin operation was specified."
+            print("No admin operation was specified.")
 
     elif data["operation"] == "buzzerListening":
 
@@ -221,15 +227,15 @@ def handle_admin_post_request(data):
         if "teams" not in data:
             # Ignore
             if __debug__:
-                print "There is no teams field in the data passed in."
+                print("There is no teams field in the data passed in.")
 
         elif isinstance(data["teams"], list) and any(team_name not in TEAM_LIST for team_name in data["teams"]):
             # Ignore
             if __debug__:
-                print "This is not a valid team in the list passed."
-                print data["teams"]
+                print("This is not a valid team in the list passed.")
+                print(data["teams"])
                 for team in data["teams"]:
-                    print team, team in TEAM_LIST
+                    print(team, team in TEAM_LIST)
 
         else:
             handle_score_opperation(
@@ -346,20 +352,20 @@ def start_http_server():
     HandlerClass.protocol_version = "HTTP/1.0"
 
     httpd = ThreadedHTTPServer(
-        server_address=(HTTP_HOST_NAME,HTTP_PORT_NUMBER), 
+        server_address=(HTTP_HOST_NAME,HTTP_PORT_NUMBER),
         RequestHandlerClass=HandlerClass,
     )
 
 
-    print time.asctime(), "Server Starts - %s:%s" % (HTTP_HOST_NAME, HTTP_PORT_NUMBER)
+    print(time.asctime(), "Server Starts - %s:%s" % (HTTP_HOST_NAME, HTTP_PORT_NUMBER))
     try:
         os.chdir("web/")
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
     httpd.server_close()
-    print ""
-    print time.asctime(), "Server Stops - %s:%s" % (HTTP_HOST_NAME, HTTP_PORT_NUMBER)
+    print("")
+    print(time.asctime(), "Server Stops - %s:%s" % (HTTP_HOST_NAME, HTTP_PORT_NUMBER))
 
 if __name__ == "__main__":
 	start_http_server()
