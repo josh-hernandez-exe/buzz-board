@@ -27,7 +27,7 @@
 	* Then they select which team they are apart of.
 	* They press the buzzer when they want to buzz in.
 * The admin controls the state of the game.
-	* Can toggles the listening state with the [**QUESTION**] button.
+	* Can toggles the listening state with the [**BUZZER LISTENING**] button.
 		* When the question state is off (red), then no buzzer input is listened to.
 			- The scoreboard top bar will be blue.
 		* When the question state is on (green), then the first buzzer input is listened to.
@@ -124,3 +124,7 @@ This project just uses pre-shared passwords set in the `config.json`. Read more 
 ### Version 3.0
 * Python 3 compatiblity
 * Basic security features
+* Project setup now downloads the web client dependencies into the host server.
+	* The server now serves up these files instead rather than using the CDN.
+		* This allows the project to run without internet.
+			* Although inital project setup still requires internet.
