@@ -108,6 +108,9 @@ There is very **basic** security. OAuth is a better way to do this if we were to
 
 This project just uses pre-shared passwords set in the `config.json`. Read more in [Configurability](#Configurability) section. If you use the password based security in this project. You just have to control who know what password. I find this okay for the short term use of an instance of this project.
 
+The admin key can be set without any of the team, and visa versa. But if one team has a key set, all the team must have keys set. With the team, it's all or nothing for setting keys.
+
+This project also saves the pre-shared keys in local storage. Which is also not a very great practice.
 
 ## Versions
 ### Version 1.0.0
