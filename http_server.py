@@ -144,7 +144,7 @@ class MyHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         data_string = self.rfile.read(int(self.headers['Content-Length']))
-        data = json.loads(data_string)
+        data = json.loads(data_string.decode())
         print(data_string)
 
         if data["userType"] == "player":
@@ -329,7 +329,7 @@ def handle_score_opperation(teams,operation,value):
             diff = abs(diff)
             new_args[diff,new_operation].append(team)
 
-        for (new_value,new_operation),teams in new_args.iteritems():
+        for (new_value,new_operation),teams in new_args.items():
             handle_score_opperation(teams, new_operation, new_value)
 
         return
