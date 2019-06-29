@@ -1,5 +1,15 @@
 ## Dependencies
+
+You can run `install_dependencies.sh` to install the dependencies of the project.
+
+### Server Dependencies
 * redis
+
+### Web Client Dependencies
+* JQuery
+* Materialize
+
+These web dependencies are copied onto the server host. So the they are served up from the server rather than a CDN. This is to allow the project to run when there isn't internet. **Note** that downloading the web client dependencies still requires internet.
 
 ## Setup
 * `config.json` (using `example_config.json`)
@@ -13,9 +23,10 @@
 			`var inncorectAnswerSound = null;`
 
 ## Server Start
-* start redis
-* start http
-	* Starts the server inside the `web/` directory.
+1. start redis
+	* Run the `redis_server.py` script in the project root directory.
+2. start http
+	* Run the `http_server.py` script in the project root directory.
 
 ## Interfaces
 * player (`/`)
@@ -123,6 +134,7 @@ This project just uses pre-shared passwords set in the `config.json`. Read more 
 
 ### Version 3.0
 * Python 3 compatiblity
+	* Tested with Python 3.6
 * Basic security features
 * Project setup now downloads the web client dependencies into the host server.
 	* The server now serves up these files instead rather than using the CDN.

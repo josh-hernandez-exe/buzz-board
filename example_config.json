@@ -4,26 +4,26 @@
 		"port": 8080
 	},
 	"admin": {
-        "key": "adminpassword",
-        "score_presets": [
-            100,
-            200,
-            300,
-            400,
-            500
-        ],
-        "slider": {
-            "min": 0,
-            "max": 500,
-            "increment": 5
-        },
-        "score_scale_factors": {
-            "values": [
-                0.5,
-                2
-            ],
-            "tol": 0.001
-        }
+		"key": "adminpassword",
+		"score_presets": [
+		    100,
+		    200,
+		    300,
+		    400,
+		    500
+		],
+		"slider": {
+		    "min": 0,
+		    "max": 500,
+		    "increment": 5
+		},
+		"score_scale_factors": {
+		    "values": [
+			0.5,
+			2
+		    ],
+		    "tol": 0.001
+		}
 	},
 	"teams": {
 		"Team_A": {
