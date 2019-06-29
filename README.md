@@ -1,5 +1,15 @@
 ## Dependencies
+
+You can run `install_dependencies.sh` to install the dependencies of the project.
+
+### Server Dependencies
 * redis
+
+### Web Client Dependencies
+* JQuery
+* Materialize
+
+These web dependencies are copied onto the server host. So the they are served up from the server rather than a CDN. This is to allow the project to run when there isn't internet. **Note** that downloading the web client dependencies still requires internet.
 
 ## Setup
 * `config.json` (using `example_config.json`)
