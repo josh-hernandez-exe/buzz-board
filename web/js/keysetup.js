@@ -10,7 +10,7 @@ function getBuzzBoardKey(isRequired) {
     else {
         password = window.localStorage.buzzBoardKey;
         if (password === "" || password === null || password === undefined) {
-            Materialize.toast("Password is needed to buzz in.", errorToastDisplayDuration);
+            Materialize.toast("Password is needed.", errorToastDisplayDuration);
             return null;
         }
         curBuzzBoardKey = password;
