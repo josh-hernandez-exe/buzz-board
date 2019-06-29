@@ -15,7 +15,7 @@
     <div class="nav-wrapper container"><a id="logo-container" href="#" class="brand-logo center">Select Team</a>
 
       <ul id="slide-out" class="side-nav">
-      <!-- The team names gets filled in dynamically by javascript / jquery -->
+        <!-- The team names gets filled in dynamically by javascript / jquery -->
       </ul>
       <a href="#" data-activates="slide-out" class="button-collapse show-on-large"><i class="mdi-navigation-menu"></i></a>
     </div>
@@ -27,12 +27,14 @@
       <div class="row center">
         <div class="card teal waves-effect waves-light medium col s10 push-s1" id="buzzer">
           <div class="card-content white-text">
-            <!-- Can't get this to vertically align properly valign-wrapper and valign -->
+              <!-- Can't get this to vertically align properly valign-wrapper and valign -->
             <h1>Buzzer</h1>
           </div>
         </div>
       </div>
-        
+      <div class="row center" id="key-input-section">
+          <!-- If valid configutations are set, we will dynamically add the fields to set key-->
+      </div>
 
       <br><br>
 
@@ -46,9 +48,10 @@
 
 
   <!--  Scripts-->
-  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.3/js/materialize.min.js"></script>
+  <script src="js/third-party/jquery-2.1.1.min.js"></script>
+  <script src="js/third-party/materialize.min.js"></script>
   <script src="js/buzzer.js"></script>
+  <script src="js/keysetup.js"></script>
 
   </body>
 </html>
