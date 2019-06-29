@@ -13,9 +13,10 @@
 			`var inncorectAnswerSound = null;`
 
 ## Server Start
-* start redis
-* start http
-	* Starts the server inside the `web/` directory.
+1. start redis
+	* Run the `redis_server.py` script in the project root directory.
+2. start http
+	* Run the `http_server.py` script in the project root directory.
 
 ## Interfaces
 * player (`/`)
@@ -123,6 +124,7 @@ This project just uses pre-shared passwords set in the `config.json`. Read more 
 
 ### Version 3.0
 * Python 3 compatiblity
+	* Tested with Python 3.6
 * Basic security features
 * Project setup now downloads the web client dependencies into the host server.
 	* The server now serves up these files instead rather than using the CDN.
