@@ -10,7 +10,7 @@ try:
     from BaseHTTPServer import HTTPServer
     from SocketServer import ThreadingMixIn
     from SimpleHTTPServer import SimpleHTTPRequestHandler
-except ModuleNotFoundError:
+except ImportError:
     # python 3
     from http.server import HTTPServer, SimpleHTTPRequestHandler
     from socketserver import ThreadingMixIn
