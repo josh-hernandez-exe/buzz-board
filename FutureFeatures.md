@@ -16,13 +16,13 @@
 * Buzzer should change color when sucessfully buzzed in.
 
 ## Completed
-* ~~ Some refactoring can be done with the class changes done with jQuery. ~~
-* ~~ Security / Login features ~~
-	- ~~ Only relevent if the people I show this to are being jerks or if I use this in a more public setting. ~~
-* ~~ Have an admin shortcut to select only one team. Currently the admin has to deselect any other team (may be more than one) then select the team they want to edit the score for. ~~
-	- ~~ Something like a quick double click, or a long click (for mobile). ~~
-	- ~~ Or have a config mode where this section is treated like a radio buttons (only one active) instead of a list. ~~
-* ~~ Buzzer will get a reply from server they they have buzzed in. ~~
+* ~Some refactoring can be done with the class changes done with jQuery.~
+* ~Security / Login features~
+	- ~Only relevent if the people I show this to are being jerks or if I use this in a more public setting.~
+* ~Have an admin shortcut to select only one team. Currently the admin has to deselect any other team (may be more than one) then select the team they want to edit the score for.~
+	- ~Something like a quick double click, or a long click (for mobile).~
+	- ~Or have a config mode where this section is treated like a radio buttons (only one active) instead of a list.~
+* ~Buzzer will get a reply from server they they have buzzed in.~
 
 ## No Longer Relevent
 * Change how the team select dropdown works in mobile.
