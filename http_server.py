@@ -148,12 +148,9 @@ class MyHandler(SimpleHTTPRequestHandler):
         print(data_string)
 
         if data["userType"] == "player":
-            status = handle_player_post_request(self, data)
-
+            handle_player_post_request(self, data)
         elif data["userType"] == "admin":
-
-            status = handle_admin_post_request(self, data)
-
+            handle_admin_post_request(self, data)
         else:
             print("Not excepted userType")
 

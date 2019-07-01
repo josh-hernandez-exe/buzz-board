@@ -317,16 +317,19 @@ $(function() {
     getConfig()
 
     $('#buzzerListening').on("click", () =>{
-        if(isBuzzerListening){
-            questionOff();
-        }
-        else{
-            questionOn();
-        }
         var listeningInt = 0;
         if(isBuzzerListening){
             listeningInt=1;
         }
+        var success = () => {
+            // swtich the color of the buttons after confirmation
+            if(isBuzzerListening){
+                questionOff();
+            }
+            else{
+                questionOn();
+            }
+        };
         $.ajax({
             type: "POST",
             url: '/',
@@ -337,15 +340,17 @@ $(function() {
                 operation:"buzzerListening",
                 value:listeningInt
             }),
-            success: () => {},
+            success: success,
             error: (request, error, errorThrown) => {
-                if (request.status === 403) {
+                if (request.status === 200) {
+                    success();
+                }
+                else if (request.status === 403) {
                     Materialize.toast("Authentication Failed", errorToastDisplayDuration);
                 }
             },
             dataType: "json"
         });
-
     });
 
     $('#keepListening').on("click", () =>{
