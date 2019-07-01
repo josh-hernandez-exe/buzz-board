@@ -37,5 +37,6 @@ function buildKeyInput() {
             window.localStorage.buzzBoardKey = key;
         }
         curBuzzBoardKey = key;
+        Materialize.toast("Password saved.", errorToastDisplayDuration);
     });
 }
