@@ -210,7 +210,6 @@ def handle_player_post_request(request, data):
                         print("You had your chance.")
 
                 else:
-                    did_error = True
                     print("THIS SHOULD NEVER HAPPEN!")
 
 def handle_admin_post_request(request, data):

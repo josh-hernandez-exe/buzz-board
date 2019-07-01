@@ -17,7 +17,7 @@ class RedisWrapper(object):
 
         redis_con = None
 
-        for index in range(max_trys):
+        for _ in range(max_trys):
             if redis_con is not None:
                 break
 
@@ -31,7 +31,7 @@ class RedisWrapper(object):
                 redis_con = None
 
         able_to_ping = False
-        for index in range(max_trys):
+        for _ in range(max_trys):
             if able_to_ping:
                 break
 
