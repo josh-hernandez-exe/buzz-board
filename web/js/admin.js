@@ -317,10 +317,7 @@ $(function() {
     getConfig()
 
     $('#buzzerListening').on("click", () =>{
-        var listeningInt = 0;
-        if(isBuzzerListening){
-            listeningInt=1;
-        }
+        var listeningInt = isBuzzerListening ? 0 : 1;
         var success = () => {
             // swtich the color of the buttons after confirmation
             if(isBuzzerListening){
