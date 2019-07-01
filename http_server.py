@@ -417,7 +417,7 @@ def start_http_server():
     )
 
 
-    print(time.asctime(), "Server Starts - %s:%s" % (HTTP_HOST_NAME, HTTP_PORT_NUMBER))
+    print(time.asctime(), "Server Starts - {}:{}".format(HTTP_HOST_NAME, HTTP_PORT_NUMBER))
     try:
         os.chdir("web/")
         httpd.serve_forever()
@@ -425,7 +425,7 @@ def start_http_server():
         pass
     httpd.server_close()
     print("")
-    print(time.asctime(), "Server Stops - %s:%s" % (HTTP_HOST_NAME, HTTP_PORT_NUMBER))
+    print(time.asctime(), "Server Stops - {}:{}".format(HTTP_HOST_NAME, HTTP_PORT_NUMBER))
 
 if __name__ == "__main__":
 	start_http_server()

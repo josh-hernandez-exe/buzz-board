@@ -4,9 +4,9 @@ import time
 REDIS_HOST_NAME = "localhost"
 REDIS_UNIX_SOCET = "/tmp/redis.sock"
 
-REDIS_SCORE_FORMAT = "score=%s"
-REDIS_BUZZER_FORMAT = "buzzer=%s"
-REDIS_LISTENING_FORMAT = "listening=%s"
+REDIS_SCORE_FORMAT = "score={}"
+REDIS_BUZZER_FORMAT = "buzzer={}"
+REDIS_LISTENING_FORMAT = "listening={}"
 
 BUZZER_NOT_PRESSED = 0
 BUZZER_PRESSED = 1
@@ -51,19 +51,19 @@ class RedisWrapper(object):
 
 
     def _get_helper(self,key,_format):
-        formated_key = _format%key
+        formated_key = _format.format(key)
         if not self.redis_con.exists(formated_key):
             return None
 
         return self.redis_con.get(formated_key)
 
     def _set_helper(self,key,value,_format):
-        formated_key = _format%key
+        formated_key = _format.format(key)
         return self.redis_con.set(formated_key,value)
 
     def _exist_helper(self,key,_format):
-        formated_key = _format%key
-        return self.redis_con.exists(formated_key,value)
+        formated_key = _format.format(key)
+        return self.redis_con.exists(formated_key)
 
     def _get_bool_helper(self,key,_format):
         return bool( self._get_int_helper(key,_format) )
@@ -121,7 +121,7 @@ def is_int(value,raise_exception=False):
         int(value)
     except Exception:
         if raise_exception:
-            error_message = "This value cannot be casted to an int: %s"%value
+            error_message = "This value cannot be casted to an int: {}".format(value)
             raise ValueError(error_message)
 
         return False
