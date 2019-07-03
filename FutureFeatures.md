@@ -1,5 +1,6 @@
 ## Future Features
-* Option to not use redis
+* Add screenshots to readme.
+* Option to not use redis.
 * The scoreboard will use websockets.
 	* If websockets are fully implemented, lengthen the auto refresh.
 * Have an option to not use the score mechanism.
