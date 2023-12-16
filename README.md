@@ -143,3 +143,6 @@ This project also saves the pre-shared keys in local storage. Which is also not 
 	* The server now serves up these files instead rather than using the CDN.
 		* This allows the project to run without internet.
 			* Although inital project setup still requires internet.
+
+### Version 3.1
+* Dockerized the build.

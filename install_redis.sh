@@ -1,3 +1,8 @@
+#!/bin/bash
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+cd $SCRIPT_DIR
 
 # For redis
 sudo apt-get install tcl8.5
@@ -10,8 +15,6 @@ make
 make install
 cd src
 make test
-
-sudo pip install redis
 
 # web client dependencies
 

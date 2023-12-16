@@ -27,7 +27,7 @@ def start_redis_server_helper(
     stderr=None,
 ):
     # REDIS SERVER SETUP
-    redis_cmd = "redis-server local_redis.conf"
+    redis_cmd = "/app/redis-stable/src/redis-server local_redis.conf"
     subprocess.call(redis_cmd, stdin=stdin, stdout=stdout, stderr=stderr, shell=True)
 
 
