@@ -1,3 +1,9 @@
+# Buzz Board (New Readme)
+
+Blank
+
+# Buzz Board (Old Readme)
+
 ## Dependencies
 
 You can run `install_dependencies.sh` to install the dependencies of the project.
