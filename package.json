@@ -1,0 +1,10 @@
+{
+  "name": "buzz-board",
+  "type": "module",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "client:dev": "bun --cwd packages/client dev",
+    "server:dev": "bun --cwd packages/server dev"
+  }
+}
