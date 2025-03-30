@@ -1,49 +1,165 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+
 import { publicProcedure, router } from "./utils/trpc";
-import { db } from "./db";
+import { db, type CrudFactory } from "./db";
 import { logger } from "./utils/logger";
+import type {
+  MayHaveIdField,
+  HasCommonFields,
+  Game,
+  GameData,
+  User,
+  UserData,
+  GameUser,
+  GameUserData,
+  GameTeam,
+  GameTeamData,
+  GameAdmin,
+  GameAdminData,
+  Scoreboard,
+  ScoreboardData,
+  BuzzerState,
+  BuzzerStateData,
+} from "./dataTypes";
 
-export const appRouter = router({
-  user: {
+import {
+  fullSchemas,
+  paritalSchemas,
+  dataSchemas,
+  schemaUtils,
+} from "./dataSchema";
+
+function crudFactory<U, V extends U & HasCommonFields>({
+  tableName,
+}: {
+  tableName: keyof typeof db;
+}) {
+  const crudObject = db[tableName]! as any as CrudFactory<U, V>;
+
+  return {
     list: publicProcedure.query(async () => {
-      logger.debug("list");
-      // Retrieve users from a datasource, this is an imaginary database
-      const users = await db.user.findMany();
+      logger.debug(`${tableName}-list`);
+      const result = await crudObject.findAll();
 
-      return users;
+      if (result.isErr()) {
+        logger.error(result.error);
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: result.error.message,
+          cause: result.error,
+        });
+      }
+
+      return result.value;
     }),
     byId: publicProcedure.input(z.string()).query(async (opts) => {
       const { input } = opts;
 
-      logger.debug("byId");
+      logger.debug(`${tableName}-byId`);
 
       // Retrieve the user with the given ID
-      const result = await db.user.findById(input);
+      const result = await crudObject.findById(input);
       if (result.isErr()) {
-        return null;
+        logger.error(result.error);
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: result.error.message,
+          cause: result.error,
+        });
       }
 
       return result.value;
     }),
     create: publicProcedure
-      .input(z.object({ name: z.string() }))
+      .input(paritalSchemas[tableName]!)
       .mutation(async (opts) => {
-        const { input } = opts;
+        const input = opts.input! as any as U & MayHaveIdField;
 
-        logger.debug("create");
+        logger.debug(`${tableName}-create`);
 
-        // Create a new user in the database
-        const user = await db.user.create(input);
+        const result = await crudObject.create(input);
 
-        return user;
+        if (result.isErr()) {
+          logger.error(result.error);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: result.error.message,
+            cause: result.error,
+          });
+        }
+
+        return result.value;
       }),
+    update: publicProcedure
+      .input(
+        z.object({
+          id: schemaUtils.idFieldSchema,
+          data: dataSchemas[tableName]!,
+        })
+      )
+      .mutation(async (opts) => {
+        const id: string = opts.input.id;
+        const data = opts.input.data as U;
+
+        logger.debug(`${tableName}-create`);
+
+        const result = await crudObject.update({ id, data });
+
+        if (result.isErr()) {
+          logger.error(result.error);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: result.error.message,
+            cause: result.error,
+          });
+        }
+
+        return result.value;
+      }),
+    delete: publicProcedure
+      .input(schemaUtils.idFieldSchema)
+      .mutation(async (opts) => {
+        const id: string = opts.input;
+
+        logger.debug(`${tableName}-create`);
+
+        const result = await crudObject.delete(id);
+
+        if (result.isErr()) {
+          logger.error(result.error);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: result.error.message,
+            cause: result.error,
+          });
+        }
+
+        return result.value;
+      }),
+  };
+}
+
+export const appRouter = router({
+  game: {
+    ...crudFactory<GameData, Game>({ tableName: "Game" }),
   },
-  examples: {
-    iterable: publicProcedure.query(async function* () {
-      for (let i = 0; i < 3; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        yield i;
-      }
-    }),
+  user: {
+    ...crudFactory<UserData, User>({ tableName: "User" }),
+  },
+  gameUser: {
+    ...crudFactory<GameUserData, GameUser>({ tableName: "GameUser" }),
+  },
+  gameTeam: {
+    ...crudFactory<GameTeamData, GameTeam>({ tableName: "GameTeam" }),
+  },
+  gameAdmin: {
+    ...crudFactory<GameAdminData, GameAdmin>({ tableName: "GameAdmin" }),
+  },
+  scoreboard: {
+    ...crudFactory<ScoreboardData, Scoreboard>({ tableName: "Scoreboard" }),
+  },
+  buzzerState: {
+    ...crudFactory<BuzzerStateData, BuzzerState>({ tableName: "BuzzerState" }),
   },
 });
