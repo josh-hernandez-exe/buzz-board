@@ -5,6 +5,7 @@
   "workspaces": ["packages/*"],
   "scripts": {
     "client:dev": "bun --cwd packages/client dev",
+    "client:storybook": "bun --cwd packages/client storybook",
     "server:dev": "bun --cwd packages/server dev"
   }
 }
