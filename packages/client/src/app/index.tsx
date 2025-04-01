@@ -2,8 +2,10 @@ import { useState } from "react";
 import { httpBatchLink } from "@trpc/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { MockComponent } from "./components/mock";
-import { trpc } from "./utils/trpc";
+import { MockComponent } from "@/views/PrototypeView";
+import { trpc } from "@/utils/trpc";
+
+import "./App.css";
 
 export function App() {
   const [queryClient] = useState(() => new QueryClient());
