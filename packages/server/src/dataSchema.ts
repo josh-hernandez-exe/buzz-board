@@ -1,16 +1,9 @@
-import type { EnumType } from "typescript";
-import { z, type EnumLike } from "zod";
+import { z } from "zod";
 
-enum GameFormat {
-  single,
-  team,
-}
-
-enum SingleBuzzerState {
-  avilalble,
-  selected,
-  rejected,
-}
+// NOTE: any imports related to CREATING the app router must be
+//       relative imports. Otherwise type checking on the client side
+//       is affected
+import { GameFormat, SingleBuzzerState } from "./enums";
 
 // const idFieldSchema = z.string().uuid();
 const idFieldSchema = z.string();
@@ -44,7 +37,7 @@ const gameUserData = z.object({
 const gameTeamData = z.object({
   name: z.string(),
   gameId: idFieldSchema,
-  gameUsers: z.array(idFieldSchema),
+  gameUserIds: z.array(idFieldSchema),
 });
 
 const gameAdminData = z.object({
@@ -78,7 +71,7 @@ const gameAdmin = gameAdminData.merge(hasCommonFields);
 const scoreboard = scoreboardData.merge(hasCommonFields);
 const buzzerState = buzzerStateData.merge(hasCommonFields);
 
-export const enums: { [key: string]: EnumLike } = {
+export const enums = {
   GameFormat,
   SingleBuzzerState,
 };

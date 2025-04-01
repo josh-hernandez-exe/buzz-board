@@ -6,6 +6,7 @@
   "scripts": {
     "client:dev": "bun --cwd packages/client dev",
     "client:storybook": "bun --cwd packages/client storybook",
-    "server:dev": "bun --cwd packages/server dev"
+    "server:dev": "bun --cwd packages/server dev",
+    "delete-node-modules": "bun --cwd packages/server delete-node-modules && bun --cwd packages/client delete-node-modules && rm -rf ./node_modules"
   }
 }

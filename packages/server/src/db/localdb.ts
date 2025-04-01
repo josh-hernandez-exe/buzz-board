@@ -1,11 +1,12 @@
 import { v4 as uuidv4 } from "uuid";
 import { DateTime } from "luxon";
-import { okAsync, errAsync, ResultAsync, Result, ok, err } from "neverthrow";
+import { Result, ok, err } from "neverthrow";
 
-import { logger } from "./utils/logger";
+import { logger } from "@/utils/logger";
 import type {
   MayHaveIdField,
   HasCommonFields,
+  GenericTable,
   Game,
   GameData,
   User,
@@ -20,11 +21,9 @@ import type {
   ScoreboardData,
   BuzzerState,
   BuzzerStateData,
-} from "./dataTypes";
+} from "../dataTypes";
 
-// const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
-
-const database: { [key: string]: Map<string, HasCommonFields> } = {
+const database: { [key: string]: Map<string, GenericTable> } = {
   Game: new Map<Game["id"], Game>(),
   User: new Map<User["id"], User>(),
   GameUser: new Map<GameUser["id"], GameUser>(),
@@ -34,13 +33,13 @@ const database: { [key: string]: Map<string, HasCommonFields> } = {
   BuzzerState: new Map<BuzzerState["id"], BuzzerState>(),
 };
 
-function create<U extends MayHaveIdField, V extends U & HasCommonFields>({
+async function create<U extends MayHaveIdField, V extends U & HasCommonFields>({
   data,
   tableName,
 }: {
   readonly data: U;
   tableName: keyof typeof database;
-}): ResultAsync<V, Error> {
+}): Promise<Result<V, Error>> {
   const table = database[tableName]! as Map<V["id"], V>;
 
   let insertData: any = {
@@ -57,22 +56,22 @@ function create<U extends MayHaveIdField, V extends U & HasCommonFields>({
   insertData = insertData as V;
 
   if (table.has(insertData.id)) {
-    return errAsync(
+    return err(
       new Error(`Database table ${tableName} already has key ${insertData.id}.`)
     );
   }
   table.set(insertData.id, insertData);
 
-  return okAsync(insertData);
+  return ok(insertData);
 }
 
-function findMany<T extends HasCommonFields>({
+async function findMany<T extends HasCommonFields>({
   ids,
   tableName,
 }: {
   readonly ids: T["id"][] | undefined;
-  tableName: keyof typeof database;
-}): ResultAsync<T[], Error> {
+  readonly tableName: keyof typeof database;
+}): Promise<Result<T[], Error>> {
   const table = database[tableName]! as Map<T["id"], T>;
   let data: T[];
 
@@ -87,25 +86,25 @@ function findMany<T extends HasCommonFields>({
 
   data = data as T[];
 
-  return okAsync(data);
+  return ok(data);
 }
 
-function findById<T extends HasCommonFields>({
+async function findById<T extends HasCommonFields>({
   id,
   tableName,
 }: {
-  id: string;
-  tableName: keyof typeof database;
-}): ResultAsync<T, Error> {
+  readonly id: string;
+  readonly tableName: keyof typeof database;
+}): Promise<Result<T, Error>> {
   const table = database[tableName]! as Map<T["id"], T>;
   const item = table.get(id);
 
   if (item === undefined) {
-    return errAsync(new Error(`id=${id} not found in table ${tableName}`));
+    return err(new Error(`id=${id} not found in table ${tableName}`));
   } else if (item.deletedAt !== null) {
-    return errAsync(new Error(`id=${id} in table ${tableName} is deleted`));
+    return err(new Error(`id=${id} in table ${tableName} is deleted`));
   }
-  return okAsync(item);
+  return ok(item);
 }
 
 async function update<U, V extends U & HasCommonFields>({
@@ -113,7 +112,7 @@ async function update<U, V extends U & HasCommonFields>({
   data,
   tableName,
 }: {
-  id: V["id"];
+  readonly id: V["id"];
   readonly data: Partial<U>;
   tableName: keyof typeof database;
 }): Promise<Result<V, Error>> {
@@ -133,7 +132,7 @@ async function update<U, V extends U & HasCommonFields>({
       id: originalItem.id,
       createdAt: originalItem.createdAt,
       // ensure that the updatedAt is updated to "now".
-      updatedAt: DateTime.now(),
+      updatedAt: DateTime.now().toISO(),
     },
   };
 
@@ -146,7 +145,7 @@ async function softDelete<V extends HasCommonFields>({
   id,
   tableName,
 }: {
-  id: V["id"];
+  readonly id: V["id"];
   tableName: keyof typeof database;
 }): Promise<Result<void, Error>> {
   const table = database[tableName]! as Map<V["id"], V>;

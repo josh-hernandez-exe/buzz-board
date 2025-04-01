@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "build": "bun tsc",
-    "start": "bun dist/index.js"
+    "start": "bun dist/index.js",
+    "delete-node-modules": "rm -rf ./node_modules"
   },
   "devDependencies": {
     "@eslint/js": "^9.23.0",
@@ -24,9 +25,11 @@
   },
   "dependencies": {
     "@trpc/server": "^11.0.1",
+    "@types/lodash": "^4.17.16",
     "@types/luxon": "^3.4.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
+    "lodash": "^4.17.21",
     "luxon": "^3.6.0",
     "neverthrow": "^8.2.0",
     "redis": "^4.7.0",

@@ -1,9 +1,15 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
+// NOTE: any imports related to CREATING the app router must be
+//       relative imports. Otherwise type checking on the client side
+//       is affected
 import { publicProcedure, router } from "./utils/trpc";
 import { db, type CrudFactory } from "./db";
-import { logger } from "./utils/logger";
+import { paritalSchemas, dataSchemas, schemaUtils } from "./dataSchema";
+
+import { logger } from "@/utils/logger";
+
 import type {
   MayHaveIdField,
   HasCommonFields,
@@ -22,13 +28,6 @@ import type {
   BuzzerState,
   BuzzerStateData,
 } from "./dataTypes";
-
-import {
-  fullSchemas,
-  paritalSchemas,
-  dataSchemas,
-  schemaUtils,
-} from "./dataSchema";
 
 function crudFactory<U, V extends U & HasCommonFields>({
   tableName,
