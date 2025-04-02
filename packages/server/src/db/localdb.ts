@@ -50,8 +50,8 @@ async function create<U extends MayHaveIdField, V extends U & HasCommonFields>({
   };
 
   if (!data.hasOwnProperty("id")) {
-    // insertData.id = uuidv4();
-    insertData.id = `${table.size + 1}`;
+    insertData.id = uuidv4();
+    // insertData.id = `${table.size + 1}`;
   }
   insertData = insertData as V;
 

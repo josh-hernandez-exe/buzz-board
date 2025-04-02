@@ -5,8 +5,8 @@ import { z } from "zod";
 //       is affected
 import { GameFormat, SingleBuzzerState } from "./enums";
 
-// const idFieldSchema = z.string().uuid();
-const idFieldSchema = z.string();
+const idFieldSchema = z.string().uuid();
+// const idFieldSchema = z.string();
 
 const mayHaveIdField = z.object({ id: z.optional(z.string()) });
 
