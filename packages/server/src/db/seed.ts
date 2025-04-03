@@ -42,6 +42,7 @@ async function _insertData({
   });
 }
 
+
 export async function seedDb() {
   const usersData: UserData[] = [
     {
@@ -53,7 +54,12 @@ export async function seedDb() {
 
   const gamesData: GameData[] = [
     {
-      name: "silly game",
+      name: "silly game with teams 1",
+      format: GameFormat.team,
+      settings: {},
+    },
+    {
+      name: "silly game with teams 2",
       format: GameFormat.team,
       settings: {},
     },
@@ -72,58 +78,69 @@ export async function seedDb() {
     table: db.GameAdmin,
   });
 
-  const gameUsersData: GameUserData[] = [...Array(8)].map((_, idx) => ({
-    name: `user${idx}`,
-    gameId: games[0]!.id,
-  }));
+  const gameUsers: { [key: Game["id"]]: GameUser[] } = {};
+  const gameTeams: { [key: Game["id"]]: GameTeam[] } = {};
 
-  const gameUsers: GameUser[] = await _insertData({
-    data: gameUsersData,
-    table: db.GameUser,
-  });
+  await Promise.all(
+    games.map(async (game, gameIdx) => {
+      const gameUsersData: GameUserData[] = [...Array(8)].map((_, idx) => ({
+        name: `user ${gameIdx} - ${idx}`,
+        gameId: game!.id,
+      }));
 
-  const gameTeamsData: GameTeamData[] = _.chunk<GameUser>(gameUsers, 2).map(
-    (teamUsers: GameUser[], idx: number) => ({
-      name: `Team ${idx}`,
-      gameId: games[0]!.id,
-      gameUserIds: teamUsers.map((user) => user.id),
+      const currGameUsers: GameUser[] = await _insertData({
+        data: gameUsersData,
+        table: db.GameUser,
+      });
+
+      gameUsers[game!.id] = currGameUsers;
+
+      if (game.format === GameFormat.team) {
+        const gameTeamsData: GameTeamData[] = _.chunk<GameUser>(
+          currGameUsers,
+          2
+        ).map((teamUsers: GameUser[], idx: number) => ({
+          name: `Team ${gameIdx} - ${idx}`,
+          gameId: game!.id,
+          gameUserIds: teamUsers.map((user) => user.id),
+        }));
+
+        const curGameTeams: GameTeam[] = await _insertData({
+          data: gameTeamsData,
+          table: db.GameTeam,
+        });
+        gameTeams[game!.id] = curGameTeams;
+
+        const scoreboardsData: ScoreboardData[] = games.map((game) => ({
+          gameId: game.id!,
+          current: new Map<GameTeam["id"], number>(
+            curGameTeams
+              .filter((gameTeam) => gameTeam.gameId === game.id)
+              .map((gameTeam) => [gameTeam.id, 0])
+          ),
+          pastDeltas: [],
+          futureDeltas: [],
+        }));
+
+        const scoreBoards: Scoreboard[] = await _insertData({
+          data: scoreboardsData,
+          table: db.Scoreboard,
+        });
+
+        const buzzerStatesData: BuzzerStateData[] = games.map((game) => ({
+          gameId: game.id!,
+          isListening: false,
+          buzzers: new Map<GameTeam["id"], SingleBuzzerState>(
+            curGameTeams
+              .filter((gameTeam) => gameTeam.gameId! === game.id!)
+              .map((gameTeam) => [gameTeam.id, SingleBuzzerState.avilalble])
+          ),
+        }));
+        const buzzerStates: BuzzerState[] = await _insertData({
+          data: buzzerStatesData,
+          table: db.BuzzerState,
+        });
+      }
     })
   );
-
-  const gameTeams: GameTeam[] = await _insertData({
-    data: gameTeamsData,
-    table: db.GameTeam,
-  });
-
-  const emptyScoreboard = new Map<GameTeam["id"], number>(
-    gameTeams.map((gameTeam) => [gameTeam.id, 0])
-  );
-  const scoreboardsData: ScoreboardData[] = games.map((game) => ({
-    gameId: game.id!,
-    current: new Map<GameTeam["id"], number>(
-      gameTeams
-        .filter((gameTeam) => gameTeam.gameId === game.id)
-        .map((gameTeam) => [gameTeam.id, 0])
-    ),
-    pastDeltas: [],
-    futureDeltas: [],
-  }));
-  const scoreBoards: Scoreboard[] = await _insertData({
-    data: scoreboardsData,
-    table: db.Scoreboard,
-  });
-
-  const buzzerStatesData: BuzzerStateData[] = games.map((game) => ({
-    gameId: game.id!,
-    isListening: false,
-    buzzers: new Map<GameTeam["id"], SingleBuzzerState>(
-      gameTeams
-        .filter((gameTeam) => gameTeam.gameId! === game.id!)
-        .map((gameTeam) => [gameTeam.id, SingleBuzzerState.avilalble])
-    ),
-  }));
-  const buzzerStates: BuzzerState[] = await _insertData({
-    data: buzzerStatesData,
-    table: db.BuzzerState,
-  });
 }
