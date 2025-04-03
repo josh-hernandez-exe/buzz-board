@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { GameSelectionDropDown } from "@/components/GameSelectionDropDown";
 import { GameAdminSummary } from "@/components/GameAdminSummary";
+import { GameAllTeamsList } from "@/components/GameAllTeamsList";
 
 import type { Game } from "@/types/serverTypes";
 
@@ -20,6 +21,7 @@ export function PrototypeSuperAdminView() {
     <div>
       <GameSelectionDropDown onChange={setGame} />
       {game && <GameAdminSummary gameId={game.id} />}
+      {game && <GameAllTeamsList gameId={game.id} />}
     </div>
   );
 }
