@@ -5,7 +5,7 @@ import { TRPCError } from "@trpc/server";
 //       relative imports. Otherwise type checking on the client side
 //       is affected
 import { publicProcedure, router } from "./utils/trpc";
-import { db, type CrudFactory } from "./db";
+import { db, type CrudFactory, type FindByGameIdFactory } from "./db";
 import { paritalSchemas, dataSchemas, schemaUtils } from "./dataSchema";
 
 import { logger } from "@/utils/logger";
@@ -13,6 +13,9 @@ import { logger } from "@/utils/logger";
 import type {
   MayHaveIdField,
   HasCommonFields,
+  HasGameId,
+  GenericData,
+  GenericTable,
   Game,
   GameData,
   User,
@@ -29,7 +32,7 @@ import type {
   BuzzerStateData,
 } from "./dataTypes";
 
-function crudFactory<U, V extends U & HasCommonFields>({
+function crudFactory<U extends GenericData, V extends U & HasCommonFields>({
   tableName,
 }: {
   tableName: keyof typeof db;
@@ -139,6 +142,35 @@ function crudFactory<U, V extends U & HasCommonFields>({
   };
 }
 
+function findByGameIdFactory<U extends GenericTable & HasGameId>({
+  tableName,
+}: {
+  tableName: keyof typeof db;
+}) {
+  const crudObject = db[tableName]! as any as FindByGameIdFactory<U>;
+
+  return {
+    findByGameId: publicProcedure.input(z.string()).query(async (opts) => {
+      const { input } = opts;
+
+      logger.debug(`${tableName}-findByGameId`);
+
+      // Retrieve the user with the given ID
+      const result = await crudObject.findByGameId(input);
+      if (result.isErr()) {
+        logger.error(result.error);
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: result.error.message,
+          cause: result.error,
+        });
+      }
+
+      return result.value;
+    }),
+  };
+}
+
 export const appRouter = router({
   game: {
     ...crudFactory<GameData, Game>({ tableName: "Game" }),
@@ -148,17 +180,22 @@ export const appRouter = router({
   },
   gameUser: {
     ...crudFactory<GameUserData, GameUser>({ tableName: "GameUser" }),
+    ...findByGameIdFactory<GameUser>({ tableName: "GameUser" }),
   },
   gameTeam: {
     ...crudFactory<GameTeamData, GameTeam>({ tableName: "GameTeam" }),
+    ...findByGameIdFactory<GameTeam>({ tableName: "GameTeam" }),
   },
   gameAdmin: {
     ...crudFactory<GameAdminData, GameAdmin>({ tableName: "GameAdmin" }),
+    ...findByGameIdFactory<GameAdmin>({ tableName: "GameAdmin" }),
   },
   scoreboard: {
     ...crudFactory<ScoreboardData, Scoreboard>({ tableName: "Scoreboard" }),
+    ...findByGameIdFactory<Scoreboard>({ tableName: "Scoreboard" }),
   },
   buzzerState: {
     ...crudFactory<BuzzerStateData, BuzzerState>({ tableName: "BuzzerState" }),
+    ...findByGameIdFactory<BuzzerState>({ tableName: "BuzzerState" }),
   },
 });

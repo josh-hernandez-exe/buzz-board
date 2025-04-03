@@ -6,6 +6,8 @@ import { logger } from "@/utils/logger";
 import type {
   MayHaveIdField,
   HasCommonFields,
+  HasGameId,
+  GenericData,
   GenericTable,
   Game,
   GameData,
@@ -22,6 +24,29 @@ import type {
   BuzzerState,
   BuzzerStateData,
 } from "../dataTypes";
+
+type CrudUpdateArgs<U, V extends U & HasCommonFields> = {
+  id: V["id"];
+  data: Partial<U>;
+};
+
+export type CrudFactory<
+  U extends GenericData,
+  V extends U & HasCommonFields,
+> = {
+  findAll: () => ReturnType<typeof findMany<V>>;
+  findMany: (ids: V["id"][] | undefined) => ReturnType<typeof findMany<V>>;
+  findById: (id: V["id"]) => ReturnType<typeof findById<V>>;
+  create: (
+    data: U & MayHaveIdField
+  ) => ReturnType<typeof create<U & MayHaveIdField, V>>;
+  update: (args: CrudUpdateArgs<U, V>) => ReturnType<typeof update<U, V>>;
+  delete: (id: V["id"]) => ReturnType<typeof softDelete<V>>;
+};
+
+export type FindByGameIdFactory<U extends GenericTable & HasGameId> = {
+  findByGameId: (gameId: U["gameId"]) => ReturnType<typeof findByGameId<U>>;
+};
 
 const database: { [key: string]: Map<string, GenericTable> } = {
   Game: new Map<Game["id"], Game>(),
@@ -176,23 +201,23 @@ async function softDelete<V extends HasCommonFields>({
   return ok();
 }
 
-type UpdateArgs<U, V extends U & HasCommonFields> = {
-  id: V["id"];
-  data: Partial<U>;
-};
+async function findByGameId<U extends GenericTable & HasGameId>({
+  gameId,
+  tableName,
+}: {
+  readonly gameId: U["gameId"];
+  readonly tableName: keyof typeof database;
+}): Promise<Result<U[], Error>> {
+  const table = database[tableName]! as Map<U["id"], U>;
 
-export type CrudFactory<U, V extends U & HasCommonFields> = {
-  findAll: () => ReturnType<typeof findMany<V>>;
-  findMany: (ids: V["id"][] | undefined) => ReturnType<typeof findMany<V>>;
-  findById: (id: V["id"]) => ReturnType<typeof findById<V>>;
-  create: (
-    data: U & MayHaveIdField
-  ) => ReturnType<typeof create<U & MayHaveIdField, V>>;
-  update: (args: UpdateArgs<U, V>) => ReturnType<typeof update<U, V>>;
-  delete: (id: V["id"]) => ReturnType<typeof softDelete<V>>;
-};
+  const data = Array.from(
+    table.values().filter((item) => item.gameId === gameId)
+  );
 
-function crudFactory<U, V extends U & HasCommonFields>({
+  return ok(data);
+}
+
+function crudFactory<U extends GenericData, V extends U & HasCommonFields>({
   tableName,
 }: {
   tableName: keyof typeof database;
@@ -212,6 +237,16 @@ function crudFactory<U, V extends U & HasCommonFields>({
   };
 }
 
+function findByGameIdFactory<U extends GenericTable & HasGameId>({
+  tableName,
+}: {
+  tableName: keyof typeof database;
+}): FindByGameIdFactory<U> {
+  return {
+    findByGameId: (gameId: U["gameId"]) => findByGameId({ gameId, tableName }),
+  };
+}
+
 export const db = {
   Game: {
     ...crudFactory<GameData, Game>({ tableName: "Game" }),
@@ -221,17 +256,22 @@ export const db = {
   },
   GameUser: {
     ...crudFactory<GameUserData, GameUser>({ tableName: "GameUser" }),
+    ...findByGameIdFactory<GameUser>({ tableName: "GameUser" }),
   },
   GameTeam: {
     ...crudFactory<GameTeamData, GameTeam>({ tableName: "GameTeam" }),
+    ...findByGameIdFactory<GameTeam>({ tableName: "GameTeam" }),
   },
   GameAdmin: {
     ...crudFactory<GameAdminData, GameAdmin>({ tableName: "GameAdmin" }),
+    ...findByGameIdFactory<GameAdmin>({ tableName: "GameAdmin" }),
   },
   Scoreboard: {
     ...crudFactory<ScoreboardData, Scoreboard>({ tableName: "Scoreboard" }),
+    ...findByGameIdFactory<Scoreboard>({ tableName: "Scoreboard" }),
   },
   BuzzerState: {
     ...crudFactory<BuzzerStateData, BuzzerState>({ tableName: "BuzzerState" }),
+    ...findByGameIdFactory<BuzzerState>({ tableName: "BuzzerState" }),
   },
 };
