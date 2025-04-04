@@ -32,6 +32,7 @@ const gameUserData = z.object({
   name: z.string(),
   gameId: idFieldSchema,
   userId: z.optional(idFieldSchema),
+  gameTeamId: z.optional(z.string()),
 });
 
 const gameTeamData = z.object({

@@ -23,6 +23,8 @@ import type {
 // import { enums } from "@/dataSchema";
 import { GameFormat, SingleBuzzerState } from "@/enums";
 
+import { logger } from "@/utils/logger";
+
 async function _insertData({
   data,
   table,
@@ -109,6 +111,25 @@ export async function seedDb() {
           table: db.GameTeam,
         });
         gameTeams[game!.id] = curGameTeams;
+
+        await Promise.all(
+          curGameTeams.map(async (gameTeam) => {
+            const teamMates = currGameUsers.filter((gameUser) =>
+              gameTeam.gameUserIds.includes(gameUser.id)
+            );
+            return await Promise.all(
+              teamMates.map(async (gameUser) => {
+                return db.GameUser.update({
+                  id: gameUser.id,
+                  data: {
+                    ...gameUser,
+                    gameTeamId: gameTeam.id,
+                  },
+                });
+              })
+            );
+          })
+        );
 
         const scoreboardData: ScoreboardData = {
           gameId: game.id!,

@@ -8,6 +8,7 @@ import { dataSchemas, fullSchemas, schemaUtils } from "./dataSchema";
 export type MayHaveIdField = z.infer<typeof schemaUtils.mayHaveIdField>;
 export type HasCommonFields = z.infer<typeof schemaUtils.hasCommonFields>;
 export type HasGameId = { gameId: string };
+export type HasGameTeamId = { gameTeamId: string };
 
 export type GameData = z.infer<typeof dataSchemas.Game>;
 export type UserData = z.infer<typeof dataSchemas.User>;

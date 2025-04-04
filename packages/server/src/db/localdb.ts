@@ -7,6 +7,7 @@ import type {
   MayHaveIdField,
   HasCommonFields,
   HasGameId,
+  HasGameTeamId,
   GenericData,
   GenericTable,
   Game,
@@ -46,6 +47,12 @@ export type CrudFactory<
 
 export type FindByGameIdFactory<U extends GenericTable & HasGameId> = {
   findByGameId: (gameId: U["gameId"]) => ReturnType<typeof findByGameId<U>>;
+};
+
+export type FindByTeamGameIdFactory<U extends GenericTable & HasGameTeamId> = {
+  findByGameTeamId: (
+    gameTeamId: U["gameTeamId"]
+  ) => ReturnType<typeof findByGameTeamId<U>>;
 };
 
 const database: { [key: string]: Map<string, GenericTable> } = {
@@ -210,8 +217,28 @@ async function findByGameId<U extends GenericTable & HasGameId>({
 }): Promise<Result<U[], Error>> {
   const table = database[tableName]! as Map<U["id"], U>;
 
+  if (gameId === undefined) return err(new Error("Game id not given"));
+
   const data = Array.from(
     table.values().filter((item) => item.gameId === gameId)
+  );
+
+  return ok(data);
+}
+
+async function findByGameTeamId<U extends GenericTable & HasGameTeamId>({
+  gameTeamId,
+  tableName,
+}: {
+  readonly gameTeamId: U["gameTeamId"];
+  readonly tableName: keyof typeof database;
+}): Promise<Result<U[], Error>> {
+  const table = database[tableName]! as Map<U["id"], U>;
+
+  if (gameTeamId === undefined) return err(new Error("Game team id not given"));
+
+  const data = Array.from(
+    table.values().filter((item) => item.gameTeamId === gameTeamId)
   );
 
   return ok(data);
@@ -247,6 +274,17 @@ function findByGameIdFactory<U extends GenericTable & HasGameId>({
   };
 }
 
+function findByGameTeamIdFactory<U extends GenericTable & HasGameTeamId>({
+  tableName,
+}: {
+  tableName: keyof typeof database;
+}): FindByTeamGameIdFactory<U> {
+  return {
+    findByGameTeamId: (gameTeamId: U["gameTeamId"]) =>
+      findByGameTeamId({ gameTeamId, tableName }),
+  };
+}
+
 export const db = {
   Game: {
     ...crudFactory<GameData, Game>({ tableName: "Game" }),
@@ -257,6 +295,9 @@ export const db = {
   GameUser: {
     ...crudFactory<GameUserData, GameUser>({ tableName: "GameUser" }),
     ...findByGameIdFactory<GameUser>({ tableName: "GameUser" }),
+    ...findByGameTeamIdFactory<GameUser & HasGameTeamId>({
+      tableName: "GameUser",
+    }),
   },
   GameTeam: {
     ...crudFactory<GameTeamData, GameTeam>({ tableName: "GameTeam" }),
