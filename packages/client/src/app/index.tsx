@@ -2,7 +2,7 @@ import { useState } from "react";
 import { httpBatchLink } from "@trpc/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { MockComponent } from "@/views/PrototypeView";
+import { PrototypeSuperAdminView } from "@/views/PrototypeSuperAdminView";
 import { trpc } from "@/utils/trpc";
 
 import "./App.css";
@@ -27,12 +27,7 @@ export function App() {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        {
-          <div>
-            {/* <p>Hello</p> */}
-            <MockComponent />
-          </div>
-        }
+        <PrototypeSuperAdminView />
       </QueryClientProvider>
     </trpc.Provider>
   );
