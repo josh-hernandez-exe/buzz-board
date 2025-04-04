@@ -42,7 +42,6 @@ async function _insertData({
   });
 }
 
-
 export async function seedDb() {
   const usersData: UserData[] = [
     {
@@ -111,33 +110,33 @@ export async function seedDb() {
         });
         gameTeams[game!.id] = curGameTeams;
 
-        const scoreboardsData: ScoreboardData[] = games.map((game) => ({
+        const scoreboardData: ScoreboardData = {
           gameId: game.id!,
-          current: new Map<GameTeam["id"], number>(
+          current: Object.fromEntries(
             curGameTeams
               .filter((gameTeam) => gameTeam.gameId === game.id)
               .map((gameTeam) => [gameTeam.id, 0])
           ),
           pastDeltas: [],
           futureDeltas: [],
-        }));
+        };
 
         const scoreBoards: Scoreboard[] = await _insertData({
-          data: scoreboardsData,
+          data: [scoreboardData],
           table: db.Scoreboard,
         });
 
-        const buzzerStatesData: BuzzerStateData[] = games.map((game) => ({
+        const buzzerStatesData: BuzzerStateData = {
           gameId: game.id!,
           isListening: false,
-          buzzers: new Map<GameTeam["id"], SingleBuzzerState>(
+          buzzers: Object.fromEntries(
             curGameTeams
               .filter((gameTeam) => gameTeam.gameId! === game.id!)
               .map((gameTeam) => [gameTeam.id, SingleBuzzerState.avilalble])
           ),
-        }));
+        };
         const buzzerStates: BuzzerState[] = await _insertData({
-          data: buzzerStatesData,
+          data: [buzzerStatesData],
           table: db.BuzzerState,
         });
       }

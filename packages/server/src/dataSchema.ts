@@ -47,8 +47,8 @@ const gameAdminData = z.object({
   settings: z.object({}),
 });
 
-const scoreboardState = z.map(z.string(), z.number());
-const scoreboardDelta = z.map(z.string(), z.number());
+const scoreboardState = z.record(z.string(), z.number());
+const scoreboardDelta = z.record(z.string(), z.number());
 
 const scoreboardData = z.object({
   gameId: idFieldSchema,
@@ -60,7 +60,7 @@ const scoreboardData = z.object({
 const buzzerStateData = z.object({
   gameId: idFieldSchema,
   isListening: z.boolean(),
-  buzzers: z.map(z.string(), z.nativeEnum(SingleBuzzerState)),
+  buzzers: z.record(z.string(), z.nativeEnum(SingleBuzzerState)),
 });
 
 const game = gameData.merge(hasCommonFields);
