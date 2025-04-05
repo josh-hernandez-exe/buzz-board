@@ -1,3 +1,10 @@
+# Auth Docs
+
+## Discord
+
+Redirects:
+- `http://localhost:3000/api/auth/callback/discord`
+
 # Create T3 App
 
 This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
