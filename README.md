@@ -2,6 +2,13 @@
 
 Blank
 
+# Auth Docs
+
+## Discord
+
+Redirects:
+- `http://localhost:3000/api/auth/callback/discord`
+
 
 ## Create T3 App
 
