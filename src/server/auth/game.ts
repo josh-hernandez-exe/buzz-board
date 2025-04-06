@@ -284,6 +284,10 @@ export async function gameAuth({
 }) {
   const gameId = headers.get("x-buzz-board-game-id") as string | undefined;
 
+  if (gameId === undefined || gameId === null) {
+    return {};
+  }
+
   const [{ gameUser }, { gameAdmin }] = await Promise.all([
     gameUserAuth({
       headers,

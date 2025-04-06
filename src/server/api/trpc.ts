@@ -28,17 +28,17 @@ import { db } from "@/server/db";
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
-  const guestUser = await guestAuth({ headers: opts.headers });
+  const guestSession = await guestAuth({ headers: opts.headers });
   const game = await gameAuth({
     headers: opts.headers,
     user: session?.user,
-    guestUser,
+    guestUser: guestSession.guestUser,
   });
 
   return {
     db,
     session,
-    guestUser,
+    guestSession,
     game,
     ...opts,
   };
