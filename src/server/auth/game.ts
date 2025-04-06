@@ -1,7 +1,7 @@
 import { ok, err } from "neverthrow";
 
 import { db } from "@/server/db";
-import { logger } from "@/logger";
+import { logger } from "@/utils/logger";
 
 async function findGameUserFromGuestUser({
   guestUser,
