@@ -2,73 +2,224 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "postgresql"
-    // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
-    // Further reading:
-    // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
-    // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
-    url      = env("DATABASE_URL")
+  provider = "postgresql"
+  // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
+  // Further reading:
+  // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
+  // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
+  url      = env("DATABASE_URL")
 }
 
 model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  id        Int       @id @default(autoincrement())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-    createdBy   User   @relation(fields: [createdById], references: [id])
-    createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdById String
 
-    @@index([name])
+  @@index([name])
 }
 
 // Necessary for Next auth
 model Account {
-    id                       String  @id @default(cuid())
-    userId                   String
-    type                     String
-    provider                 String
-    providerAccountId        String
-    refresh_token            String? // @db.Text
-    access_token             String? // @db.Text
-    expires_at               Int?
-    token_type               String?
-    scope                    String?
-    id_token                 String? // @db.Text
-    session_state            String?
-    user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-    refresh_token_expires_in Int?
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? // @db.Text
+  access_token             String? // @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? // @db.Text
+  session_state            String?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refresh_token_expires_in Int?
 
-    @@unique([provider, providerAccountId])
+  @@unique([provider, providerAccountId])
 }
 
 model Session {
-    id           String   @id @default(cuid())
-    sessionToken String   @unique
-    userId       String
-    expires      DateTime
-    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model User {
-    id            String    @id @default(cuid())
-    name          String?
-    email         String?   @unique
-    emailVerified DateTime?
-    image         String?
-    accounts      Account[]
-    sessions      Session[]
-    posts         Post[]
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  games     Game[]
+  accounts  Account[]
+  sessions  Session[]
+  posts     Post[]
+  gameUsers GameUser[]
+  gameAdmin GameAdmin[]
 }
 
 model VerificationToken {
-    identifier String
-    token      String   @unique
-    expires    DateTime
+  identifier String
+  token      String   @unique
+  expires    DateTime
 
-    @@unique([identifier, token])
+  @@unique([identifier, token])
+}
+
+model GuestUser {
+  id    String  @id @default(cuid())
+  token String  @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  gameUsers GameUser[]
+}
+
+enum GameFormat {
+  single
+  team
+}
+
+model Game {
+  id       String     @id @default(cuid())
+  name     String
+  code     String     @unique @db.VarChar(6)
+  settings Json       @default("{}")
+  format   GameFormat
+
+  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdById String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  gameUsers         GameUser[]
+  gameTeams         GameTeam[]
+  gameAdmins        GameAdmin[]
+  scoreboard        Scoreboard?
+  singleBuzzerState SingleBuzzerState[]
+  gameBuzzerState   GameBuzzerState?
+}
+
+model GameUser {
+  id          String  @id @default(cuid())
+  name        String
+  gameId      String
+  gameTeamId  String?
+  userId      String?
+  guestUserId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User?      @relation(fields: [userId], references: [id])
+  guestUser GuestUser? @relation(fields: [guestUserId], references: [id])
+  game      Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameTeam  GameTeam?  @relation(fields: [gameTeamId], references: [id], onDelete: Cascade)
+}
+
+model GameTeam {
+  id     String @id @default(cuid())
+  name   String
+  gameId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  game              Game               @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameUsers         GameUser[]
+  singleBuzzerState SingleBuzzerState?
+}
+
+model GameAdmin {
+  id       String @id @default(cuid())
+  userId   String
+  gameId   String
+  settings Json   @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId])
+}
+
+model ScoreboardState {
+  id           String @id @default(cuid())
+  gameId       String
+  scoreboardId String
+  state        Json   @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scoreboard       Scoreboard  @relation("AllScoreboardStates", fields: [scoreboardId], references: [id], onDelete: Cascade)
+  activeScoreboard Scoreboard?
+}
+
+model Scoreboard {
+  id     String @id @default(cuid())
+  gameId String @unique
+
+  currentStateId String? @unique
+  pastStateIds   Json    @default("[]")
+  futureStateIds Json    @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  game         Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  allStates    ScoreboardState[] @relation("AllScoreboardStates")
+  currentState ScoreboardState?  @relation(fields: [currentStateId], references: [id])
+}
+
+enum BuzzerState {
+  avilalble
+  selected
+  rejected
+}
+
+model SingleBuzzerState {
+  id                String      @id @default(cuid())
+  gameId            String
+  gameTeamId        String      @unique
+  gameBuzzerStateId String
+  state             BuzzerState @default(avilalble)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  game            Game            @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameTeam        GameTeam        @relation(fields: [gameTeamId], references: [id], onDelete: Cascade)
+  gameBuzzerState GameBuzzerState @relation(fields: [gameBuzzerStateId], references: [id], onDelete: Cascade)
+}
+
+model GameBuzzerState {
+  id          String  @id @default(cuid())
+  gameId      String  @unique
+  isListening Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  game    Game                @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  buzzers SingleBuzzerState[]
 }
