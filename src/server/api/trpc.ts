@@ -11,7 +11,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { auth } from "@/server/auth";
+import { auth, guestAuth, gameAuth } from "@/server/auth";
 import { db } from "@/server/db";
 
 /**
@@ -28,10 +28,18 @@ import { db } from "@/server/db";
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
+  const guestUser = await guestAuth({ headers: opts.headers });
+  const game = await gameAuth({
+    headers: opts.headers,
+    user: session?.user,
+    guestUser,
+  });
 
   return {
     db,
     session,
+    guestUser,
+    game,
     ...opts,
   };
 };
@@ -128,6 +136,44 @@ export const protectedProcedure = t.procedure
       ctx: {
         // infers the `session` as non-nullable
         session: { ...ctx.session, user: ctx.session.user },
+      },
+    });
+  });
+
+export const protectedGameUserProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(({ ctx, next }) => {
+    if (!ctx.game?.gameUser) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Not a valid game user for this game.",
+      });
+    }
+    return next({
+      ctx: {
+        ...ctx,
+        game: {
+          ...ctx.game,
+        },
+      },
+    });
+  });
+
+export const protectedGameAdmintProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(({ ctx, next }) => {
+    if (!ctx.game?.gameAdmin) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Not a valid game admin user for this game.",
+      });
+    }
+    return next({
+      ctx: {
+        ...ctx,
+        game: {
+          ...ctx.game,
+        },
       },
     });
   });
