@@ -2,7 +2,7 @@ import { type Game } from "@prisma/client";
 
 import { api, HydrateClient } from "@/trpc/server";
 
-import { CreateGame } from "@/app/_components/GameCreate";
+import { CreateGame } from "@/app/_components/client/GameCreate";
 
 import { logger } from "@/utils/logger";
 
