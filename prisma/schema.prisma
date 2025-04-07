@@ -82,8 +82,8 @@ model VerificationToken {
 }
 
 model GuestUser {
-  id    String  @id @default(cuid())
-  token String  @unique
+  id    String @id @default(cuid())
+  token String @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -109,12 +109,13 @@ model Game {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  gameUsers         GameUser[]
-  gameTeams         GameTeam[]
-  gameAdmins        GameAdmin[]
-  scoreboard        Scoreboard?
-  singleBuzzerState SingleBuzzerState[]
-  gameBuzzerState   GameBuzzerState?
+  gameUsers          GameUser[]
+  gameTeams          GameTeam[]
+  gameAdmins         GameAdmin[]
+  scoreboard         Scoreboard?
+  scoreboardStates   ScoreboardState[]
+  singleBuzzerStates SingleBuzzerState[]
+  gameBuzzerState    GameBuzzerState?
 }
 
 model GameUser {
@@ -173,6 +174,7 @@ model ScoreboardState {
 
   scoreboard       Scoreboard  @relation("AllScoreboardStates", fields: [scoreboardId], references: [id], onDelete: Cascade)
   activeScoreboard Scoreboard?
+  game             Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
 }
 
 model Scoreboard {
