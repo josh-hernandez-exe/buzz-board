@@ -38,7 +38,8 @@
     "customizations": {
         "vscode": {
             "extensions": [
-                "Prisma.prisma"
+                "Prisma.prisma",
+                "esbenp.prettier-vscode"
             ]
         }
     },
