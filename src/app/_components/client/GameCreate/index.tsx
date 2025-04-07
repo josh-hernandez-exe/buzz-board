@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import {
   DropDownSelection,
   type DropdownOption,
-} from "@/app/_components/DropDownSelection";
+} from "@/app/_components/client/DropDownSelection";
 
 import { api } from "@/trpc/react";
 
