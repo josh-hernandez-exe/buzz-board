@@ -8,7 +8,7 @@ import { GameInfoAdmin } from "@/app/_components/client/GameInfoAdmin";
 import { logger } from "@/utils/logger";
 
 export default async function Page() {
-  const games = await api.game.getAll();
+  const games = await api.user.game.getAll();
 
   return (
     <HydrateClient>

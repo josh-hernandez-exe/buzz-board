@@ -36,11 +36,11 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   });
 
   return {
+    ...opts,
     db,
     session,
     guestSession,
     game,
-    ...opts,
   };
 };
 
@@ -126,7 +126,7 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  *
  * @see https://trpc.io/docs/procedures
  */
-export const protectedProcedure = t.procedure
+export const protectedUserProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
     if (!ctx.session?.user) {
@@ -134,6 +134,7 @@ export const protectedProcedure = t.procedure
     }
     return next({
       ctx: {
+        ...ctx,
         // infers the `session` as non-nullable
         session: { ...ctx.session, user: ctx.session.user },
       },
@@ -143,7 +144,20 @@ export const protectedProcedure = t.procedure
 export const protectedGameUserProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
-    if (!ctx.game?.gameUser) {
+    if (
+      !(
+        typeof ctx?.game?.id === "string" &&
+        typeof ctx?.game?.gameUser?.gameId === "string" &&
+        // does the game id match the game of the gameUser
+        ctx.game.id === ctx.game.gameUser.gameId &&
+        // is the game user associated with the currently authed user
+        ((typeof ctx?.session?.user.id === "string" &&
+          ctx.game.gameUser.userId === ctx.session.user.id) ||
+          // or is the game user associated with a guest user
+          (typeof ctx?.guestSession?.guestUser?.id === "string" &&
+            ctx.game.gameUser.guestUserId === ctx.guestSession.guestUser.id))
+      )
+    ) {
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Not a valid game user for this game.",
@@ -154,6 +168,13 @@ export const protectedGameUserProcedure = t.procedure
         ...ctx,
         game: {
           ...ctx.game,
+          // infers the properties of game and gameUser as non-nullable
+          id: ctx.game.id,
+          name: ctx.game.name,
+          code: ctx.game.code,
+          settings: ctx.game.settings,
+          format: ctx.game.format,
+          gameUser: ctx.game.gameUser,
         },
       },
     });
@@ -162,7 +183,17 @@ export const protectedGameUserProcedure = t.procedure
 export const protectedGameAdmintProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
-    if (!ctx.game?.gameAdmin) {
+    if (
+      !(
+        typeof ctx?.game?.id === "string" &&
+        typeof ctx?.game?.gameAdmin?.gameId === "string" &&
+        typeof ctx.session?.user?.id === "string" &&
+        // does the game id match game of the gameAdmin
+        ctx.game.id === ctx.game.gameAdmin.gameId &&
+        // does the gameAdmin associated with the authed in user
+        ctx.game.gameAdmin.userId === ctx.session.user.id
+      )
+    ) {
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Not a valid game admin user for this game.",
@@ -173,6 +204,13 @@ export const protectedGameAdmintProcedure = t.procedure
         ...ctx,
         game: {
           ...ctx.game,
+          // infers the properties of game and gameUser as non-nullable
+          id: ctx.game.id,
+          name: ctx.game.name,
+          code: ctx.game.code,
+          settings: ctx.game.settings,
+          format: ctx.game.format,
+          gameAdmin: ctx.game.gameAdmin,
         },
       },
     });

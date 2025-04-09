@@ -97,11 +97,13 @@ enum GameFormat {
 }
 
 model Game {
-  id       String     @id @default(cuid())
-  name     String
-  code     String     @unique @db.VarChar(6)
-  settings Json       @default("{}")
-  format   GameFormat
+  id                String     @id @default(cuid())
+  name              String
+  code              String     @unique @db.VarChar(6)
+  isBuzzerListening Boolean @default(false)
+  data              Json       @default("{}")
+  settings          Json       @default("{}")
+  format            GameFormat @default(team)
 
   createdBy   User   @relation(fields: [createdById], references: [id])
   createdById String
@@ -109,13 +111,11 @@ model Game {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  gameUsers          GameUser[]
-  gameTeams          GameTeam[]
-  gameAdmins         GameAdmin[]
-  scoreboard         Scoreboard?
-  scoreboardStates   ScoreboardState[]
-  singleBuzzerStates SingleBuzzerState[]
-  gameBuzzerState    GameBuzzerState?
+  gameUsers        GameUser[]
+  gameTeams        GameTeam[]
+  gameAdmins       GameAdmin[]
+  scoreboard       Scoreboard?
+  scoreboardStates ScoreboardState[]
 }
 
 model GameUser {
@@ -125,6 +125,7 @@ model GameUser {
   gameTeamId  String?
   userId      String?
   guestUserId String?
+  data        Json    @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -135,17 +136,27 @@ model GameUser {
   gameTeam  GameTeam?  @relation(fields: [gameTeamId], references: [id], onDelete: Cascade)
 }
 
+enum BuzzerState {
+  avilalble
+  selected
+  rejected
+}
+
 model GameTeam {
-  id     String @id @default(cuid())
-  name   String
-  gameId String
+  id          String      @id @default(cuid())
+  index       Int
+  name        String
+  gameId      String
+  buzzerState BuzzerState @default(avilalble)
+  data        Json        @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  game              Game               @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameUsers         GameUser[]
-  singleBuzzerState SingleBuzzerState?
+  game      Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameUsers GameUser[]
+
+  @@unique([gameId, index])
 }
 
 model GameAdmin {
@@ -191,37 +202,4 @@ model Scoreboard {
   game         Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
   allStates    ScoreboardState[] @relation("AllScoreboardStates")
   currentState ScoreboardState?  @relation(fields: [currentStateId], references: [id])
-}
-
-enum BuzzerState {
-  avilalble
-  selected
-  rejected
-}
-
-model SingleBuzzerState {
-  id                String      @id @default(cuid())
-  gameId            String
-  gameTeamId        String      @unique
-  gameBuzzerStateId String
-  state             BuzzerState @default(avilalble)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  game            Game            @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameTeam        GameTeam        @relation(fields: [gameTeamId], references: [id], onDelete: Cascade)
-  gameBuzzerState GameBuzzerState @relation(fields: [gameBuzzerStateId], references: [id], onDelete: Cascade)
-}
-
-model GameBuzzerState {
-  id          String  @id @default(cuid())
-  gameId      String  @unique
-  isListening Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  game    Game                @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  buzzers SingleBuzzerState[]
 }

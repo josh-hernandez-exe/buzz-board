@@ -1,3 +1,5 @@
+import type { Game, GameAdmin, GameUser } from "@prisma/client";
+
 import { ok, err } from "neverthrow";
 
 import { db } from "@/server/db";
@@ -133,7 +135,7 @@ async function gameUserAuth({
   headers: Headers;
   user?: { id: string };
   guestUser?: { id: string } | null;
-}) {
+}): Promise<{ gameUser: GameUser | undefined | null }> {
   const gameId = headers.get("x-buzz-board-game-id") as string | undefined;
 
   let gameUser = null;
@@ -224,7 +226,7 @@ async function gameAdminAuth({
 }: {
   headers: Headers;
   user?: { id: string };
-}) {
+}): Promise<{ gameAdmin: GameAdmin | undefined | null }> {
   const gameId = headers.get("x-buzz-board-game-id") as string | undefined;
 
   let gameAdmin;
@@ -260,6 +262,11 @@ async function gameAdminAuth({
   };
 }
 
+type GameAuthReturn = Game & {
+  gameAdmin: GameAdmin | undefined | null;
+  gameUser: GameUser | undefined | null;
+};
+
 /**
  * Find any game user info
  *
@@ -281,7 +288,7 @@ export async function gameAuth({
   headers: Headers;
   user?: { id: string };
   guestUser?: { id: string } | null;
-}) {
+}): Promise<GameAuthReturn | Record<string, never>> {
   const gameId = headers.get("x-buzz-board-game-id") as string | undefined;
 
   if (gameId === undefined || gameId === null) {
@@ -302,9 +309,13 @@ export async function gameAuth({
 
   const game = await db.game.findUnique({ where: { id: gameId } });
 
+  if (game === undefined) {
+    return {};
+  }
+
   return {
-    ...(game || {}),
+    ...game,
     gameAdmin,
     gameUser,
-  };
+  } as GameAuthReturn;
 }

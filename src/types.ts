@@ -7,7 +7,5 @@ export type GameWithRelations = Prisma.GameGetPayload<{
     gameAdmins: true;
     scoreboard: true;
     scoreboardStates: true;
-    singleBuzzerStates: true;
-    gameBuzzerState: true;
   };
 }>;
