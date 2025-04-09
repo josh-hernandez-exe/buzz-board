@@ -23,9 +23,9 @@ export function CreateGame() {
   const [isDataRead, setIsDataReady] = useState<boolean>(false);
 
   const utils = api.useUtils();
-  const createGame = api.game.create.useMutation({
+  const createGame = api.user.game.create.useMutation({
     onSuccess: async () => {
-      await utils.game.getAll.invalidate();
+      await utils.user.game.getAll.invalidate();
       // reload the server side components that list game data
       router.refresh();
     },

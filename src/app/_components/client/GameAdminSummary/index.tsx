@@ -3,7 +3,6 @@
 import {
   type GameTeam,
   type GameUser,
-  type SingleBuzzerState,
   type ScoreboardState,
 } from "@prisma/client";
 
@@ -17,7 +16,6 @@ type ScoreboardStateJson = { [key: string]: number };
 type GameRelationInfo = {
   gameTeam: GameTeam;
   gameUsers: GameUser[];
-  buzzerState: SingleBuzzerState["state"] | undefined;
   score: number | undefined;
 };
 
@@ -32,16 +30,13 @@ function groupDataByTeam({
 }): GameTeamInfoMap {
   const data: GameTeamInfoMap = {};
 
-  // a brand new game may not have any teams
+  // a brand new game may not have any members
   game.gameTeams?.map((gameTeam) => {
     data[gameTeam.id] = {
       gameTeam: gameTeam,
       gameUsers: game.gameUsers.filter(
         (gameUser) => gameUser.gameTeamId === gameTeam.id,
       ),
-      buzzerState: game?.singleBuzzerStates?.filter((buzzerState) => {
-        return buzzerState.gameTeamId === gameTeam.id;
-      })[0]?.state,
       score: (scoreboardState?.state as ScoreboardStateJson)[gameTeam.id],
     };
   });
@@ -57,7 +52,7 @@ export function GameAdminSummary({ game }: { game: GameWithRelations }) {
 
   logger.debug(`GameAdminSummary: $${game.id}`);
 
-  const { scoreboard, gameBuzzerState } = game;
+  const { scoreboard } = game;
   const currScoreboardStateId = scoreboard?.currentStateId;
   const currScoreboardState = game?.scoreboardStates?.filter(
     (scoreboardState) => {
@@ -71,7 +66,7 @@ export function GameAdminSummary({ game }: { game: GameWithRelations }) {
     <div>
       <p>Game ID: {game.id}</p>
       <p>Game Name: {game.name}</p>
-      <p>Buzzer Listening: {gameBuzzerState?.isListening}</p>
+      <p>Buzzer Listening: {game.isBuzzerListening}</p>
       {Object.values(data).map((gameTeamData: GameRelationInfo) => {
         // return <GameTeamSummaryCard {...gameTeamData} />;
         return undefined;

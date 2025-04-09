@@ -1,6 +1,6 @@
 "use client";
 
-import type { GameTeam, GameUser, SingleBuzzerState } from "@prisma/client";
+import type { GameTeam, GameUser, BuzzerState } from "@prisma/client";
 
 import { GenericCard } from "@/app/_components/client/GenericCard";
 
@@ -14,7 +14,7 @@ export function GameTeamSummaryCard({
 }: {
   gameTeam: GameTeam | undefined;
   gameUsers: GameUser[] | undefined;
-  buzzerState: SingleBuzzerState["state"] | undefined;
+  buzzerState: BuzzerState;
   score: number | undefined;
 }) {
   logger.debug(`GameTeamSummaryCard`);
