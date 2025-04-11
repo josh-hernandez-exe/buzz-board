@@ -62,7 +62,6 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
   }
 
   const game = infoQuery.data as GameWithRelations;
-  logger.info(JSON.stringify(game, null, 2));
 
   const { scoreboard } = game;
   const currScoreboardState = game?.scoreboardStates?.filter(
@@ -78,6 +77,7 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
       <p>Game ID: {game.id}</p>
       <p>Game Name: {game.name}</p>
       <p>Game Format: {game.format}</p>
+      <p>Game Code: {game.code}</p>
       {game.format === GameFormat.team && (
         <p>Number of Teams: {game.gameTeams?.length || 0}</p>
       )}
