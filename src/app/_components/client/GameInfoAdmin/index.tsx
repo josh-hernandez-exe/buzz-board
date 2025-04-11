@@ -26,10 +26,14 @@ export function GameInfoAdmin({ games }: { games: Game[] }) {
 
     // TODO: make something response to this sooner and have the child compoenents
     //       go into a loading state.
-    utils.gameAdmin.invalidate();
+    utils.gameAdmin.getAllInfo.invalidate();
   };
 
-  const addTeamMutation = api.gameAdmin.addTeam.useMutation();
+  const addTeamMutation = api.gameAdmin.addTeam.useMutation({
+    onSuccess: async () => {
+      await utils.gameAdmin.getAllInfo.invalidate();
+    },
+  });
 
   return (
     <div>
