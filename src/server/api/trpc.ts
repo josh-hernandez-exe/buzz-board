@@ -13,6 +13,7 @@ import { ZodError } from "zod";
 
 import { auth, guestAuth, gameAuth } from "@/server/auth";
 import { db } from "@/server/db";
+import { logger } from "@/utils/logger";
 
 /**
  * 1. CONTEXT
@@ -29,7 +30,7 @@ import { db } from "@/server/db";
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
   const guestSession = await guestAuth({ headers: opts.headers });
-  const game = await gameAuth({
+  const gameSession = await gameAuth({
     headers: opts.headers,
     user: session?.user,
     guestUser: guestSession.guestUser,
@@ -40,7 +41,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
     db,
     session,
     guestSession,
-    game,
+    gameSession,
   };
 };
 
@@ -146,18 +147,20 @@ export const protectedGameUserProcedure = t.procedure
   .use(({ ctx, next }) => {
     if (
       !(
-        typeof ctx?.game?.id === "string" &&
-        typeof ctx?.game?.gameUser?.gameId === "string" &&
+        typeof ctx?.gameSession?.id === "string" &&
+        typeof ctx?.gameSession?.gameUser?.gameId === "string" &&
         // does the game id match the game of the gameUser
-        ctx.game.id === ctx.game.gameUser.gameId &&
+        ctx.gameSession.id === ctx.gameSession.gameUser.gameId &&
         // is the game user associated with the currently authed user
         ((typeof ctx?.session?.user.id === "string" &&
-          ctx.game.gameUser.userId === ctx.session.user.id) ||
+          ctx.gameSession.gameUser.userId === ctx.session.user.id) ||
           // or is the game user associated with a guest user
           (typeof ctx?.guestSession?.guestUser?.id === "string" &&
-            ctx.game.gameUser.guestUserId === ctx.guestSession.guestUser.id))
+            ctx.gameSession.gameUser.guestUserId ===
+              ctx.guestSession.guestUser.id))
       )
     ) {
+      logger.error(ctx);
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Not a valid game user for this game.",
@@ -167,14 +170,14 @@ export const protectedGameUserProcedure = t.procedure
       ctx: {
         ...ctx,
         game: {
-          ...ctx.game,
+          ...ctx.gameSession,
           // infers the properties of game and gameUser as non-nullable
-          id: ctx.game.id,
-          name: ctx.game.name,
-          code: ctx.game.code,
-          settings: ctx.game.settings,
-          format: ctx.game.format,
-          gameUser: ctx.game.gameUser,
+          id: ctx.gameSession.id,
+          name: ctx.gameSession.name,
+          code: ctx.gameSession.code,
+          settings: ctx.gameSession.settings,
+          format: ctx.gameSession.format,
+          gameUser: ctx.gameSession.gameUser,
         },
       },
     });
@@ -185,15 +188,16 @@ export const protectedGameAdmintProcedure = t.procedure
   .use(({ ctx, next }) => {
     if (
       !(
-        typeof ctx?.game?.id === "string" &&
-        typeof ctx?.game?.gameAdmin?.gameId === "string" &&
+        typeof ctx?.gameSession?.id === "string" &&
+        typeof ctx?.gameSession?.gameAdmin?.gameId === "string" &&
         typeof ctx.session?.user?.id === "string" &&
         // does the game id match game of the gameAdmin
-        ctx.game.id === ctx.game.gameAdmin.gameId &&
+        ctx.gameSession.id === ctx.gameSession.gameAdmin.gameId &&
         // does the gameAdmin associated with the authed in user
-        ctx.game.gameAdmin.userId === ctx.session.user.id
+        ctx.gameSession.gameAdmin.userId === ctx.session.user.id
       )
     ) {
+      logger.error(ctx);
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Not a valid game admin user for this game.",
@@ -203,14 +207,14 @@ export const protectedGameAdmintProcedure = t.procedure
       ctx: {
         ...ctx,
         game: {
-          ...ctx.game,
+          ...ctx.gameSession,
           // infers the properties of game and gameUser as non-nullable
-          id: ctx.game.id,
-          name: ctx.game.name,
-          code: ctx.game.code,
-          settings: ctx.game.settings,
-          format: ctx.game.format,
-          gameAdmin: ctx.game.gameAdmin,
+          id: ctx.gameSession.id,
+          name: ctx.gameSession.name,
+          code: ctx.gameSession.code,
+          settings: ctx.gameSession.settings,
+          format: ctx.gameSession.format,
+          gameAdmin: ctx.gameSession.gameAdmin,
         },
       },
     });
