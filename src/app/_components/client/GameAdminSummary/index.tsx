@@ -1,12 +1,15 @@
 "use client";
 
 import {
+  GameFormat,
+  type Game,
   type GameTeam,
   type GameUser,
   type ScoreboardState,
 } from "@prisma/client";
 
-// import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
+import { api, updateExtraHeaders } from "@/trpc/react";
+import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
 
 import { logger } from "@/utils/logger";
 import type { GameWithRelations } from "@/types";
@@ -37,26 +40,34 @@ function groupDataByTeam({
       gameUsers: game.gameUsers.filter(
         (gameUser) => gameUser.gameTeamId === gameTeam.id,
       ),
-      score: (scoreboardState?.state as ScoreboardStateJson)[gameTeam.id],
+      score: (scoreboardState?.state as ScoreboardStateJson)?.[gameTeam.id],
     };
   });
 
   return data;
 }
 
-export function GameAdminSummary({ game }: { game: GameWithRelations }) {
-  if (game === undefined) {
+export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
+  if (gameId === undefined) {
     logger.error("GameAdminSummary has an undefined game");
     return undefined;
   }
 
-  logger.debug(`GameAdminSummary: $${game.id}`);
+  logger.debug(`GameAdminSummary: ${gameId}`);
+
+  const infoQuery = api.gameAdmin.getAllInfo.useQuery();
+
+  if (infoQuery.isLoading) {
+    return undefined;
+  }
+
+  const game = infoQuery.data as GameWithRelations;
+  logger.info(JSON.stringify(game, null, 2));
 
   const { scoreboard } = game;
-  const currScoreboardStateId = scoreboard?.currentStateId;
   const currScoreboardState = game?.scoreboardStates?.filter(
     (scoreboardState) => {
-      return scoreboardState.scoreboardId === currScoreboardStateId;
+      return scoreboardState.id === scoreboard?.currentStateId;
     },
   )?.[0];
 
@@ -66,11 +77,24 @@ export function GameAdminSummary({ game }: { game: GameWithRelations }) {
     <div>
       <p>Game ID: {game.id}</p>
       <p>Game Name: {game.name}</p>
-      <p>Buzzer Listening: {game.isBuzzerListening}</p>
-      {Object.values(data).map((gameTeamData: GameRelationInfo) => {
-        // return <GameTeamSummaryCard {...gameTeamData} />;
-        return undefined;
-      })}
+      <p>Game Format: {game.format}</p>
+      {game.format === GameFormat.team && (
+        <p>Number of Teams: {game.gameTeams?.length || 0}</p>
+      )}
+      <p>Buzzer : {game.isBuzzerListening ? "Listening" : "Not Listening"}</p>
+      {Object.values(data).map(
+        ({ gameTeam, gameUsers, score }: GameRelationInfo) => {
+          // return undefined;
+          return (
+            <GameTeamSummaryCard
+              gameTeam={gameTeam}
+              gameUsers={gameUsers}
+              buzzerState={gameTeam.buzzerState}
+              score={score}
+            />
+          );
+        },
+      )}
     </div>
   );
 }

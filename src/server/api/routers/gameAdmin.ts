@@ -8,11 +8,29 @@ import {
   protectedGameAdmintProcedure,
 } from "@/server/api/trpc";
 
-export const adminRouter = createTRPCRouter({
-  addTeam: protectedGameAdmintProcedure.query(async ({ ctx }) => {
-    const { id: gameId, gameAdmin } = ctx.game;
+export const gameAdminRouter = createTRPCRouter({
+  getAllInfo: protectedGameAdmintProcedure.query(async ({ ctx }) => {
+    const { id: gameId, gameAdmin, format: gameFormat } = ctx.gameSession;
 
-    if (ctx.game.format === GameFormat.single) {
+    const game = await ctx.db.game.findUnique({
+      where: {
+        id: gameId,
+      },
+      include: {
+        gameUsers: true,
+        gameTeams: true,
+        gameAdmins: true,
+        scoreboard: true,
+        scoreboardStates: true,
+      },
+    });
+
+    return game;
+  }),
+  addTeam: protectedGameAdmintProcedure.mutation(async ({ ctx }) => {
+    const { id: gameId, gameAdmin, format: gameFormat } = ctx.gameSession;
+
+    if (gameFormat === GameFormat.single) {
       throw new Error("Game format does not support teams");
     }
 
