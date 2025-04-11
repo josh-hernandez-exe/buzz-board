@@ -3,7 +3,19 @@
 ## Discord
 
 Redirects:
+
 - `http://localhost:3000/api/auth/callback/discord`
+
+## Google
+
+Redirects:
+
+- `http://localhost:3000/api/auth/callback/google`
+- `http://{CODESPACE-SUBDOMAIN}.app.github.dev/api/auth/callback/google`
+- `https://{CODESPACE-SUBDOMAIN}.app.github.dev/api/auth/callback/google`
+  - NOTE: you need http and https
+  - Avoid wildcard since you can have a persistant code space.
+
 # REPL Commands
 
 ```bash
