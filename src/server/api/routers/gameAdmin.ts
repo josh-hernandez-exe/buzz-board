@@ -5,11 +5,11 @@ import { logger } from "@/utils/logger";
 
 import {
   createTRPCRouter,
-  protectedGameAdmintProcedure,
+  protectedGameAdminProcedure,
 } from "@/server/api/trpc";
 
 export const gameAdminRouter = createTRPCRouter({
-  getAllInfo: protectedGameAdmintProcedure.query(async ({ ctx }) => {
+  getAllInfo: protectedGameAdminProcedure.query(async ({ ctx }) => {
     const { id: gameId, gameAdmin, format: gameFormat } = ctx.gameSession;
 
     const game = await ctx.db.game.findUnique({
@@ -27,7 +27,7 @@ export const gameAdminRouter = createTRPCRouter({
 
     return game;
   }),
-  addTeam: protectedGameAdmintProcedure.mutation(async ({ ctx }) => {
+  addTeam: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { id: gameId, gameAdmin, format: gameFormat } = ctx.gameSession;
 
     if (gameFormat === GameFormat.single) {

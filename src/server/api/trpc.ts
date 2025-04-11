@@ -183,7 +183,7 @@ export const protectedGameUserProcedure = t.procedure
     });
   });
 
-export const protectedGameAdmintProcedure = t.procedure
+export const protectedGameAdminProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
     if (
