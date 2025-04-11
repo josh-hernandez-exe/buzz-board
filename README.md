@@ -4,6 +4,15 @@
 
 Redirects:
 - `http://localhost:3000/api/auth/callback/discord`
+# REPL Commands
+
+```bash
+bun repl
+```
+
+```Typescript
+import { db } from "@/server/db"
+```
 
 # Create T3 App
 
