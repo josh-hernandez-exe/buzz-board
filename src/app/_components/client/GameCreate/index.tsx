@@ -20,10 +20,10 @@ export function CreateGame() {
     GameFormat.single,
   );
   const [gameName, setGameName] = useState<Game["name"]>("");
-  const [isDataRead, setIsDataReady] = useState<boolean>(false);
+  const [isDataReady, setIsDataReady] = useState<boolean>(false);
 
   const utils = api.useUtils();
-  const createGame = api.user.game.create.useMutation({
+  const createGameMutation = api.user.game.create.useMutation({
     onSuccess: async () => {
       await utils.user.game.getAll.invalidate();
       // reload the server side components that list game data
@@ -48,7 +48,7 @@ export function CreateGame() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          createGame.mutate({
+          createGameMutation.mutate({
             name: gameName!,
             format: gameFormat!,
           } as GameData);
@@ -83,9 +83,9 @@ export function CreateGame() {
         <button
           type="submit"
           className="rounded-full bg-white/10 px-10 py-3 font-semibold transition hover:bg-white/20"
-          disabled={createGame.isPending || isDataRead}
+          disabled={createGameMutation.isPending || isDataReady}
         >
-          {createGame.isPending ? "Submitting..." : "Submit"}
+          {createGameMutation.isPending ? "Submitting..." : "Submit"}
         </button>
       </form>
     </div>
