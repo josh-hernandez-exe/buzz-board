@@ -14,19 +14,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Post {
-  id        Int       @id @default(autoincrement())
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  createdBy   User   @relation(fields: [createdById], references: [id])
-  createdById String
-
-  @@index([name])
-}
-
 // Necessary for Next auth
 model Account {
   id                       String  @id @default(cuid())
@@ -68,7 +55,6 @@ model User {
   games     Game[]
   accounts  Account[]
   sessions  Session[]
-  posts     Post[]
   gameUsers GameUser[]
   gameAdmin GameAdmin[]
 }
@@ -151,7 +137,7 @@ model GameTeam {
   data        Json        @default("{}")
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   game      Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
   gameUsers GameUser[]
@@ -166,7 +152,7 @@ model GameAdmin {
   settings Json   @default("{}")
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -181,7 +167,7 @@ model ScoreboardState {
   state        Json   @default("{}")
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   scoreboard       Scoreboard  @relation("AllScoreboardStates", fields: [scoreboardId], references: [id], onDelete: Cascade)
   activeScoreboard Scoreboard?
@@ -197,7 +183,7 @@ model Scoreboard {
   futureStateIds Json    @default("[]")
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   game         Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
   allStates    ScoreboardState[] @relation("AllScoreboardStates")
