@@ -7,7 +7,7 @@ import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 
 import { generateShortCode } from "@/utils/codeGeneration";
 
-export const user = createTRPCRouter({
+export const guestRouter = createTRPCRouter({
   game: {
     joinAsGuest: publicProcedure
       .input(z.object({ gameCode: z.string(), token: z.optional(z.string()) }))
