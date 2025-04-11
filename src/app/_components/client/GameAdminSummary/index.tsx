@@ -63,10 +63,9 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
 
   const game = infoQuery.data as GameWithRelations;
 
-  const { scoreboard } = game;
   const currScoreboardState = game?.scoreboardStates?.filter(
     (scoreboardState) => {
-      return scoreboardState.id === scoreboard?.currentStateId;
+      return scoreboardState.id === game?.scoreboard?.currentStateId;
     },
   )?.[0];
 
@@ -87,6 +86,7 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
           // return undefined;
           return (
             <GameTeamSummaryCard
+              key={gameTeam.id}
               gameTeam={gameTeam}
               gameUsers={gameUsers}
               buzzerState={gameTeam.buzzerState}

@@ -41,7 +41,5 @@ export function GameTeamSummaryCard({
     </div>
   );
 
-  return (
-    <GenericCard key={gameTeam.id} title={gameTeam.name} content={content} />
-  );
+  return <GenericCard title={gameTeam.name} content={content} />;
 }

@@ -29,6 +29,10 @@ export function GameInfoAdmin({ games }: { games: Game[] }) {
     utils.gameAdmin.getAllInfo.invalidate();
   };
 
+  if (selectedGame !== undefined) {
+    updateExtraHeaders({ gameId: selectedGame.id });
+  }
+
   const addTeamMutation = api.gameAdmin.addTeam.useMutation({
     onSuccess: async () => {
       await utils.gameAdmin.getAllInfo.invalidate();
