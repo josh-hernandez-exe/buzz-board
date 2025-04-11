@@ -1,23 +1,53 @@
 "use client";
 
 import { useState } from "react";
+import {useLocalStorage} from "usehooks-ts"
 
 import { useRouter } from "next/navigation";
 
-import { api } from "@/trpc/react";
+import { api, updateExtraHeaders } from "@/trpc/react";
 
 import { logger } from "@/utils/logger";
 
 export default function JoinGamePage() {
+  const utils = api.useUtils();
   const [gameCode, setGameCode] = useState("");
   const [error, setError] = useState("");
+  const [guestToken, setGuestToken] = useLocalStorage(
+    'buzz-board-guest-token',
+    '',
+    {
+      serializer: (value) => value,
+      deserializer: (value) => value,
+    },
+  );
+  const [gameId, setGameId] = useLocalStorage(
+    'buzz-board-game-id',
+    '',
+    {
+      serializer: (value) => value,
+      deserializer: (value) => value,
+    },
+  );
   const router = useRouter();
+
+
+  if (guestToken.length > 0) {
+    updateExtraHeaders({ guestToken });
+    utils.gameUser.ping.invalidate();
+    logger.info(`Set guest token: ${guestToken}`);
+  }
 
   const joinGameMutation = api.guest.game.joinAsGuest.useMutation({
     onSuccess: (data) => {
-      if (data.token) {
-        localStorage.setItem("guestToken", data.token);
-      }
+      setGuestToken(data.token);
+      setGameId(data.gameId);
+      updateExtraHeaders({
+        guestToken: data.token,
+        gameId: data.gameId,
+      });
+      utils.gameUser.ping.invalidate();
+
       // TODO change page
       //router.push(`/game/${gameCode}`);
     },
@@ -26,11 +56,18 @@ export default function JoinGamePage() {
     },
   });
 
+  const pingQuery = api.gameUser.ping.useQuery();
+
   const handleJoinGame = async () => {
     if (!gameCode) {
       setError("Game code is required");
       return;
     }
+    joinGameMutation.mutate({
+      gameCode,
+      token: guestToken || undefined,
+      // gameTeamId: null,
+    });
   };
 
   return (
@@ -51,6 +88,15 @@ export default function JoinGamePage() {
         >
           Join Game
         </button>
+        {
+          guestToken && gameId &&
+        <button
+        onClick={() => pingQuery.refetch()}
+        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+      >
+        Ping
+      </button>
+        }
       </div>
     </main>
   );

@@ -169,7 +169,7 @@ export const protectedGameUserProcedure = t.procedure
     return next({
       ctx: {
         ...ctx,
-        game: {
+        gameSession: {
           ...ctx.gameSession,
           // infers the properties of game and gameUser as non-nullable
           id: ctx.gameSession.id,
@@ -206,7 +206,7 @@ export const protectedGameAdminProcedure = t.procedure
     return next({
       ctx: {
         ...ctx,
-        game: {
+        gameSession: {
           ...ctx.gameSession,
           // infers the properties of game and gameUser as non-nullable
           id: ctx.gameSession.id,

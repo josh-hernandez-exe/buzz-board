@@ -1,5 +1,6 @@
 import { userRouter } from "@/server/api/routers/user";
 import { gameAdminRouter } from "@/server/api/routers/gameAdmin";
+import { gameUserRouter } from "@/server/api/routers/gameUser";
 import { guestRouter } from "@/server/api/routers/guest";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
@@ -11,6 +12,7 @@ import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 export const appRouter = createTRPCRouter({
   user: userRouter,
   guest: guestRouter,
+  gameUser: gameUserRouter,
   gameAdmin: gameAdminRouter,
 });
 

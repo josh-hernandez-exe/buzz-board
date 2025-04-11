@@ -18,7 +18,8 @@ export const guestRouter = createTRPCRouter({
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        const { guestUser } = ctx.guestSession;
+        let { guestUser } = ctx.guestSession;
+
         const game = await ctx.db.game.findUnique({
           where: { code: input.gameCode },
           include: { gameTeams: true },
@@ -26,6 +27,15 @@ export const guestRouter = createTRPCRouter({
 
         if (!game) {
           throw new Error("Game not found");
+        }
+
+        if (guestUser === undefined || guestUser === null) {
+          guestUser = await ctx.db.guestUser.create({
+            data: {
+              // TODO: replace shortcode generation with better security
+              token: generateShortCode(30),
+            },
+          });
         }
 
         if (game.format === GameFormat.team && input.gameTeamId) {
@@ -39,31 +49,16 @@ export const guestRouter = createTRPCRouter({
           where: { gameId: game.id },
         });
 
-        const guestGameUser = await ctx.db.gameUser.create({
+        const gameUser = await ctx.db.gameUser.create({
           data: {
             gameId: game.id,
             name: `Player ${curNumPlayers + 1}`,
             gameTeamId: input.gameTeamId || null,
+            guestUserId: guestUser.id,
           },
         });
 
-        return { gameUser: guestGameUser, token: guestUser?.token };
-      }),
-    createGuestUser: publicProcedure
-      .input(
-        z.object({
-          name: z.string(),
-        }),
-      )
-      .mutation(async ({ ctx, input }) => {
-        const guestUser = await ctx.db.guestUser.create({
-          data: {
-            // TODO: replace shortcode generation with better security
-            token: generateShortCode(30),
-          },
-        });
-
-        return { guestUser };
+        return { gameUser, token: guestUser.token, gameId: game.id };
       }),
   },
 });
