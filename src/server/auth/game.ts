@@ -250,8 +250,8 @@ async function gameAdminAuth({
     !(
       gameAdmin !== null &&
       gameAdmin !== undefined &&
-      gameAdmin?.gameId !== gameId &&
-      gameAdmin?.userId !== user?.id
+      gameAdmin?.gameId === gameId &&
+      gameAdmin?.userId === user?.id
     )
   ) {
     gameAdmin = undefined;

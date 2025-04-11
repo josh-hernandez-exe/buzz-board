@@ -9,6 +9,7 @@ import SuperJSON from "superjson";
 
 import { type AppRouter } from "@/server/api/root";
 import { createQueryClient } from "./query-client";
+import { logger } from "@/utils/logger";
 
 let clientQueryClientSingleton: QueryClient | undefined = undefined;
 const getQueryClient = () => {
@@ -30,6 +31,31 @@ export const api = createTRPCReact<AppRouter>();
  * @example type HelloInput = RouterInputs['example']['hello']
  */
 export type RouterInputs = inferRouterInputs<AppRouter>;
+
+type extraHeaders = {
+  gameId: string | null | undefined;
+  guestToken: string | null | undefined;
+};
+
+const extraHeaders: extraHeaders = {
+  gameId: null, // x-buzz-board-game-id
+  guestToken: null, // x-buzz-board-guest-token
+};
+
+export function updateExtraHeaders({
+  gameId,
+  guestToken,
+}: Partial<extraHeaders>) {
+  if (gameId !== undefined && extraHeaders.gameId != gameId) {
+    logger.info(`Update header game id: ${gameId}`);
+    extraHeaders.gameId = gameId;
+  }
+
+  if (guestToken !== undefined && extraHeaders.guestToken != guestToken) {
+    logger.info(`Update guest token`);
+    extraHeaders.guestToken = guestToken;
+  }
+}
 
 /**
  * Inference helper for outputs.
@@ -54,7 +80,14 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
           url: getBaseUrl() + "/api/trpc",
           headers: () => {
             const headers = new Headers();
+            const { gameId, guestToken } = extraHeaders;
             headers.set("x-trpc-source", "nextjs-react");
+            if (gameId) {
+              headers.set("x-buzz-board-game-id", gameId);
+            }
+            if (guestToken) {
+              headers.set("x-buzz-board-guest-token", guestToken);
+            }
             return headers;
           },
         }),
