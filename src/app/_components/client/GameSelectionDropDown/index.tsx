@@ -1,6 +1,6 @@
 "use client";
 
-import { Prisma } from "@prisma/client";
+import type { Game } from "@prisma/client";
 
 import {
   DropDownSelection,
@@ -16,12 +16,12 @@ export function GameSelectionDropDown({
   games,
   onChange,
 }: {
-  games: GameWithRelations[];
-  onChange: (game: GameWithRelations) => void;
+  games: Game[];
+  onChange: (game: Game) => void;
 }) {
   logger.debug(`GameSelectionDropDown`);
 
-  const onValueChange = (game: GameWithRelations) => {
+  const onValueChange = (game: Game) => {
     onChange(game);
   };
 
@@ -34,7 +34,7 @@ export function GameSelectionDropDown({
   });
 
   return (
-    <DropDownSelection<GameWithRelations>
+    <DropDownSelection<Game>
       title="Game Selection"
       options={options}
       onChange={onValueChange}

@@ -41,7 +41,7 @@ export const userRouter = createTRPCRouter({
                   },
                 },
                 scoreboard: {
-                  create: undefined,
+                  create: {},
                 },
               },
             });
