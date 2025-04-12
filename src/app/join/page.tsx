@@ -15,41 +15,32 @@ export default function JoinGamePage() {
   const [gameCode, setGameCode] = useState("");
   const [error, setError] = useState("");
   const { setCookie } = useCookiesNext();
-  const [guestToken, setGuestToken] = useLocalStorage(
-    "buzz-board-guest-token",
+  const [gameUserToken, setgameUserToken] = useLocalStorage(
+    "buzz-board-game-user-token",
     "",
     {
       serializer: (value) => value,
       deserializer: (value) => value,
     },
   );
-  const [gameId, setGameId] = useLocalStorage("buzz-board-game-id", "", {
-    serializer: (value) => value,
-    deserializer: (value) => value,
-  });
   const router = useRouter();
 
-  if (guestToken.length > 0) {
-    updateExtraHeaders({ guestToken });
-    logger.info(`Set guest token: ${guestToken}`);
+  if (gameUserToken.length > 0) {
+    updateExtraHeaders({ gameUserToken });
+    logger.info(`Set game user token: ${gameUserToken}`);
   }
 
-  const joinGameMutation = api.guest.game.joinAsGuest.useMutation({
+  const joinGameMutation = api.public.joinGame.useMutation({
     onSuccess: async (data) => {
-      setGuestToken(data.token);
-      setGameId(data.gameId);
+      setgameUserToken(data.token);
       updateExtraHeaders({
-        guestToken: data.token,
+        gameUserToken: data.token,
         gameId: data.gameId,
       });
 
-      setCookie("buzz-board-guest-token", data.token, {
+      setCookie("buzz-board-game-user-token", data.token, {
         maxAge: 86400, // 1 day expiration
       });
-      setCookie("buzz-board-game-id", data.gameId, {
-        maxAge: 86400, // 1 day expiration
-      });
-
       router.push(`/game/${data.gameId}`);
     },
     onError: (err) => {
@@ -64,8 +55,7 @@ export default function JoinGamePage() {
     }
     joinGameMutation.mutate({
       gameCode,
-      token: guestToken || undefined,
-      // gameTeamId: null,
+      token: gameUserToken,
     });
   };
 

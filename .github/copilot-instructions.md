@@ -56,7 +56,6 @@
    - Use `createTRPCRouter` for modular API design.
    - Leverage `protectedUserProcedure` for authentication and authorization that require user interactions outside of a game context
    - Leverage `protectedGameAdminProcedure` for authentication and authorization that require interactions in a game context that requires a game admin
-   - Leverage `protectedGameGuestProcedure` for authentication and authorization that require interactions in a game context that for a player in the game.
 
 3. **Authentication**:
    - Use NextAuth.js for user authentication (`/src/server/auth`).
