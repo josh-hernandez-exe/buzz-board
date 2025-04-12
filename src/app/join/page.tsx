@@ -5,14 +5,16 @@ import { useLocalStorage } from "usehooks-ts";
 
 import { useRouter } from "next/navigation";
 
+import { useCookiesNext } from "cookies-next/client";
+
 import { api, updateExtraHeaders } from "@/trpc/react";
 
 import { logger } from "@/utils/logger";
 
 export default function JoinGamePage() {
-  const utils = api.useUtils();
   const [gameCode, setGameCode] = useState("");
   const [error, setError] = useState("");
+  const { setCookie } = useCookiesNext();
   const [guestToken, setGuestToken] = useLocalStorage(
     "buzz-board-guest-token",
     "",
@@ -29,29 +31,31 @@ export default function JoinGamePage() {
 
   if (guestToken.length > 0) {
     updateExtraHeaders({ guestToken });
-    utils.gameUser.ping.invalidate();
     logger.info(`Set guest token: ${guestToken}`);
   }
 
   const joinGameMutation = api.guest.game.joinAsGuest.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setGuestToken(data.token);
       setGameId(data.gameId);
       updateExtraHeaders({
         guestToken: data.token,
         gameId: data.gameId,
       });
-      utils.gameUser.ping.invalidate();
 
-      // TODO change page
-      //router.push(`/game/${gameCode}`);
+      setCookie("buzz-board-guest-token", data.token, {
+        maxAge: 86400, // 1 day expiration
+      });
+      setCookie("buzz-board-game-id", data.gameId, {
+        maxAge: 86400, // 1 day expiration
+      });
+
+      router.push(`/game/${data.gameId}`);
     },
     onError: (err) => {
       setError(err.message);
     },
   });
-
-  const pingQuery = api.gameUser.ping.useQuery();
 
   const handleJoinGame = async () => {
     if (!gameCode) {
@@ -83,14 +87,6 @@ export default function JoinGamePage() {
         >
           Join Game
         </button>
-        {guestToken && gameId && (
-          <button
-            onClick={() => pingQuery.refetch()}
-            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-          >
-            Ping
-          </button>
-        )}
       </div>
     </main>
   );
