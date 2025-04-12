@@ -34,26 +34,26 @@ export type RouterInputs = inferRouterInputs<AppRouter>;
 
 type extraHeaders = {
   gameId: string | null | undefined;
-  guestToken: string | null | undefined;
+  gameUserToken: string | null | undefined;
 };
 
 const extraHeaders: extraHeaders = {
   gameId: null, // x-buzz-board-game-id
-  guestToken: null, // x-buzz-board-guest-token
+  gameUserToken: null, // x-buzz-board-game-user-token
 };
 
 export function updateExtraHeaders({
   gameId,
-  guestToken,
+  gameUserToken,
 }: Partial<extraHeaders>) {
   if (gameId !== undefined) {
     logger.info(`Update header game id: ${gameId}`);
     extraHeaders.gameId = gameId;
   }
 
-  if (guestToken !== undefined) {
-    logger.info(`Update guest token`);
-    extraHeaders.guestToken = guestToken;
+  if (gameUserToken !== undefined) {
+    logger.info(`Update GameUser token`);
+    extraHeaders.gameUserToken = gameUserToken;
   }
 
   logger.debug(`Current headers: ${JSON.stringify(extraHeaders, null, 2)}`);
@@ -84,13 +84,13 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
           headers: () => {
             logger.info("Building Headers");
             const headers = new Headers();
-            const { gameId, guestToken } = extraHeaders;
+            const { gameId, gameUserToken } = extraHeaders;
             headers.set("x-trpc-source", "nextjs-react");
             if (gameId) {
               headers.set("x-buzz-board-game-id", gameId);
             }
-            if (guestToken) {
-              headers.set("x-buzz-board-guest-token", guestToken);
+            if (gameUserToken) {
+              headers.set("x-buzz-board-game-user-token", gameUserToken);
             }
             return headers;
           },

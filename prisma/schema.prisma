@@ -67,16 +67,6 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model GuestUser {
-  id    String @id @default(cuid())
-  token String @unique
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  gameUsers GameUser[]
-}
-
 enum GameFormat {
   single
   team
@@ -86,7 +76,7 @@ model Game {
   id                String     @id @default(cuid())
   name              String
   code              String     @unique @db.VarChar(6)
-  isBuzzerListening Boolean @default(false)
+  isBuzzerListening Boolean    @default(false)
   data              Json       @default("{}")
   settings          Json       @default("{}")
   format            GameFormat @default(team)
@@ -105,21 +95,20 @@ model Game {
 }
 
 model GameUser {
-  id          String  @id @default(cuid())
-  name        String
-  gameId      String
-  gameTeamId  String?
-  userId      String?
-  guestUserId String?
-  data        Json    @default("{}")
+  id         String  @id @default(cuid())
+  name       String
+  gameId     String
+  gameTeamId String?
+  userId     String?
+  token      String  @unique
+  data       Json    @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User?      @relation(fields: [userId], references: [id])
-  guestUser GuestUser? @relation(fields: [guestUserId], references: [id])
-  game      Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameTeam  GameTeam?  @relation(fields: [gameTeamId], references: [id], onDelete: Cascade)
+  user     User?     @relation(fields: [userId], references: [id])
+  game     Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameTeam GameTeam? @relation(fields: [gameTeamId], references: [id], onDelete: Cascade)
 }
 
 enum BuzzerState {

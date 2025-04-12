@@ -11,7 +11,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { auth, guestAuth, gameAuth } from "@/server/auth";
+import { auth, gameAuth } from "@/server/auth";
 import { db } from "@/server/db";
 import { logger } from "@/utils/logger";
 
@@ -29,18 +29,15 @@ import { logger } from "@/utils/logger";
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
-  const guestSession = await guestAuth({ headers: opts.headers });
   const gameSession = await gameAuth({
     headers: opts.headers,
     user: session?.user,
-    guestUser: guestSession.guestUser,
   });
 
   return {
     ...opts,
     db,
     session,
-    guestSession,
     gameSession,
   };
 };
@@ -150,14 +147,7 @@ export const protectedGameUserProcedure = t.procedure
         typeof ctx?.gameSession?.id === "string" &&
         typeof ctx?.gameSession?.gameUser?.gameId === "string" &&
         // does the game id match the game of the gameUser
-        ctx.gameSession.id === ctx.gameSession.gameUser.gameId &&
-        // is the game user associated with the currently authed user
-        ((typeof ctx?.session?.user.id === "string" &&
-          ctx.gameSession.gameUser.userId === ctx.session.user.id) ||
-          // or is the game user associated with a guest user
-          (typeof ctx?.guestSession?.guestUser?.id === "string" &&
-            ctx.gameSession.gameUser.guestUserId ===
-              ctx.guestSession.guestUser.id))
+        ctx.gameSession.id === ctx.gameSession.gameUser.gameId
       )
     ) {
       logger.error(ctx);
