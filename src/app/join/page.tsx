@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {useLocalStorage} from "usehooks-ts"
+import { useLocalStorage } from "usehooks-ts";
 
 import { useRouter } from "next/navigation";
 
@@ -14,23 +14,18 @@ export default function JoinGamePage() {
   const [gameCode, setGameCode] = useState("");
   const [error, setError] = useState("");
   const [guestToken, setGuestToken] = useLocalStorage(
-    'buzz-board-guest-token',
-    '',
+    "buzz-board-guest-token",
+    "",
     {
       serializer: (value) => value,
       deserializer: (value) => value,
     },
   );
-  const [gameId, setGameId] = useLocalStorage(
-    'buzz-board-game-id',
-    '',
-    {
-      serializer: (value) => value,
-      deserializer: (value) => value,
-    },
-  );
+  const [gameId, setGameId] = useLocalStorage("buzz-board-game-id", "", {
+    serializer: (value) => value,
+    deserializer: (value) => value,
+  });
   const router = useRouter();
-
 
   if (guestToken.length > 0) {
     updateExtraHeaders({ guestToken });
@@ -72,7 +67,7 @@ export default function JoinGamePage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100">
+      <div className="flex min-h-screen flex-col items-center justify-center">
         <h1 className="mb-4 text-2xl font-bold">Join a Game</h1>
         <input
           type="text"
@@ -88,15 +83,14 @@ export default function JoinGamePage() {
         >
           Join Game
         </button>
-        {
-          guestToken && gameId &&
-        <button
-        onClick={() => pingQuery.refetch()}
-        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-      >
-        Ping
-      </button>
-        }
+        {guestToken && gameId && (
+          <button
+            onClick={() => pingQuery.refetch()}
+            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+          >
+            Ping
+          </button>
+        )}
       </div>
     </main>
   );
