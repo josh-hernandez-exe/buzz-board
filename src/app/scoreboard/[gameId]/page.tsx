@@ -3,54 +3,9 @@ import { GameFormat, Prisma } from "@prisma/client";
 import { ok, err } from "neverthrow";
 
 import { GenericCard } from "@/app/_components/GenericCard";
-import { db } from "@/server/db";
+import { api } from "@/trpc/server";
+
 import { logger } from "@/utils/logger";
-
-async function getScoreBoardInfo({ gameId }: { gameId: string }) {
-  const game = await db.game.findUnique({
-    select: {
-      id: true,
-      name: true,
-      format: true,
-      isBuzzerListening: true,
-      gameTeams: {
-        select: {
-          id: true,
-          name: true,
-          buzzerState: true,
-          _count: {
-            select: {
-              gameUsers: true,
-            },
-          },
-        },
-      },
-      scoreboard: {
-        select: {
-          currentState: {
-            select: {
-              state: true,
-            },
-          },
-        },
-      },
-    },
-    where: {
-      id: gameId,
-    },
-  });
-
-  if (!game) {
-    return err(new Error("Game not found"));
-  }
-  if (!game.scoreboard) {
-    return err(new Error("Game does not have a scoreboard"));
-  }
-  if (!game.scoreboard.currentState) {
-    return err(new Error("Game does not have a current scoreboard state"));
-  }
-  return ok(game);
-}
 
 export default async function GamePage({
   params,
@@ -68,9 +23,9 @@ export default async function GamePage({
     );
   }
 
-  const result = await getScoreBoardInfo({ gameId: params.gameId });
+  const result = await api.public.getGameInfo({ gameId: params.gameId });
 
-  if (result.isErr()) {
+  if (!result) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
         <div className="flex min-h-screen flex-col items-center justify-center">
@@ -81,7 +36,7 @@ export default async function GamePage({
     );
   }
 
-  const { gameTeams, scoreboard, ...game } = result.value;
+  const { gameTeams, scoreboard, ...game } = result;
   const scoreboardState = scoreboard?.currentState?.state as Prisma.JsonObject;
 
   return (

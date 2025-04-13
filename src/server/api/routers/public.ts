@@ -70,4 +70,52 @@ export const publicRouter = createTRPCRouter({
 
       return { gameUser, token: gameUser.token, gameId: game.id };
     }),
+  getGameInfo: publicProcedure
+    .input(z.object({ gameId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const game = await ctx.db.game.findUnique({
+        select: {
+          id: true,
+          name: true,
+          format: true,
+          isBuzzerListening: true,
+          gameTeams: {
+            select: {
+              id: true,
+              name: true,
+              buzzerState: true,
+              _count: {
+                select: {
+                  gameUsers: true,
+                },
+              },
+            },
+          },
+          scoreboard: {
+            select: {
+              currentState: {
+                select: {
+                  state: true,
+                },
+              },
+            },
+          },
+        },
+        where: {
+          id: input.gameId,
+        },
+      });
+
+      if (!game) {
+        throw new Error("Game not found");
+      }
+      if (!game.scoreboard) {
+        throw new Error("Game does not have a scoreboard");
+      }
+      if (!game.scoreboard.currentState) {
+        throw new Error("Game does not have a current scoreboard state");
+      }
+
+      return game;
+    }),
 });
