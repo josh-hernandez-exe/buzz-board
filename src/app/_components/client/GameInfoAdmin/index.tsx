@@ -5,7 +5,6 @@ import { type Game, GameFormat } from "@prisma/client";
 
 import { GameAdminSummary } from "@/app/_components/client/GameAdminSummary";
 import { GameSelectionDropDown } from "@/app/_components/client/GameSelectionDropDown";
-import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
 
 import { Button } from "@/app/_components/ui/button";
 
