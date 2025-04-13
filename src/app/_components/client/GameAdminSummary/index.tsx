@@ -9,7 +9,8 @@ import {
   type ScoreboardState,
 } from "@prisma/client";
 
-import { api, updateExtraHeaders } from "@/trpc/react";
+import { api } from "@/trpc/react";
+import { GameAdminScoreboardControl } from "@/app/_components/client/GameAdminScoreboardControl";
 import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
 import { Button } from "@/app/_components/ui/button";
 
@@ -124,6 +125,10 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
       >
         Reset Buzzer
       </Button>
+      <GameAdminScoreUpdate
+      <GameAdminScoreboardControl
+        gameTeams={Object.values(data).map(({ gameTeam }) => gameTeam)}
+      />
       {Object.values(data).map(
         ({ gameTeam, gameUsers, score }: GameRelationInfo) => {
           // return undefined;
