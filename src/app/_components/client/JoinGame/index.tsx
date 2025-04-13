@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useLocalStorage } from "usehooks-ts";
 
 import { useRouter } from "next/navigation";
 
-import { useCookiesNext } from "cookies-next/client";
-
+import { useGameUserToken } from "@/app/_hooks/gameUserToken";
 import { api, updateExtraHeaders } from "@/trpc/react";
 
 import { logger } from "@/utils/logger";
@@ -14,33 +12,14 @@ import { logger } from "@/utils/logger";
 export function JoinGameComponent() {
   const [gameCode, setGameCode] = useState("");
   const [error, setError] = useState("");
-  const { setCookie } = useCookiesNext();
-  const [gameUserToken, setgameUserToken] = useLocalStorage(
-    "buzz-board-game-user-token",
-    "",
-    {
-      serializer: (value) => value,
-      deserializer: (value) => value,
-    },
-  );
-  const router = useRouter();
+  const [gameUserToken, setGameUserToken] = useGameUserToken();
 
-  if (gameUserToken.length > 0) {
-    updateExtraHeaders({ gameUserToken });
-    logger.info(`Set game user token: ${gameUserToken}`);
-  }
+  const router = useRouter();
 
   const joinGameMutation = api.public.joinGame.useMutation({
     onSuccess: async (data) => {
-      setgameUserToken(data.token);
-      updateExtraHeaders({
-        gameUserToken: data.token,
-        gameId: data.gameId,
-      });
+      setGameUserToken(data.token);
 
-      setCookie("buzz-board-game-user-token", data.token, {
-        maxAge: 86400, // 1 day expiration
-      });
       router.push(`/game/${data.gameId}`);
     },
     onError: (err) => {
