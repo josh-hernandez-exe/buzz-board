@@ -12,6 +12,7 @@ import {
 import { api } from "@/trpc/react";
 import { GameAdminScoreboardControl } from "@/app/_components/client/GameAdminScoreboardControl";
 import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
+import { GameAdminBuzzerControl } from "@/app/_components/client/GameAdminBuzzerControl";
 import { Button } from "@/app/_components/ui/button";
 
 import { logger } from "@/utils/logger";
@@ -60,24 +61,7 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
   }
   logger.debug(`GameAdminSummary: ${gameId}`);
 
-  const utils = api.useUtils();
   const infoQuery = api.gameAdmin.getAllInfo.useQuery();
-
-  const startBuzzerMutation = api.gameAdmin.startBuzzer.useMutation({
-    onSuccess: async () => {
-      await utils.gameAdmin.getAllInfo.invalidate();
-    },
-  });
-  const pauseBuzzerMutation = api.gameAdmin.pauseBuzzer.useMutation({
-    onSuccess: async () => {
-      await utils.gameAdmin.getAllInfo.invalidate();
-    },
-  });
-  const resetBuzzerMutation = api.gameAdmin.resetBuzzer.useMutation({
-    onSuccess: async () => {
-      await utils.gameAdmin.getAllInfo.invalidate();
-    },
-  });
 
   if (infoQuery.isLoading) {
     return undefined;
@@ -107,25 +91,7 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
         <p>Number of Teams: {game.gameTeams?.length ?? 0}</p>
       )}
       <p>Number of Players: {game.gameUsers?.length ?? 0}</p>
-      <Button
-        onClick={() => startBuzzerMutation.mutate()}
-        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-      >
-        Start Buzzer
-      </Button>
-      <Button
-        onClick={() => pauseBuzzerMutation.mutate()}
-        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-      >
-        Pause Buzzer
-      </Button>
-      <Button
-        onClick={() => resetBuzzerMutation.mutate()}
-        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-      >
-        Reset Buzzer
-      </Button>
-      <GameAdminScoreUpdate
+      <GameAdminBuzzerControl />
       <GameAdminScoreboardControl
         gameTeams={Object.values(data).map(({ gameTeam }) => gameTeam)}
       />
