@@ -1,74 +1,30 @@
 import { GameFormat } from "@prisma/client";
-import { cookies } from "next/headers";
 
 import { ok, err } from "neverthrow";
 
+import { api } from "@/trpc/server";
 import { GameBuzzer } from "@/app/_components/client/GameBuzzer";
-import { db } from "@/server/db";
 import { logger } from "@/utils/logger";
-
-async function getSimpleGameInfo({
-  gameUserToken,
-  gameId,
-}: {
-  gameUserToken: string | undefined;
-  gameId: string;
-}) {
-  if (!gameUserToken) {
-    return err(new Error("Game User token not found"));
-  }
-
-  const gameUser = await db.gameUser.findUnique({
-    where: {
-      token: gameUserToken,
-    },
-    include: {
-      game: {
-        include: {
-          gameTeams: true,
-        },
-      },
-      gameTeam: true,
-    },
-  });
-
-  if (!gameUser) {
-    return err(new Error("Game User not found"));
-  }
-
-  if (gameUser.gameId !== gameId) {
-    return err(new Error("Game User not authorized for this game"));
-  }
-
-  return ok(gameUser);
-}
 
 export default async function GamePage({
   params,
 }: {
   params: { gameId: string };
 }) {
-  const cookieStore = await cookies();
-  const gameUserToken = cookieStore.get("buzz-board-game-user-token")?.value;
-
-  if (!params.gameId && !gameUserToken) {
-    // fast return
+  if (!params.gameId) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
         <div className="flex min-h-screen flex-col items-center justify-center">
-          <h1 className="mb-4 text-2xl font-bold">Unauthorized</h1>
-          <p>You need to authenticated as a player for the game.</p>
+          <h1 className="mb-4 text-2xl font-bold">Game Not Found</h1>
+          <p>No game identifier was given.</p>
         </div>
       </main>
     );
   }
 
-  const result = await getSimpleGameInfo({
-    gameId: params.gameId,
-    gameUserToken,
-  });
+  const result = await api.gameUser.getSimpleInfo();
 
-  if (result.isErr()) {
+  if (!result) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
         <div className="flex min-h-screen flex-col items-center justify-center">
@@ -79,8 +35,8 @@ export default async function GamePage({
     );
   }
 
-  let { game: gameData, ...gameUser } = result.value;
-  let { gameTeams, ...game } = gameData;
+  const { game, gameUser, gameTeams } = result;
+
   logger.debug(
     `GamePage: ${JSON.stringify(
       {
