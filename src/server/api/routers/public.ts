@@ -16,15 +16,6 @@ export const publicRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.gameSession.gameUser?.token === input.token) {
-        logger.info("Game User already authenticated");
-        return {
-          gameUser: ctx.gameSession.gameUser,
-          token: input.token,
-          gameId: ctx.gameSession.id,
-        };
-      }
-
       const game = await ctx.db.game.findUnique({
         where: { code: input.gameCode },
         include: { gameTeams: true },
@@ -32,6 +23,17 @@ export const publicRouter = createTRPCRouter({
 
       if (!game) {
         throw new Error("Game not found");
+      }
+      if (
+        ctx.gameSession.gameUser?.token === input.token &&
+        ctx.gameSession.gameUser?.gameId === game.id
+      ) {
+        logger.info("Game User already authenticated");
+        return {
+          gameUser: ctx.gameSession.gameUser,
+          token: input.token,
+          gameId: ctx.gameSession.id,
+        };
       }
 
       const curNumPlayers = await ctx.db.gameUser.count({
