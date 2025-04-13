@@ -51,6 +51,56 @@ export const gameAdminRouter = createTRPCRouter({
       },
     });
   }),
+  removeTeam: protectedGameAdminProcedure
+    .input(z.object({ gameTeamId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { id: gameId, gameAdmin, format: gameFormat } = ctx.gameSession;
+      const { gameTeamId } = input;
+      if (gameFormat === GameFormat.single) {
+        throw new Error("Game format does not support teams");
+      }
+      const gameTeam = await ctx.db.gameTeam.findUnique({
+        where: {
+          id: gameTeamId,
+        },
+        include: {
+          game: true,
+          gameUsers: true,
+        },
+      });
+      if (!gameTeam) {
+        throw new Error("Game team not found");
+      }
+      if (gameTeam.gameId !== gameId) {
+        throw new Error("Game team not found in this game");
+      }
+
+      await ctx.db.$transaction([
+        ctx.db.gameUser.updateMany({
+          where: {
+            gameTeamId: gameTeam.id,
+          },
+          data: {
+            gameTeamId: null,
+          },
+        }),
+        ctx.db.gameTeam.delete({
+          where: {
+            id: gameTeam.id,
+          },
+        }),
+        ctx.db.gameTeam.updateMany({
+          where: {
+            gameId: gameTeam.gameId,
+          },
+          data: {
+            index: {
+              decrement: 1,
+            },
+          },
+        }),
+      ]);
+    }),
   startBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { gameAdmin, ...game } = ctx.gameSession;
 
