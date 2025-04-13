@@ -39,14 +39,33 @@ export const publicRouter = createTRPCRouter({
       const curNumPlayers = await ctx.db.gameUser.count({
         where: { gameId: game.id },
       });
+      const curIndex = curNumPlayers + 1;
 
-      const gameUser = await ctx.db.gameUser.create({
-        data: {
-          gameId: game.id,
-          name: `Player ${curNumPlayers + 1}`,
-          // TODO: replace shortcode generation with better security
-          token: generateShortCode(30),
-        },
+      const gameUser = await ctx.db.$transaction(async (tx) => {
+        const gUser = await tx.gameUser.create({
+          data: {
+            gameId: game.id,
+            name: `Player ${curIndex}`,
+            // TODO: replace shortcode generation with better security
+            token: generateShortCode(30),
+          },
+        });
+
+        if (game.format === GameFormat.single) {
+          await tx.gameTeam.create({
+            data: {
+              gameId: game.id,
+              name: gUser.name,
+              index: curIndex,
+              gameUsers: {
+                connect: {
+                  id: gUser.id,
+                },
+              },
+            },
+          });
+        }
+        return gUser;
       });
 
       return { gameUser, token: gameUser.token, gameId: game.id };
