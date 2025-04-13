@@ -33,14 +33,16 @@ export function DropDownSelection<T>({
     options = [];
   }
 
-  const [value, setValue] = useState<DropdownOption<T>["id"]>(defaultValue || "");
+  const [value, setValue] = useState<DropdownOption<T>["id"]>(
+    defaultValue || "",
+  );
 
   if (value === "") {
     logger.debug(`Dropdown Selection: Nothing selected`);
   }
 
   const onValueChange = (id: string) => {
-    const [selectedItem] = options.filter((item) => item.id === id);
+    const selectedItem = options.find((item) => item.id === id);
 
     if (selectedItem === undefined) {
       logger.error(`Selected item ${id} not found in dropdown`);
