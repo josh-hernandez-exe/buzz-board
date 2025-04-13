@@ -1,11 +1,9 @@
 import { GameFormat } from "@prisma/client";
 import { z } from "zod";
 
-import { logger } from "@/utils/logger";
-
 import { createTRPCRouter, protectedUserProcedure } from "@/server/api/trpc";
-
 import { generateShortCode } from "@/utils/codeGeneration";
+import { logger } from "@/utils/logger";
 
 export const userRouter = createTRPCRouter({
   game: {
@@ -17,38 +15,78 @@ export const userRouter = createTRPCRouter({
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        let game;
+        let shortcode;
 
-        while (game === undefined) {
-          try {
-            game = await ctx.db.game.create({
-              data: {
-                name: input.name,
-                code: generateShortCode(6),
-                format: input.format,
-                createdBy: {
-                  connect: {
-                    id: ctx.session.user.id,
-                  },
+        // Generate a unique shortcode
+        while (shortcode === undefined) {
+          shortcode = generateShortCode(6);
+          const g = await ctx.db.game.findUnique({
+            where: {
+              code: shortcode,
+            },
+          });
+          if (g?.code === shortcode) {
+            // short code exists, generate a new one
+            shortcode = undefined;
+          }
+        }
+
+        const game = await ctx.db.$transaction(async (tx) => {
+          const g = await tx.game.create({
+            data: {
+              name: input.name,
+              code: generateShortCode(6),
+              format: input.format,
+              createdBy: {
+                connect: {
+                  id: ctx.session.user.id,
                 },
-                gameAdmins: {
-                  create: {
-                    user: {
-                      connect: {
-                        id: ctx.session.user.id,
-                      },
+              },
+              gameAdmins: {
+                create: {
+                  user: {
+                    connect: {
+                      id: ctx.session.user.id,
                     },
                   },
                 },
-                scoreboard: {
-                  create: {},
+              },
+              scoreboard: {
+                create: {},
+              },
+            },
+            include: {
+              scoreboard: true,
+            },
+          });
+
+          const { scoreboard, ...game } = g;
+
+          const scoreboardState = await tx.scoreboardState.create({
+            data: {
+              game: {
+                connect: {
+                  id: game.id,
                 },
               },
-            });
-          } catch (e) {
-            logger.error(e);
-          }
-        }
+              scoreboard: {
+                connect: {
+                  id: scoreboard?.id,
+                },
+              },
+            },
+          });
+
+          await tx.scoreboard.update({
+            where: {
+              id: scoreboard?.id,
+            },
+            data: {
+              currentStateId: scoreboardState.id,
+            },
+          });
+          return game;
+        });
 
         return game;
       }),
