@@ -10,6 +10,7 @@ import {
 
 import { api, updateExtraHeaders } from "@/trpc/react";
 import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
+import { Button } from "@/app/_components/ui/button";
 
 import { logger } from "@/utils/logger";
 import type { GameWithRelations } from "@/types";
@@ -52,10 +53,26 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
     logger.error("GameAdminSummary has an undefined game");
     return undefined;
   }
-
   logger.debug(`GameAdminSummary: ${gameId}`);
 
+  const utils = api.useUtils();
   const infoQuery = api.gameAdmin.getAllInfo.useQuery();
+
+  const startBuzzerMutation = api.gameAdmin.startBuzzer.useMutation({
+    onSuccess: async () => {
+      await utils.gameAdmin.getAllInfo.invalidate();
+    },
+  });
+  const pauseBuzzerMutation = api.gameAdmin.pauseBuzzer.useMutation({
+    onSuccess: async () => {
+      await utils.gameAdmin.getAllInfo.invalidate();
+    },
+  });
+  const resetBuzzerMutation = api.gameAdmin.resetBuzzer.useMutation({
+    onSuccess: async () => {
+      await utils.gameAdmin.getAllInfo.invalidate();
+    },
+  });
 
   if (infoQuery.isLoading) {
     return undefined;
@@ -63,11 +80,11 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
 
   const game = infoQuery.data as GameWithRelations;
 
-  const currScoreboardState = game?.scoreboardStates?.filter(
+  const currScoreboardState = game?.scoreboardStates?.find(
     (scoreboardState) => {
       return scoreboardState.id === game?.scoreboard?.currentStateId;
     },
-  )?.[0];
+  );
 
   const data = groupDataByTeam({ game, scoreboardState: currScoreboardState });
 
@@ -77,10 +94,32 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
       <p>Game Name: {game.name}</p>
       <p>Game Format: {game.format}</p>
       <p>Game Code: {game.code}</p>
+      <p>
+        Game Buzzer Listening State :{" "}
+        {game.isBuzzerListening ? "Listening" : "Not Listening"}
+      </p>
       {game.format === GameFormat.team && (
         <p>Number of Teams: {game.gameTeams?.length || 0}</p>
       )}
-      <p>Buzzer : {game.isBuzzerListening ? "Listening" : "Not Listening"}</p>
+      <p>Number of Players: {game.gameUsers?.length || 0}</p>
+      <Button
+        onClick={() => startBuzzerMutation.mutate()}
+        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+      >
+        Start Buzzer
+      </Button>
+      <Button
+        onClick={() => pauseBuzzerMutation.mutate()}
+        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+      >
+        Pause Buzzer
+      </Button>
+      <Button
+        onClick={() => resetBuzzerMutation.mutate()}
+        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+      >
+        Reset Buzzer
+      </Button>
       {Object.values(data).map(
         ({ gameTeam, gameUsers, score }: GameRelationInfo) => {
           // return undefined;
