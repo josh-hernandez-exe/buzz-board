@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { useRouter } from "next/navigation";
 
-import { useGameUserToken } from "@/app/_hooks/gameUserToken";
+import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 import { api, updateExtraHeaders } from "@/trpc/react";
 
 import { logger } from "@/utils/logger";
@@ -12,13 +12,17 @@ import { logger } from "@/utils/logger";
 export function JoinGameComponent() {
   const [gameCode, setGameCode] = useState("");
   const [error, setError] = useState("");
-  const [gameUserToken, setGameUserToken] = useGameUserToken();
+  const [gameTokenData, setGameTokenData] = useGameTokenData();
 
   const router = useRouter();
 
   const joinGameMutation = api.public.joinGame.useMutation({
     onSuccess: async (data) => {
-      setGameUserToken(data.token);
+      setGameTokenData({
+        token: data.token!,
+        code: gameCode,
+        gameId: data.gameId,
+      });
 
       router.push(`/game/${data.gameId}`);
     },
@@ -32,9 +36,11 @@ export function JoinGameComponent() {
       setError("Game code is required");
       return;
     }
+
     joinGameMutation.mutate({
       gameCode,
-      token: gameUserToken,
+      // find existing token if any
+      token: gameTokenData.tokenStorage?.[gameCode],
     });
   };
 

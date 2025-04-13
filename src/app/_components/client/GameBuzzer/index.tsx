@@ -6,7 +6,7 @@ import type { Game, GameTeam, GameUser } from "@prisma/client";
 
 import { Button } from "@/app/_components/ui/button";
 import { GameTeamSelectionDropDown } from "@/app/_components/client/GameTeamSelectionDropDown";
-import { useGameUserToken } from "@/app/_hooks/gameUserToken";
+import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 import { api, updateExtraHeaders } from "@/trpc/react";
 
 import { logger } from "@/utils/logger";
@@ -21,13 +21,11 @@ export function GameBuzzer({
   gameUser: GameUser;
 }) {
   const utils = api.useUtils();
-  const [gameUserToken, setGameUserToken] = useGameUserToken();
+  const [gameTokenData, setGameTokenData] = useGameTokenData();
 
   if (!Array.isArray(gameTeams)) {
     return undefined;
   }
-
-  updateExtraHeaders({ gameId: game.id });
 
   const gameTeamFromGameUser = gameTeams.find(
     (team) => team.id === gameUser.gameTeamId,

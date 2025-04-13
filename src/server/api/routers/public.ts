@@ -12,7 +12,7 @@ export const publicRouter = createTRPCRouter({
     .input(
       z.object({
         gameCode: z.string(),
-        token: z.string(),
+        token: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
