@@ -2,20 +2,17 @@
 
 import type { GameTeam, GameUser, BuzzerState } from "@prisma/client";
 
-import { GenericCard } from "@/app/_components/client/GenericCard";
+import { GenericCard } from "@/app/_components/GenericCard";
 
 import { logger } from "@/utils/logger";
-import type { GameWithRelations } from "@/types";
 
 export function GameTeamSummaryCard({
   gameTeam,
   gameUsers,
-  buzzerState,
   score,
 }: {
   gameTeam: GameTeam | undefined;
   gameUsers: GameUser[] | undefined;
-  buzzerState: BuzzerState;
   score: number | undefined;
 }) {
   logger.debug(`GameTeamSummaryCard`);
@@ -26,7 +23,6 @@ export function GameTeamSummaryCard({
 
   const content = (
     <div>
-      <p>Buzzer: {buzzerState}</p>
       <p>Score: {score || 0}</p>
       <p>Number of Players: {gameUsers?.length || 0}</p>
       <p>Team Buzzer State: {gameTeam.buzzerState}</p>
