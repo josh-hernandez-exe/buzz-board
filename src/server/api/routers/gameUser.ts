@@ -14,6 +14,38 @@ export const gameUserRouter = createTRPCRouter({
     logger.info(`Ping from game user: ${gameUser.id}`);
     return "pong";
   }),
+  getSimpleInfo: protectedGameUserProcedure.query(async ({ ctx }) => {
+    logger.info(
+      `Get simple info from game user: ${ctx.gameSession.gameUser.id}`,
+    );
+
+    const result = await ctx.db.gameUser.findUnique({
+      where: {
+        id: ctx.gameSession.gameUser.id,
+      },
+      include: {
+        game: {
+          include: {
+            gameTeams: true,
+          },
+        },
+        gameTeam: true,
+      },
+    });
+
+    if (!result) {
+      throw new Error("Game user not found");
+    }
+
+    const { game: gameData, ...gameUser } = result;
+    const { gameTeams, ...game } = gameData;
+
+    return {
+      game,
+      gameUser,
+      gameTeams,
+    };
+  }),
   changeTeams: protectedGameUserProcedure
     .input(
       z.object({
