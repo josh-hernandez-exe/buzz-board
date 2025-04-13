@@ -168,13 +168,13 @@ model Scoreboard {
   gameId String @unique
 
   currentStateId String? @unique
-  pastStateIds   Json    @default("[]")
-  futureStateIds Json    @default("[]")
+  pastStateIds   Json   @default("[]")
+  futureStateIds Json   @default("[]")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
   game         Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
   allStates    ScoreboardState[] @relation("AllScoreboardStates")
-  currentState ScoreboardState?  @relation(fields: [currentStateId], references: [id])
+  currentState ScoreboardState?   @relation(fields: [currentStateId], references: [id])
 }
