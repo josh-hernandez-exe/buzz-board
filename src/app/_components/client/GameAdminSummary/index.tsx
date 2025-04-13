@@ -38,7 +38,7 @@ function groupDataByTeam({
     const score =
       ((scoreboardState?.state as Prisma.JsonObject)?.[gameTeam.id] as
         | number
-        | undefined) || 0;
+        | undefined) ?? 0;
 
     data[gameTeam.id] = {
       gameTeam: gameTeam,
@@ -103,9 +103,9 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
         {game.isBuzzerListening ? "Listening" : "Not Listening"}
       </p>
       {game.format === GameFormat.team && (
-        <p>Number of Teams: {game.gameTeams?.length || 0}</p>
+        <p>Number of Teams: {game.gameTeams?.length ?? 0}</p>
       )}
-      <p>Number of Players: {game.gameUsers?.length || 0}</p>
+      <p>Number of Players: {game.gameUsers?.length ?? 0}</p>
       <Button
         onClick={() => startBuzzerMutation.mutate()}
         className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"

@@ -96,17 +96,17 @@ export default async function GamePage({
           {game.isBuzzerListening ? "Listening" : "Not Listening"}
         </p>
         {game?.format === GameFormat.team && (
-          <p>Number of Teams: {gameTeams.length || 0}</p>
+          <p>Number of Teams: {gameTeams.length ?? 0}</p>
         )}
         {gameTeams.map((gameTeam) => {
           const score =
-            (scoreboardState?.[gameTeam.id] as number | undefined) || 0;
+            (scoreboardState?.[gameTeam.id] as number | undefined) ?? 0;
 
           const content = (
             <div>
               <p>Buzzer: {gameTeam.buzzerState}</p>
               <p> Score: {score} </p>
-              <p>Number of Players: {gameTeam._count.gameUsers || 0}</p>
+              <p>Number of Players: {gameTeam._count.gameUsers ?? 0}</p>
               <p>Team Buzzer State: {gameTeam.buzzerState}</p>
             </div>
           );
