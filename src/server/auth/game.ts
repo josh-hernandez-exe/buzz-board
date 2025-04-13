@@ -1,4 +1,5 @@
 import type { Game, GameAdmin, GameUser } from "@prisma/client";
+import { cookies } from "next/headers";
 
 import { ok, err } from "neverthrow";
 
@@ -8,8 +9,8 @@ import { logger } from "@/utils/logger";
 /**
  * Finds if the client is a user for the current game.
  *
- * @param {Headers} headers - Headers of the request comming in
- * @param {User?} user - authenticated User object from NextAuth
+ * @param {string} gameId - ID of the game
+ * @param {string} gameUserToken - token of the game user
  * @returns {GameUser} - GameUser object if the client is
  *  autheticated with current game being played.
  *
@@ -18,16 +19,12 @@ import { logger } from "@/utils/logger";
  * an actual authenticated user.
  */
 async function gameUserAuth({
-  headers,
+  gameId,
+  gameUserToken,
 }: {
-  headers: Headers;
-  user?: { id: string };
+  gameId: string | undefined;
+  gameUserToken: string | undefined;
 }): Promise<{ gameUser: GameUser | undefined | null }> {
-  const gameId = headers.get("x-buzz-board-game-id") as string | undefined;
-  const gameUserToken = headers.get("x-buzz-board-game-user-token") as
-    | string
-    | undefined;
-
   let gameUser;
 
   if (!gameId || !gameUserToken) {
@@ -54,7 +51,7 @@ async function gameUserAuth({
 /**
  * Finds if the current user is an admin for the current game
  *
- * @param {Headers} headers - Headers of the request comming in
+ * @param {string} gameId - ID of the game
  * @param {User?} user - authenticated User object from NextAuth
  * @returns {GameAdmin} - GameAdmin object if the current user
  *  is an admin for the current game.
@@ -64,14 +61,12 @@ async function gameUserAuth({
  * an actual authenticated user.
  */
 async function gameAdminAuth({
-  headers,
+  gameId,
   user,
 }: {
-  headers: Headers;
+  gameId: string | undefined;
   user?: { id: string };
 }): Promise<{ gameAdmin: GameAdmin | undefined | null }> {
-  const gameId = headers.get("x-buzz-board-game-id") as string | undefined;
-
   let gameAdmin;
 
   if (user?.id && gameId) {
@@ -129,18 +124,36 @@ export async function gameAuth({
   headers: Headers;
   user?: { id: string };
 }): Promise<GameAuthReturn | Record<string, never>> {
-  const gameId = headers.get("x-buzz-board-game-id") as string | undefined;
-  if (gameId === undefined || gameId === null) {
+  let gameUserToken;
+  let gameId;
+  const cookieStore = await cookies();
+
+  // check cookie for server side request processing
+  // or check headers for client side request
+
+  gameUserToken = cookieStore.get("buzz-board-game-user-token")?.value;
+  if (!gameUserToken) {
+    gameUserToken = headers.get("buzz-board-game-user-token") as
+      | string
+      | undefined;
+  }
+
+  gameId = cookieStore.get("buzz-board-game-id")?.value;
+  if (!gameUserToken) {
+    gameId = headers.get("x-buzz-board-game-id") as string | undefined;
+  }
+
+  if (!gameId) {
     return {};
   }
 
   const [{ gameUser }, { gameAdmin }] = await Promise.all([
     gameUserAuth({
-      headers,
-      user,
+      gameId,
+      gameUserToken,
     }),
     gameAdminAuth({
-      headers,
+      gameId,
       user,
     }),
   ]);
