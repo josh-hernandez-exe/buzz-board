@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Prisma,
   GameFormat,
   type Game,
   type GameTeam,
@@ -14,8 +15,6 @@ import { Button } from "@/app/_components/ui/button";
 
 import { logger } from "@/utils/logger";
 import type { GameWithRelations } from "@/types";
-
-type ScoreboardStateJson = { [key: string]: number };
 
 type GameRelationInfo = {
   gameTeam: GameTeam;
@@ -36,12 +35,17 @@ function groupDataByTeam({
 
   // a brand new game may not have any members
   game.gameTeams?.map((gameTeam) => {
+    const score =
+      ((scoreboardState?.state as Prisma.JsonObject)?.[gameTeam.id] as
+        | number
+        | undefined) || 0;
+
     data[gameTeam.id] = {
       gameTeam: gameTeam,
       gameUsers: game.gameUsers.filter(
         (gameUser) => gameUser.gameTeamId === gameTeam.id,
       ),
-      score: (scoreboardState?.state as ScoreboardStateJson)?.[gameTeam.id],
+      score,
     };
   });
 
@@ -128,7 +132,6 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
               key={gameTeam.id}
               gameTeam={gameTeam}
               gameUsers={gameUsers}
-              buzzerState={gameTeam.buzzerState}
               score={score}
             />
           );
