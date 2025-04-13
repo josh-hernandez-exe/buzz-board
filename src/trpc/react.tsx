@@ -1,11 +1,17 @@
 "use client";
 
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
-import { httpBatchLink, loggerLink } from "@trpc/client";
+import {
+  httpBatchLink,
+  httpSubscriptionLink,
+  loggerLink,
+  splitLink,
+} from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
 import { useState } from "react";
 import SuperJSON from "superjson";
+import { EventSourcePolyfill } from "event-source-polyfill";
 
 import { type AppRouter } from "@/server/api/root";
 import { createQueryClient } from "./query-client";
@@ -69,6 +75,20 @@ export type RouterOutputs = inferRouterOutputs<AppRouter>;
 export function TRPCReactProvider(props: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
 
+  const buildHeaders = () => {
+    logger.info("Building Headers");
+    const headers = new Headers();
+    const { gameId, gameUserToken } = extraHeaders;
+    headers.set("x-trpc-source", "nextjs-react");
+    if (gameId) {
+      headers.set("x-buzz-board-game-id", gameId);
+    }
+    if (gameUserToken) {
+      headers.set("x-buzz-board-game-user-token", gameUserToken);
+    }
+    return headers;
+  };
+
   const [trpcClient] = useState(() =>
     api.createClient({
       links: [
@@ -77,23 +97,32 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
             process.env.NODE_ENV === "development" ||
             (op.direction === "down" && op.result instanceof Error),
         }),
-        // NOTE: need httpBatchLink to have dynamic headers
-        httpBatchLink({
-          transformer: SuperJSON,
-          url: getBaseUrl() + "/api/trpc",
-          headers: () => {
-            logger.info("Building Headers");
-            const headers = new Headers();
-            const { gameId, gameUserToken } = extraHeaders;
-            headers.set("x-trpc-source", "nextjs-react");
-            if (gameId) {
-              headers.set("x-buzz-board-game-id", gameId);
-            }
-            if (gameUserToken) {
-              headers.set("x-buzz-board-game-user-token", gameUserToken);
-            }
-            return headers;
-          },
+        splitLink({
+          // uses the httpSubscriptionLink for subscriptions
+          condition: (op) => op.type === "subscription",
+          true: httpSubscriptionLink({
+            transformer: SuperJSON,
+            url: getBaseUrl() + "/api/trpc",
+            // polyfill is needed for custom headers
+            EventSource: EventSourcePolyfill,
+            eventSourceOptions: async () => {
+              const headers = buildHeaders();
+              return {
+                headers: {
+                  "x-buzz-board-game-id": headers.get("x-buzz-board-game-id")!,
+                  "x-buzz-board-game-user-token": headers.get(
+                    "x-buzz-board-game-id",
+                  )!,
+                },
+              };
+            },
+          }),
+          // NOTE: need httpBatchLink to have dynamic headers
+          false: httpBatchLink({
+            transformer: SuperJSON,
+            url: getBaseUrl() + "/api/trpc",
+            headers: buildHeaders,
+          }),
         }),
       ],
     }),
