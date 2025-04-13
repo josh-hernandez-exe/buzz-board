@@ -40,7 +40,7 @@ export const gameAdminRouter = createTRPCRouter({
         index: true,
       },
     });
-    const curTeamCount = aggResult._max.index || 0;
+    const curTeamCount = aggResult._max.index ?? 0;
     const newTeamIndex = curTeamCount + 1;
 
     const newTeam = await ctx.db.gameTeam.create({
@@ -188,7 +188,7 @@ export const gameAdminRouter = createTRPCRouter({
       const oldScoreboardState = scoreboard?.currentState;
 
       const currentScores: { [key: string]: number } =
-        (oldScoreboardState?.state as { [key: string]: number }) || {};
+        (oldScoreboardState?.state as { [key: string]: number }) ?? {};
 
       Object.entries(input).forEach(([gameTeamId, score]) => {
         if (currentScores[gameTeamId] === undefined) {
@@ -255,7 +255,7 @@ export const gameAdminRouter = createTRPCRouter({
       const oldScoreboardState = scoreboard?.currentState;
 
       const currentScores: { [key: string]: number } =
-        (oldScoreboardState?.state as { [key: string]: number }) || {};
+        (oldScoreboardState?.state as { [key: string]: number }) ?? {};
 
       Object.entries(input).forEach(([gameTeamId, score]) => {
         if (currentScores[gameTeamId] === undefined) {

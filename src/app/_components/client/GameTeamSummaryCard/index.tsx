@@ -23,8 +23,8 @@ export function GameTeamSummaryCard({
 
   const content = (
     <div>
-      <p>Score: {score || 0}</p>
-      <p>Number of Players: {gameUsers?.length || 0}</p>
+      <p>Score: {score ?? 0}</p>
+      <p>Number of Players: {gameUsers?.length ?? 0}</p>
       <p>Team Buzzer State: {gameTeam.buzzerState}</p>
       <p>
         Members:

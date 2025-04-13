@@ -105,7 +105,7 @@ export default async function GamePage({
           {game.isBuzzerListening ? "Listening" : "Not Listening"}
         </p>
         {game?.format === GameFormat.team && (
-          <p>Number of Teams: {gameTeams.length || 0}</p>
+          <p>Number of Teams: {gameTeams.length ?? 0}</p>
         )}
 
         <p>Player ID: {gameUser.id}</p>

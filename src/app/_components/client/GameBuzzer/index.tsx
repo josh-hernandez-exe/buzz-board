@@ -33,7 +33,7 @@ export function GameBuzzer({
     (team) => team.id === gameUser.gameTeamId,
   );
   const [selectedGameTeam, setSelectedGameTeam] = useState<GameTeam>(
-    gameTeamFromGameUser || gameTeams[0]!,
+    gameTeamFromGameUser ?? gameTeams[0]!,
   );
 
   const addTeamMutation = api.gameUser.changeTeams.useMutation({

@@ -34,7 +34,7 @@ export function DropDownSelection<T>({
   }
 
   const [value, setValue] = useState<DropdownOption<T>["id"]>(
-    defaultValue || "",
+    defaultValue ?? "",
   );
 
   if (value === "") {
