@@ -1,9 +1,11 @@
 import { GameFormat } from "@prisma/client";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 
-import { ok, err, Result } from "neverthrow";
+import { ok, err } from "neverthrow";
 
+import { GameBuzzer } from "@/app/_components/client/GameBuzzer";
 import { db } from "@/server/db";
+import { logger } from "@/utils/logger";
 
 async function getSimpleGameInfo({
   gameUserToken,
@@ -26,6 +28,7 @@ async function getSimpleGameInfo({
           gameTeams: true,
         },
       },
+      gameTeam: true,
     },
   });
 
@@ -76,8 +79,19 @@ export default async function GamePage({
     );
   }
 
-  const gameUser = result.value;
-  const game = gameUser.game;
+  let { game: gameData, ...gameUser } = result.value;
+  let { gameTeams, ...game } = gameData;
+  logger.debug(
+    `GamePage: ${JSON.stringify(
+      {
+        game,
+        gameUser,
+        gameTeams,
+      },
+      null,
+      2,
+    )}`,
+  );
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
@@ -86,10 +100,22 @@ export default async function GamePage({
           Welcome to Game {game?.name}
         </h1>
         <p>Game ID: {game?.id}</p>
-        <p>Buzzer Listening State: {game?.isBuzzerListening}</p>
+        <p>
+          Game Buzzer Listening State :{" "}
+          {game.isBuzzerListening ? "Listening" : "Not Listening"}
+        </p>
         {game?.format === GameFormat.team && (
-          <p>Number of Teams: {game?.gameTeams.length || 0}</p>
+          <p>Number of Teams: {gameTeams.length || 0}</p>
         )}
+
+        <p>Player ID: {gameUser.id}</p>
+        <p>Player Name: {gameUser.name}</p>
+        <p>Player Team ID: {gameUser.gameTeamId}</p>
+        {gameUser.gameTeam && <p>Player Team Name: {gameUser.gameTeam.name}</p>}
+        {gameUser.gameTeam && (
+          <p>Player Team Buzzer State: {gameUser.gameTeam.buzzerState}</p>
+        )}
+        <GameBuzzer game={game} gameTeams={gameTeams} gameUser={gameUser} />
       </div>
     </main>
   );
