@@ -67,6 +67,20 @@ export const gameUserRouter = createTRPCRouter({
       throw new Error("Game is not listening for buzzers");
     }
 
+    const gameTeam = await ctx.db.gameTeam.findUnique({
+      where: {
+        id: gameTeamId,
+      },
+    });
+
+    if (gameTeam?.buzzerState === BuzzerState.rejected) {
+      throw new Error("Game team has already buzzed in.");
+    }
+
+    if (gameTeam?.buzzerState === BuzzerState.selected) {
+      return;
+    }
+
     await ctx.db.$transaction([
       ctx.db.gameTeam.update({
         where: {
