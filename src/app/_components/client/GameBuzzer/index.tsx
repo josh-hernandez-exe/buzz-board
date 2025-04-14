@@ -16,8 +16,8 @@ export function GameBuzzer({
   gameTeams,
   gameUser,
 }: {
-  game: Game;
-  gameTeams: GameTeam[];
+  game: Pick<Game, "id" | "format">;
+  gameTeams: Pick<GameTeam, "id" | "name" | "index">[];
   gameUser: GameUser;
 }) {
   const utils = api.useUtils();
@@ -30,9 +30,9 @@ export function GameBuzzer({
   const gameTeamFromGameUser = gameTeams.find(
     (team) => team.id === gameUser.gameTeamId,
   );
-  const [selectedGameTeam, setSelectedGameTeam] = useState<GameTeam>(
-    gameTeamFromGameUser ?? gameTeams[0]!,
-  );
+  const [selectedGameTeam, setSelectedGameTeam] = useState<
+    (typeof gameTeams)[number]
+  >(gameTeamFromGameUser ?? gameTeams[0]!);
 
   const addTeamMutation = api.gameUser.changeTeams.useMutation({
     onSuccess: async ({ gameTeamId }) => {
@@ -40,7 +40,7 @@ export function GameBuzzer({
     },
   });
 
-  const onTeamChange = (gameTeam: GameTeam) => {
+  const onTeamChange = (gameTeam: Pick<GameTeam, "id" | "name">) => {
     logger.debug(`GameInfoAdmin selected: ${JSON.stringify(selectedGameTeam)}`);
     addTeamMutation.mutate({
       gameTeamId: gameTeam.id,
