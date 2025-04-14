@@ -11,8 +11,8 @@ export function GameTeamSummaryCard({
   gameUsers,
   score,
 }: {
-  gameTeam: GameTeam | undefined;
-  gameUsers: GameUser[] | undefined;
+  gameTeam: Pick<GameTeam, "id" | "name" | "buzzerState"> | undefined;
+  gameUsers: Pick<GameUser, "id" | "name">[] | undefined;
   score: number | undefined;
 }) {
   logger.debug(`GameTeamSummaryCard`);
@@ -28,7 +28,7 @@ export function GameTeamSummaryCard({
       <p>Team Buzzer State: {gameTeam.buzzerState}</p>
       <p>
         Members:
-        {gameUsers?.map((gameUser: GameUser) => gameUser.name).join("; ")}
+        {gameUsers?.map((gameUser) => gameUser.name).join("; ")}
       </p>
     </div>
   );
