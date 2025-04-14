@@ -9,24 +9,9 @@ import { logger } from "@/utils/logger";
 export function GameAdminBuzzerControl() {
   logger.debug(`GameAdminBuzzerControl`);
 
-  const utils = api.useUtils();
-  const infoQuery = api.gameAdmin.getAllInfo.useQuery();
-
-  const startBuzzerMutation = api.gameAdmin.startBuzzer.useMutation({
-    onSuccess: async () => {
-      await utils.gameAdmin.getAllInfo.invalidate();
-    },
-  });
-  const pauseBuzzerMutation = api.gameAdmin.pauseBuzzer.useMutation({
-    onSuccess: async () => {
-      await utils.gameAdmin.getAllInfo.invalidate();
-    },
-  });
-  const resetBuzzerMutation = api.gameAdmin.resetBuzzer.useMutation({
-    onSuccess: async () => {
-      await utils.gameAdmin.getAllInfo.invalidate();
-    },
-  });
+  const startBuzzerMutation = api.gameAdmin.startBuzzer.useMutation();
+  const pauseBuzzerMutation = api.gameAdmin.pauseBuzzer.useMutation();
+  const resetBuzzerMutation = api.gameAdmin.resetBuzzer.useMutation();
 
   const isPending =
     startBuzzerMutation.isPending ||

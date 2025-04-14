@@ -8,43 +8,29 @@ import {
   protectedGameUserProcedure,
 } from "@/server/api/trpc";
 
+import { emitUpdatedGameState } from "@/server/db/common";
+
 export const gameUserRouter = createTRPCRouter({
   ping: protectedGameUserProcedure.query(({ ctx }) => {
     const { gameUser } = ctx.gameSession;
     logger.info(`Ping from game user: ${gameUser.id}`);
     return "pong";
   }),
-  getSimpleInfo: protectedGameUserProcedure.query(async ({ ctx }) => {
+  getSelfInfo: protectedGameUserProcedure.query(async ({ ctx }) => {
     logger.info(
       `Get simple info from game user: ${ctx.gameSession.gameUser.id}`,
     );
 
-    const result = await ctx.db.gameUser.findUnique({
+    const gameUser = await ctx.db.gameUser.findUnique({
       where: {
         id: ctx.gameSession.gameUser.id,
       },
-      include: {
-        game: {
-          include: {
-            gameTeams: true,
-          },
-        },
-        gameTeam: true,
-      },
     });
 
-    if (!result) {
+    if (!gameUser) {
       throw new Error("Game user not found");
     }
-
-    const { game: gameData, ...gameUser } = result;
-    const { gameTeams, ...game } = gameData;
-
-    return {
-      game,
-      gameUser,
-      gameTeams,
-    };
+    return gameUser;
   }),
   changeTeams: protectedGameUserProcedure
     .input(
@@ -83,6 +69,10 @@ export const gameUserRouter = createTRPCRouter({
         data: {
           gameTeamId: input.gameTeamId,
         },
+      });
+
+      emitUpdatedGameState({
+        gameId: gameUser.gameId,
       });
 
       return gameUserUpdated;
@@ -131,5 +121,9 @@ export const gameUserRouter = createTRPCRouter({
         },
       }),
     ]);
+
+    emitUpdatedGameState({
+      gameId: gameUser.gameId,
+    });
   }),
 });
