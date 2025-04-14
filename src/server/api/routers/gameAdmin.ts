@@ -1,31 +1,52 @@
 import { GameFormat, BuzzerState, Prisma } from "@prisma/client";
 import { z } from "zod";
 
-import { logger } from "@/utils/logger";
-
 import {
   createTRPCRouter,
   protectedGameAdminProcedure,
 } from "@/server/api/trpc";
 
+import {
+  emitUpdatedGameState,
+  checkTeamsAndGetCurrentScores,
+} from "@/server/db/common";
+
+import { getPrivateGameState } from "@/server/db/common";
+import { gameEventEmitter } from "@/utils/events";
+
+import { logger } from "@/utils/logger";
+
 export const gameAdminRouter = createTRPCRouter({
-  getAllInfo: protectedGameAdminProcedure.query(async ({ ctx }) => {
-    const { id: gameId, gameAdmin, format: gameFormat } = ctx.gameSession;
+  currentGameState: protectedGameAdminProcedure.query(async ({ ctx }) => {
+    const { id: gameId } = ctx.gameSession;
 
-    const game = await ctx.db.game.findUnique({
-      where: {
-        id: gameId,
-      },
-      include: {
-        gameUsers: true,
-        gameTeams: true,
-        gameAdmins: true,
-        scoreboard: true,
-        scoreboardStates: true,
-      },
-    });
+    const result = await getPrivateGameState({ gameId });
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return result.value;
+  }),
+  gameState: protectedGameAdminProcedure.subscription(async function* ({
+    ctx,
+    signal,
+  }) {
+    const { id: gameId } = ctx.gameSession;
 
-    return game;
+    const result = await getPrivateGameState({ gameId });
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    yield result.value;
+
+    for await (const [eventGameId, gameState] of gameEventEmitter.toIterable(
+      "privateGameStateUpdate",
+      { signal },
+    )) {
+      if (eventGameId === gameId) {
+        yield gameState;
+      }
+    }
   }),
   addTeam: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { id: gameId, gameAdmin, format: gameFormat } = ctx.gameSession;
@@ -50,6 +71,8 @@ export const gameAdminRouter = createTRPCRouter({
         gameId,
       },
     });
+
+    await emitUpdatedGameState({ gameId });
   }),
   removeTeam: protectedGameAdminProcedure
     .input(z.object({ gameTeamId: z.string() }))
@@ -100,6 +123,8 @@ export const gameAdminRouter = createTRPCRouter({
           },
         }),
       ]);
+
+      await emitUpdatedGameState({ gameId });
     }),
   startBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { gameAdmin, ...game } = ctx.gameSession;
@@ -123,6 +148,8 @@ export const gameAdminRouter = createTRPCRouter({
         },
       }),
     ]);
+
+    await emitUpdatedGameState({ gameId: game.id });
   }),
   pauseBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { gameAdmin, ...game } = ctx.gameSession;
@@ -135,6 +162,8 @@ export const gameAdminRouter = createTRPCRouter({
         isBuzzerListening: false,
       },
     });
+
+    await emitUpdatedGameState({ gameId: game.id });
   }),
   resetBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { gameAdmin, ...game } = ctx.gameSession;
@@ -157,38 +186,25 @@ export const gameAdminRouter = createTRPCRouter({
         },
       }),
     ]);
+
+    await emitUpdatedGameState({ gameId: game.id });
   }),
   addScore: protectedGameAdminProcedure
     .input(z.record(z.string(), z.number()))
     .mutation(async ({ ctx, input }) => {
       const { gameAdmin, ...game } = ctx.gameSession;
 
-      const gameTeams = await ctx.db.gameTeam.findMany({
-        where: {
-          gameId: game.id,
-          id: {
-            in: Object.keys(input),
-          },
-        },
+      const result = await checkTeamsAndGetCurrentScores({
+        gameId: game.id,
+        gameTeamIds: Object.keys(input),
       });
 
-      if (gameTeams.length !== Object.keys(input).length) {
-        throw new Error("Game teams not found");
+      if (result.isErr()) {
+        throw result.error;
       }
 
-      const scoreboard = await ctx.db.scoreboard.findUnique({
-        where: {
-          gameId: game.id,
-        },
-        include: {
-          currentState: true,
-        },
-      });
-
+      const { scoreboard, currentScores } = result.value;
       const oldScoreboardState = scoreboard?.currentState;
-
-      const currentScores: { [key: string]: number } =
-        (oldScoreboardState?.state as { [key: string]: number }) ?? {};
 
       Object.entries(input).forEach(([gameTeamId, score]) => {
         if (currentScores[gameTeamId] === undefined) {
@@ -223,6 +239,8 @@ export const gameAdminRouter = createTRPCRouter({
         return newScoreboardState;
       });
 
+      await emitUpdatedGameState({ gameId: game.id });
+
       return scoreboardState;
     }),
   setScore: protectedGameAdminProcedure
@@ -230,32 +248,17 @@ export const gameAdminRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { gameAdmin, ...game } = ctx.gameSession;
 
-      const gameTeams = await ctx.db.gameTeam.findMany({
-        where: {
-          gameId: game.id,
-          id: {
-            in: Object.keys(input),
-          },
-        },
+      const result = await checkTeamsAndGetCurrentScores({
+        gameId: game.id,
+        gameTeamIds: Object.keys(input),
       });
 
-      if (gameTeams.length !== Object.keys(input).length) {
-        throw new Error("Game teams not found");
+      if (result.isErr()) {
+        throw result.error;
       }
 
-      const scoreboard = await ctx.db.scoreboard.findUnique({
-        where: {
-          gameId: game.id,
-        },
-        include: {
-          currentState: true,
-        },
-      });
-
+      const { scoreboard, currentScores } = result.value;
       const oldScoreboardState = scoreboard?.currentState;
-
-      const currentScores: { [key: string]: number } =
-        (oldScoreboardState?.state as { [key: string]: number }) ?? {};
 
       Object.entries(input).forEach(([gameTeamId, score]) => {
         if (currentScores[gameTeamId] === undefined) {
@@ -289,6 +292,8 @@ export const gameAdminRouter = createTRPCRouter({
 
         return newScoreboardState;
       });
+
+      await emitUpdatedGameState({ gameId: game.id });
 
       return scoreboardState;
     }),
@@ -326,6 +331,8 @@ export const gameAdminRouter = createTRPCRouter({
         futureStateIds: [scoreboard?.currentState?.id!, ...oldFutureStateIds],
       },
     });
+
+    await emitUpdatedGameState({ gameId: game.id });
   }),
   redoScore: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { gameAdmin, ...game } = ctx.gameSession;
@@ -361,5 +368,7 @@ export const gameAdminRouter = createTRPCRouter({
         futureStateIds: [...oldFutureStateIds.slice(1)],
       },
     });
+
+    await emitUpdatedGameState({ gameId: game.id });
   }),
 });

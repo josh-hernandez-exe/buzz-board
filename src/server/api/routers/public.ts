@@ -1,3 +1,4 @@
+import type { Game } from "@prisma/client";
 import { GameFormat } from "@prisma/client";
 import { z } from "zod";
 
@@ -5,7 +6,10 @@ import { logger } from "@/utils/logger";
 
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 
+import { getPublicGameState, emitUpdatedGameState } from "@/server/db/common";
 import { generateShortCode } from "@/utils/codeGeneration";
+
+import { gameEventEmitter } from "@/utils/events";
 
 export const publicRouter = createTRPCRouter({
   joinGame: publicProcedure
@@ -68,54 +72,44 @@ export const publicRouter = createTRPCRouter({
         return gUser;
       });
 
+      if (game.format === GameFormat.single) {
+        // only emit event when a new team is made
+        await emitUpdatedGameState({ gameId: game.id });
+      }
+
       return { gameUser, token: gameUser.token, gameId: game.id };
     }),
-  getGameInfo: publicProcedure
+  currentGameState: publicProcedure
     .input(z.object({ gameId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const game = await ctx.db.game.findUnique({
-        select: {
-          id: true,
-          name: true,
-          format: true,
-          isBuzzerListening: true,
-          gameTeams: {
-            select: {
-              id: true,
-              name: true,
-              buzzerState: true,
-              _count: {
-                select: {
-                  gameUsers: true,
-                },
-              },
-            },
-          },
-          scoreboard: {
-            select: {
-              currentState: {
-                select: {
-                  state: true,
-                },
-              },
-            },
-          },
-        },
-        where: {
-          id: input.gameId,
-        },
-      });
+      const { gameId } = input;
 
-      if (!game) {
-        throw new Error("Game not found");
+      const result = await getPublicGameState({ gameId });
+      if (result.isErr()) {
+        throw result.error;
       }
-      if (!game.scoreboard) {
-        throw new Error("Game does not have a scoreboard");
-      }
-      if (!game.scoreboard.currentState) {
-        throw new Error("Game does not have a current scoreboard state");
+      return result.value;
+    }),
+
+  gameState: publicProcedure
+    .input(z.object({ gameId: z.string() }))
+    .subscription(async function* ({ ctx, input, signal }) {
+      const { gameId } = input;
+
+      const result = await getPublicGameState({ gameId });
+      if (result.isErr()) {
+        throw result.error;
       }
 
-      return game;
+      yield result.value;
+
+      for await (const [eventGameId, gameState] of gameEventEmitter.toIterable(
+        "publicGameStateUpdate",
+        { signal },
+      )) {
+        if (eventGameId === gameId) {
+          yield gameState;
+        }
+      }
     }),
 });

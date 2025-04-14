@@ -14,35 +14,20 @@ import { logger } from "@/utils/logger";
 export function GameAdminScoreboardControl({
   gameTeams,
 }: {
-  gameTeams: GameTeam[];
+  gameTeams: Pick<GameTeam, "id" | "name">[];
 }) {
   logger.debug(`GameAdminScoreboardControl`);
   const utils = api.useUtils();
   const [score, setScore] = useState<number>(0);
-  const [selectedGameTeam, setSelectedGameTeam] = useState<GameTeam | null>(
-    null,
-  );
+  const [selectedGameTeam, setSelectedGameTeam] = useState<Pick<
+    GameTeam,
+    "id" | "name"
+  > | null>(null);
 
-  const addScoreMutation = api.gameAdmin.addScore.useMutation({
-    onSuccess: async () => {
-      await utils.gameAdmin.getAllInfo.invalidate();
-    },
-  });
-  const setScoreMutation = api.gameAdmin.setScore.useMutation({
-    onSuccess: async () => {
-      await utils.gameAdmin.getAllInfo.invalidate();
-    },
-  });
-  const undoScoreMutation = api.gameAdmin.undoScore.useMutation({
-    onSuccess: async () => {
-      await utils.gameAdmin.getAllInfo.invalidate();
-    },
-  });
-  const redoScoreMutation = api.gameAdmin.redoScore.useMutation({
-    onSuccess: async () => {
-      await utils.gameAdmin.getAllInfo.invalidate();
-    },
-  });
+  const addScoreMutation = api.gameAdmin.addScore.useMutation();
+  const setScoreMutation = api.gameAdmin.setScore.useMutation();
+  const undoScoreMutation = api.gameAdmin.undoScore.useMutation();
+  const redoScoreMutation = api.gameAdmin.redoScore.useMutation();
 
   if (!Array.isArray(gameTeams) || gameTeams.length === 0) {
     return undefined;

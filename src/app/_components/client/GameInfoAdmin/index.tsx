@@ -15,17 +15,12 @@ export function GameInfoAdmin({ games }: { games: Game[] }) {
   if (games === undefined || !Array.isArray(games) || games.length === 0) {
     return undefined;
   }
-  const utils = api.useUtils();
   const [selectedGame, setSelectedGame] = useState<Game>(games[0]!);
   const [_, setGameTokenData] = useGameIdData(games[0]!.id);
 
   const onChange = (game: Game) => {
     logger.debug(`GameInfoAdmin selected: ${JSON.stringify(selectedGame)}`);
     setSelectedGame(game);
-
-    // TODO: make something response to this sooner and have the child compoenents
-    //       go into a loading state.
-    utils.gameAdmin.getAllInfo.invalidate();
     setGameTokenData({
       gameId: game.id,
     });
@@ -35,11 +30,7 @@ export function GameInfoAdmin({ games }: { games: Game[] }) {
     updateExtraHeaders({ gameId: selectedGame.id });
   }
 
-  const addTeamMutation = api.gameAdmin.addTeam.useMutation({
-    onSuccess: async () => {
-      await utils.gameAdmin.getAllInfo.invalidate();
-    },
-  });
+  const addTeamMutation = api.gameAdmin.addTeam.useMutation();
 
   return (
     <div>
