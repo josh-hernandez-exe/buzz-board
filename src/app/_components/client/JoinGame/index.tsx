@@ -4,8 +4,10 @@ import { useState } from "react";
 
 import { useRouter } from "next/navigation";
 
+import { Button } from "@/app/_components/ui/button";
+import { Input } from "@/app/_components/ui/input";
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
-import { api, updateExtraHeaders } from "@/trpc/react";
+import { api } from "@/trpc/react";
 
 import { logger } from "@/utils/logger";
 
@@ -46,7 +48,7 @@ export function JoinGameComponent() {
 
   return (
     <div>
-      <input
+      <Input
         type="text"
         placeholder="Enter Game Code"
         value={gameCode}
@@ -54,12 +56,12 @@ export function JoinGameComponent() {
         className="mb-4 rounded border border-gray-300 p-2"
       />
       {error && <p className="mb-4 text-red-500">{error}</p>}
-      <button
+      <Button
         onClick={handleJoinGame}
         className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
       >
         Join Game
-      </button>
+      </Button>
     </div>
   );
 }
