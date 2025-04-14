@@ -15,7 +15,7 @@ export function GenericCard({
   content,
   footer,
 }: {
-  title: string;
+  title: string | undefined;
   description?: string | undefined;
   content?: React.ReactNode;
   footer?: React.ReactNode;
@@ -23,7 +23,7 @@ export function GenericCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        {title && <CardTitle>{title}</CardTitle>}
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       {content && <CardContent>{content}</CardContent>}
