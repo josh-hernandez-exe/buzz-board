@@ -13,28 +13,24 @@ export function GameTeamSelectionDropDown({
   gameTeams,
   onChange,
 }: {
-  gameTeams: GameTeam[];
-  onChange: (game: GameTeam) => void;
+  gameTeams: Array<{ id: GameTeam["id"]; name: GameTeam["name"] }>;
+  onChange: (game: (typeof gameTeams)[number]) => void;
 }) {
   logger.debug(`GameTeamSelectionDropDown`);
-
-  const onValueChange = (game: GameTeam) => {
-    onChange(game);
-  };
 
   const options = gameTeams.map((gameTeam) => {
     return {
       id: gameTeam.id.slice(0, 8),
       name: gameTeam.name,
       data: gameTeam,
-    } as DropdownOption<GameTeam>;
+    } as DropdownOption<(typeof gameTeams)[number]>;
   });
 
   return (
-    <DropDownSelection<GameTeam>
+    <DropDownSelection<(typeof gameTeams)[number]>
       title="Game Selection"
       options={options}
-      onChange={onValueChange}
+      onChange={onChange}
     />
   );
 }
