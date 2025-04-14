@@ -66,3 +66,34 @@ export function useGameTokenData(
 
   return [gameTokenData, setGameTokenData] as const;
 }
+
+export function useGameIdData(defaultGameId: string | null = null) {
+  const { setCookie } = useCookiesNext();
+  const [gameTokenData, setGameTokenDataInLocalStorage] = useLocalStorage(
+    "buzz-board-game-token-storage",
+    {
+      token: null,
+      gameId: defaultGameId,
+      tokenStorage: {} as Record<string, string>,
+    },
+  );
+  updateExtraHeaders({
+    gameId: gameTokenData.gameId,
+  });
+
+  const setGameIdData = ({ gameId }: { gameId: string }) => {
+    logger.debug(`useGameIdData - setGameIdData: ${gameId}`);
+    setGameTokenDataInLocalStorage({
+      ...gameTokenData,
+      gameId: gameId,
+    });
+    updateExtraHeaders({
+      gameId: gameId,
+    });
+    setCookie("buzz-board-game-id", gameId, {
+      maxAge: 86400, // 1 day expiration
+    });
+  };
+
+  return [gameTokenData, setGameIdData] as const;
+}
