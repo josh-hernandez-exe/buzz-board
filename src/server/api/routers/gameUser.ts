@@ -8,7 +8,7 @@ import {
   protectedGameUserProcedure,
 } from "@/server/api/trpc";
 
-import { emitUpdatedGameState } from "@/server/db/common";
+import { emitUpdatedGameState } from "@/utils/events";
 
 export const gameUserRouter = createTRPCRouter({
   ping: protectedGameUserProcedure.query(({ ctx }) => {

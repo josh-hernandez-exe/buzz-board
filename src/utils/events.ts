@@ -1,7 +1,10 @@
-import type { Game } from "@prisma/client";
-
 import EventEmitter, { on } from "node:events";
 
+import type { Game, GameUser } from "@prisma/client";
+import { ok, err, Result } from "neverthrow";
+
+import { db } from "@/server/db";
+import { getPublicGameState, getPrivateGameState } from "@/server/db/common";
 import type { PublicGameState, PrivateGameState } from "@/types";
 
 export type EventMap<T> = Record<keyof T, any[]>;
@@ -24,3 +27,25 @@ export interface GameEvents {
 
 // TODO: replace with a Redis-like service
 export const gameEventEmitter = new IterableEventEmitter<GameEvents>();
+export async function emitUpdatedGameState({
+  gameId,
+}: {
+  gameId: Game["id"];
+}): Promise<Result<void, Error>> {
+  const [publicResult, privateResult] = await Promise.all([
+    getPublicGameState({ gameId }),
+    getPrivateGameState({ gameId }),
+  ]);
+
+  if (publicResult.isErr()) {
+    return err(publicResult.error);
+  }
+  if (privateResult.isErr()) {
+    return err(privateResult.error);
+  }
+
+  gameEventEmitter.emit("publicGameStateUpdate", gameId, publicResult.value);
+  gameEventEmitter.emit("privateGameStateUpdate", gameId, privateResult.value);
+
+  return ok();
+}

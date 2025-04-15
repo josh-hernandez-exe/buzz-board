@@ -6,10 +6,9 @@ import {
   protectedGameAdminProcedure,
 } from "@/server/api/trpc";
 
-import {
-  emitUpdatedGameState,
-  checkTeamsAndGetCurrentScores,
-} from "@/server/db/common";
+import { checkTeamsAndGetCurrentScores } from "@/server/db/common";
+
+import { emitUpdatedGameState } from "@/utils/events";
 
 import { getPrivateGameState } from "@/server/db/common";
 import { gameEventEmitter } from "@/utils/events";

@@ -6,10 +6,10 @@ import { logger } from "@/utils/logger";
 
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 
-import { getPublicGameState, emitUpdatedGameState } from "@/server/db/common";
+import { getPublicGameState } from "@/server/db/common";
 import { generateToken } from "@/utils/codeGeneration";
 
-import { gameEventEmitter } from "@/utils/events";
+import { gameEventEmitter, emitUpdatedGameState } from "@/utils/events";
 
 export const publicRouter = createTRPCRouter({
   joinGame: publicProcedure
