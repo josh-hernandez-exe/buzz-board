@@ -1,4 +1,4 @@
-import { GameFormat, BuzzerState, Prisma } from "@prisma/client";
+import { GameFormat, BuzzerState } from "@prisma/client";
 import { z } from "zod";
 
 import {
@@ -8,45 +8,11 @@ import {
 
 import { checkTeamsAndGetCurrentScores } from "@/server/db/common";
 
-import { emitUpdatedGameState } from "@/utils/events";
-
-import { getPrivateGameState } from "@/server/db/common";
-import { gameEventEmitter } from "@/utils/events";
+import { emitUpdatedGameState, clearWhoBuzzedIn } from "@/utils/events";
 
 import { logger } from "@/utils/logger";
 
 export const gameAdminRouter = createTRPCRouter({
-  currentGameState: protectedGameAdminProcedure.query(async ({ ctx }) => {
-    const { id: gameId } = ctx.gameSession;
-
-    const result = await getPrivateGameState({ gameId });
-    if (result.isErr()) {
-      throw result.error;
-    }
-    return result.value;
-  }),
-  gameState: protectedGameAdminProcedure.subscription(async function* ({
-    ctx,
-    signal,
-  }) {
-    const { id: gameId } = ctx.gameSession;
-
-    const result = await getPrivateGameState({ gameId });
-    if (result.isErr()) {
-      throw result.error;
-    }
-
-    yield result.value;
-
-    for await (const [eventGameId, gameState] of gameEventEmitter.toIterable(
-      "privateGameStateUpdate",
-      { signal },
-    )) {
-      if (eventGameId === gameId) {
-        yield gameState;
-      }
-    }
-  }),
   addTeam: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { id: gameId, gameAdmin, format: gameFormat } = ctx.gameSession;
 
@@ -153,7 +119,12 @@ export const gameAdminRouter = createTRPCRouter({
       }),
     ]);
 
-    await emitUpdatedGameState({ gameId: game.id });
+    await Promise.all([
+      emitUpdatedGameState({ gameId: game.id }),
+      clearWhoBuzzedIn({ gameId: game.id }),
+    ]);
+
+    clearWhoBuzzedIn;
   }),
   pauseBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { gameAdmin, ...game } = ctx.gameSession;
@@ -196,7 +167,10 @@ export const gameAdminRouter = createTRPCRouter({
       }),
     ]);
 
-    await emitUpdatedGameState({ gameId: game.id });
+    await Promise.all([
+      emitUpdatedGameState({ gameId: game.id }),
+      clearWhoBuzzedIn({ gameId: game.id }),
+    ]);
   }),
   addScore: protectedGameAdminProcedure
     .input(z.record(z.string(), z.number()))

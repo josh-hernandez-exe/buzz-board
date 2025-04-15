@@ -213,3 +213,32 @@ export const protectedGameAdminProcedure = t.procedure
       },
     });
   });
+
+export const protectedGameGeneralProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(({ ctx, next }) => {
+    if (!ctx.gameSession.gameAdmin && !ctx.gameSession.gameUser) {
+      // neither a game admin nor a game user
+      logger.error(ctx);
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Not a valid game member for this game.",
+      });
+    }
+    return next({
+      ctx: {
+        ...ctx,
+        gameSession: {
+          ...ctx.gameSession,
+          // infers the properties of game and gameUser as non-nullable
+          id: ctx.gameSession.id,
+          name: ctx.gameSession.name,
+          code: ctx.gameSession.code,
+          isBuzzerListening: ctx.gameSession.isBuzzerListening,
+          data: ctx.gameSession.data,
+          settings: ctx.gameSession.settings,
+          format: ctx.gameSession.format,
+        },
+      },
+    });
+  });

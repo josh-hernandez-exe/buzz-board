@@ -4,6 +4,7 @@ import { ok, err } from "neverthrow";
 
 import { api, HydrateClient } from "@/trpc/server";
 import { GameBuzzer } from "@/app/_components/client/GameBuzzer";
+import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { logger } from "@/utils/logger";
 import { GameUserInfo } from "./GameUserInfo";
 
@@ -49,6 +50,7 @@ export default async function GamePage({
             initialGameUser={gameUser}
             initialGameState={currentGameState}
           />
+          <GameWhoBuzzedIn gameUserId={gameUser.id} />
           <GameBuzzer game={game} gameTeams={gameTeams} gameUser={gameUser} />
         </div>
       </main>

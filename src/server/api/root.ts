@@ -1,6 +1,7 @@
 import { userRouter } from "@/server/api/routers/user";
 import { gameAdminRouter } from "@/server/api/routers/gameAdmin";
 import { gameUserRouter } from "@/server/api/routers/gameUser";
+import { gameGeneralRouter } from "@/server/api/routers/gameGeneral";
 import { publicRouter } from "@/server/api/routers/public";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
@@ -14,6 +15,7 @@ export const appRouter = createTRPCRouter({
   public: publicRouter,
   gameUser: gameUserRouter,
   gameAdmin: gameAdminRouter,
+  gameGeneral: gameGeneralRouter,
 });
 
 // export type definition of API

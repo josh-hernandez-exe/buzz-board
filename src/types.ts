@@ -48,3 +48,18 @@ export type PrivateGameState = {
     score: number;
   }>;
 };
+
+export type WhoBuzzedIn = {
+  game: {
+    id: Game["id"];
+    format: Game["format"];
+  };
+  gameUser: {
+    id: GameUser["id"];
+    name: GameUser["name"];
+    gameTeam: {
+      id: GameTeam["id"];
+      name: GameTeam["name"];
+    };
+  };
+};

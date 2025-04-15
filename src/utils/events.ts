@@ -5,7 +5,7 @@ import { ok, err, Result } from "neverthrow";
 
 import { db } from "@/server/db";
 import { getPublicGameState, getPrivateGameState } from "@/server/db/common";
-import type { PublicGameState, PrivateGameState } from "@/types";
+import type { PublicGameState, PrivateGameState, WhoBuzzedIn } from "@/types";
 
 export type EventMap<T> = Record<keyof T, any[]>;
 
@@ -23,10 +23,12 @@ export class IterableEventEmitter<
 export interface GameEvents {
   publicGameStateUpdate: [gameId: Game["id"], PublicGameState];
   privateGameStateUpdate: [gameId: Game["id"], PrivateGameState];
+  whoBuzzedIn: [gameId: Game["id"], WhoBuzzedIn | null];
 }
 
 // TODO: replace with a Redis-like service
 export const gameEventEmitter = new IterableEventEmitter<GameEvents>();
+
 export async function emitUpdatedGameState({
   gameId,
 }: {
@@ -46,6 +48,54 @@ export async function emitUpdatedGameState({
 
   gameEventEmitter.emit("publicGameStateUpdate", gameId, publicResult.value);
   gameEventEmitter.emit("privateGameStateUpdate", gameId, privateResult.value);
+
+  return ok();
+}
+
+export async function clearWhoBuzzedIn({ gameId }: { gameId: Game["id"] }) {
+  gameEventEmitter.emit("whoBuzzedIn", gameId, null);
+}
+
+export async function emitWhoBuzzedIn({
+  gameUserId,
+}: {
+  gameUserId?: GameUser["id"];
+}): Promise<Result<void, Error>> {
+  const result = await db.gameUser.findUnique({
+    where: {
+      id: gameUserId,
+    },
+    include: {
+      gameTeam: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      game: {
+        select: {
+          id: true,
+          format: true,
+        },
+      },
+    },
+  });
+
+  if (!result) {
+    return err(new Error("User not found"));
+  }
+
+  const { gameTeam, game, ...gameUser } = result;
+
+  const data: WhoBuzzedIn = {
+    game,
+    gameUser: {
+      ...gameUser,
+      gameTeam: gameTeam!,
+    },
+  };
+
+  gameEventEmitter.emit("whoBuzzedIn", game.id, data);
 
   return ok();
 }

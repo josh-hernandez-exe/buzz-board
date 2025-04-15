@@ -6,6 +6,7 @@ import { api } from "@/trpc/react";
 import { GameAdminScoreboardControl } from "@/app/_components/client/GameAdminScoreboardControl";
 import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
 import { GameAdminBuzzerControl } from "@/app/_components/client/GameAdminBuzzerControl";
+import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { useGameIdData } from "@/app/_hooks/gameTokenData";
 
 import { logger } from "@/utils/logger";
@@ -19,7 +20,7 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
 
   useGameIdData();
 
-  const gameStateSub = api.gameAdmin.gameState.useSubscription();
+  const gameStateSub = api.gameGeneral.gameState.useSubscription();
 
   if (!gameStateSub.data) {
     return undefined;
@@ -41,6 +42,7 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
         <p>Number of Teams: {gameTeams.length ?? 0}</p>
       )}
       <p>Number of Players: {gameTeams.length ?? 0}</p>
+      <GameWhoBuzzedIn />
       <GameAdminBuzzerControl />
       <GameAdminScoreboardControl
         gameTeams={gameTeams.map(({ gameUsers, ...gameTeam }) => gameTeam)}

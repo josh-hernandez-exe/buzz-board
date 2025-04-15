@@ -15,7 +15,7 @@ export function GenericCard({
   content,
   footer,
 }: {
-  title: string | undefined;
+  title?: string | undefined;
   description?: string | undefined;
   content?: React.ReactNode;
   footer?: React.ReactNode;

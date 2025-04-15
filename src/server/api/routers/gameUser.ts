@@ -8,7 +8,7 @@ import {
   protectedGameUserProcedure,
 } from "@/server/api/trpc";
 
-import { emitUpdatedGameState } from "@/utils/events";
+import { emitUpdatedGameState, emitWhoBuzzedIn } from "@/utils/events";
 
 export const gameUserRouter = createTRPCRouter({
   ping: protectedGameUserProcedure.query(({ ctx }) => {
@@ -161,8 +161,11 @@ export const gameUserRouter = createTRPCRouter({
     });
 
     // only emit above query is successful.
-    await emitUpdatedGameState({
-      gameId: gameUser.gameId,
-    });
+    await Promise.all([
+      emitWhoBuzzedIn({ gameUserId: gameUser.id }),
+      emitUpdatedGameState({
+        gameId: gameUser.gameId,
+      }),
+    ]);
   }),
 });
