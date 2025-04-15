@@ -40,16 +40,20 @@ export const publicRouter = createTRPCRouter({
         };
       }
 
-      const curNumPlayers = await ctx.db.gameUser.count({
+      const curMaxPlayerIndex = await ctx.db.gameUser.aggregate({
+        _max: {
+          index: true,
+        },
         where: { gameId: game.id },
       });
-      const curIndex = curNumPlayers + 1;
+      const curIndex = (curMaxPlayerIndex._max.index ?? 0) + 1;
 
       const gameUser = await ctx.db.$transaction(async (tx) => {
         const gUser = await tx.gameUser.create({
           data: {
             gameId: game.id,
             name: `Player ${curIndex}`,
+            index: curIndex,
             token: generateToken(),
           },
         });
