@@ -28,7 +28,7 @@ export function GameTeamSelectionDropDown({
 
   return (
     <DropDownSelection<(typeof gameTeams)[number]>
-      title="Game Selection"
+      title="Game Team Selection"
       options={options}
       onChange={onChange}
     />
