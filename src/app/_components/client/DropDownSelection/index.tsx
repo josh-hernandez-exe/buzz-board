@@ -2,16 +2,15 @@
 
 import { useState } from "react";
 
-import { Button } from "@/app/_components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/app/_components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/_components/ui/select";
 
 import { logger } from "@/utils/logger";
 
@@ -58,24 +57,25 @@ export function DropDownSelection<T>({
     onChange(selectedItem.data);
   };
 
+  logger.debug(options.find((item) => item.id === value)?.name);
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline">{title}</Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56">
-        <DropdownMenuLabel>{title}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
+    <Select onValueChange={onValueChange}>
+      <SelectTrigger className="w-[180px]">
+        <SelectValue placeholder={title} />
+      </SelectTrigger>
+      <SelectContent className="w-56">
+        <SelectGroup>
+          <SelectLabel>{title}</SelectLabel>
           {options.map((item) => {
             return (
-              <DropdownMenuRadioItem value={item.id} key={item.id}>
+              <SelectItem value={item.id} key={item.id}>
                 {item.name}
-              </DropdownMenuRadioItem>
+              </SelectItem>
             );
           })}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   );
 }
