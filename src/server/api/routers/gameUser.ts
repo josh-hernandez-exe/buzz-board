@@ -71,7 +71,7 @@ export const gameUserRouter = createTRPCRouter({
         },
       });
 
-      emitUpdatedGameState({
+      await emitUpdatedGameState({
         gameId: gameUser.gameId,
       });
 
@@ -122,7 +122,7 @@ export const gameUserRouter = createTRPCRouter({
       }),
     ]);
 
-    emitUpdatedGameState({
+    await emitUpdatedGameState({
       gameId: gameUser.gameId,
     });
   }),
