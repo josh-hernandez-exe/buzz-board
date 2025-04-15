@@ -22,6 +22,20 @@ export const gameUserRouter = createTRPCRouter({
     );
 
     const gameUser = await ctx.db.gameUser.findUnique({
+      select: {
+        id: true,
+        name: true,
+        index: true,
+        data: true,
+        gameTeamId: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+      },
       where: {
         id: ctx.gameSession.gameUser.id,
       },

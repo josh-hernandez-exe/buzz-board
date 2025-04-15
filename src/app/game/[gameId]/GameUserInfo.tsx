@@ -12,16 +12,18 @@ export function GameUserInfo({
   initialGameUser,
   initialGameState,
 }: {
-  initialGameUser: GameUser;
+  initialGameUser: Pick<GameUser, "id" | "name" | "gameTeamId">;
   initialGameState: PublicGameState;
 }) {
+  // TODO: Make this component react to when switch teams
+  const gameSelfInfo = api.gameUser.getSelfInfo.useQuery();
   const gameStateSub = api.public.gameState.useSubscription({
     gameId: initialGameState.game.id,
   });
 
   const currentGameState = gameStateSub.data ?? initialGameState;
 
-  const gameUser = initialGameUser;
+  const gameUser = gameSelfInfo.data || initialGameUser;
   const { game, gameTeams } = currentGameState;
 
   const gameTeam = gameTeams.find(({ id }) => id === gameUser.gameTeamId);
