@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import _ from "lodash";
 
 import { logger } from "@/utils/logger";
@@ -36,4 +38,20 @@ export function generateShortCode(
   });
 
   return _.shuffle(selectedChars).join("");
+}
+
+export function generateToken(
+  {
+    length,
+    encoding,
+  }: {
+    length: number;
+    encoding?: BufferEncoding;
+  } = { length: 32, encoding: "base64url" },
+): string {
+  if (!encoding) {
+    encoding = "base64url";
+  }
+
+  return randomBytes(length).toString(encoding);
 }

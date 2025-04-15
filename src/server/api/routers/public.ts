@@ -7,7 +7,7 @@ import { logger } from "@/utils/logger";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 
 import { getPublicGameState, emitUpdatedGameState } from "@/server/db/common";
-import { generateShortCode } from "@/utils/codeGeneration";
+import { generateToken } from "@/utils/codeGeneration";
 
 import { gameEventEmitter } from "@/utils/events";
 
@@ -50,8 +50,7 @@ export const publicRouter = createTRPCRouter({
           data: {
             gameId: game.id,
             name: `Player ${curIndex}`,
-            // TODO: replace shortcode generation with better security
-            token: generateShortCode(30),
+            token: generateToken(),
           },
         });
 
