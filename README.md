@@ -30,6 +30,39 @@ bun repl
 import { db } from "@/server/db"
 ```
 
+# TODO
+
+- Make component for team swtiching that will invalidate `api.gameUser.getSelfInfo`
+- Make component for viewing self game user info that allows you to edit your name
+	- if a user is associated to have an avatar
+	- somehow make this a common component between user and game user
+		- or make one for both
+- Make a component for viewing team info and allowing the user to change the team name
+	- this should trigger a state change for the name to appear else where
+- Refact game selection to be a table and redirect you to say `/game/{gameId}/admin
+- Allow the admin to toggle between allowing users between being open for users to join and locking user out.
+- Admin page should have a tab for game user managed ment.
+	- this management should should have a full user view and by team view
+- Split score control into a quick score control and an advanced score control
+	- there are two quick score controls
+		- team format
+			- have a list of all the teams and an increment and decrement button
+			- there should also be a box near the top to indicate how much.
+				- this box should be a dropdown to be able to change the ammount.
+		- single format
+			- similar to team format, but instead of the teams, just all who is rejected and "all" selected
+			- this feature will likely need a refactor to treat buzzers like scoreboards.
+	- quick score control will have a list of all the teams
+- Game User should have two tabs
+	- buzzer tab
+	- game info tab
+		- this tab should tell you infor about the game and who is on your team
+
+
+# Future Feature
+
+- Buzzed in queue. So everyone can buzz in, but the sequence who has buzzed is remembered.
+	- this would need a "Next" button to move from the current "selected" to next in line and make previous rejected until whoever has something correct.
 
 ## Create T3 App
 
