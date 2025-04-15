@@ -15,12 +15,16 @@ export const userRouter = createTRPCRouter({
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        let shortcode;
+        let shortcode: string | undefined;
 
         // Generate a unique shortcode
         while (shortcode === undefined) {
           shortcode = generateShortCode(6);
           const g = await ctx.db.game.findUnique({
+            select: {
+              id: true,
+              code: true,
+            },
             where: {
               code: shortcode,
             },
@@ -35,7 +39,7 @@ export const userRouter = createTRPCRouter({
           const g = await tx.game.create({
             data: {
               name: input.name,
-              code: generateShortCode(6),
+              code: shortcode,
               format: input.format,
               createdBy: {
                 connect: {
