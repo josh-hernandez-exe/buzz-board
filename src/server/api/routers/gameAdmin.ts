@@ -128,6 +128,11 @@ export const gameAdminRouter = createTRPCRouter({
   startBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { gameAdmin, ...game } = ctx.gameSession;
 
+    if (game.isBuzzerListening) {
+      // already listening
+      return;
+    }
+
     await ctx.db.$transaction([
       ctx.db.gameTeam.updateMany({
         where: {
@@ -152,6 +157,11 @@ export const gameAdminRouter = createTRPCRouter({
   }),
   pauseBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { gameAdmin, ...game } = ctx.gameSession;
+
+    if (!game.isBuzzerListening) {
+      // already not listening
+      return;
+    }
 
     await ctx.db.game.update({
       where: {
