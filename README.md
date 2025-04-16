@@ -60,6 +60,19 @@ import { db } from "@/server/db"
 		- this tab should tell you infor about the game and who is on your team
 - Refactor game event cache to use a redis-like service
 	- this should be added to the docker compose
+- Add more login providers:
+	- Ideally just: Apple / Google / Discord
+		- But will have to see how easy it is to swtich over to jwt (or use multiple token types)
+	- For sure:
+		- Github
+		- Linkin
+	- More than likley
+		- Apple
+		- Facebook
+		- Instagram
+	- Less than likely:
+		- Slack
+		- Battle.net
 
 # Future Feature
 
