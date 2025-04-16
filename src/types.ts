@@ -61,8 +61,11 @@ export type WhoBuzzedIn = {
       id: GameTeam["id"];
       name: GameTeam["name"];
     };
-    user: {
-      image: User["image"];
-    };
+    user:
+      | {
+          image: User["image"];
+        }
+      | undefined
+      | null;
   };
 };

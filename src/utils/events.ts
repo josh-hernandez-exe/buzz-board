@@ -97,6 +97,7 @@ export async function emitWhoBuzzedIn({
     gameUser: {
       ...gameUser,
       gameTeam: gameTeam!,
+      user: gameUser.user,
     },
   };
 
