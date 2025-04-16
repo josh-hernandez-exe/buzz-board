@@ -95,9 +95,11 @@ export async function emitWhoBuzzedIn({
   const data: WhoBuzzedIn = {
     game,
     gameUser: {
-      ...gameUser,
+      id: gameUser.id,
+      name: gameUser.name,
+      index: gameUser.index,
       gameTeam: gameTeam!,
-      user: gameUser.user,
+      image: gameUser.user?.image,
     },
   };
 
