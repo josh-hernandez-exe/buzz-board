@@ -51,7 +51,11 @@ export default async function GamePage({
             initialGameState={currentGameState}
           />
           <GameWhoBuzzedIn gameUserId={gameUser.id} />
-          <GameBuzzer game={game} gameTeams={gameTeams} gameUser={gameUser} />
+          <GameBuzzer
+            game={game}
+            gameTeams={gameTeams}
+            initialGameTeamId={gameUser.gameTeamId}
+          />
         </div>
       </main>
     </HydrateClient>
