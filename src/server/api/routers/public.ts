@@ -58,11 +58,11 @@ export const publicRouter = createTRPCRouter({
         const gUser = await tx.gameUser.create({
           data: {
             gameId: game.id,
-            name: `Player ${curIndex}`,
+            name: user?.name ?? `Player ${curIndex}`,
             index: curIndex,
+            token: generateToken(),
             // if a user is authed, then link
             userId: user?.id,
-            token: generateToken(),
           },
         });
 
