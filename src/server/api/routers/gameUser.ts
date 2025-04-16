@@ -60,6 +60,7 @@ export const gameUserRouter = createTRPCRouter({
       }
 
       if (gameUser.gameTeamId === input.gameTeamId) {
+        // same team do nothing
         return gameUser;
       }
 

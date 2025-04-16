@@ -46,6 +46,7 @@ export function GameBuzzer({
     changeTeamMutation.mutate({
       gameTeamId: gameTeam.id,
     });
+    utils.gameUser.getSelfInfo.invalidate();
   };
 
   const buzzInMutation = api.gameUser.buzzIn.useMutation({
