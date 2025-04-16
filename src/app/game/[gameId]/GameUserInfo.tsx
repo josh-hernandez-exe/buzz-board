@@ -73,24 +73,28 @@ export function GameUserInfo({
             disabled={changeNameMutation.isPending}
           />
           <br></br>
-          {/* TODO: Do not render team name when the game format is singles */}
-          <p>Team Name</p>
-          <InlineEdit
-            value={gameTeamName}
-            style={{ width: 500 }}
-            onCancel={() => {
-              setGameTeamName(gameTeam?.name);
-            }}
-            onChange={(val, e) => {
-              setGameTeamName(val);
-            }}
-            onSave={(e) => {
-              if (gameTeamName) {
-                changeTeamNameMutation.mutate({ name: gameTeamName });
-              }
-            }}
-            disabled={changeTeamNameMutation.isPending}
-          />
+          {game.format === GameFormat.team && (
+            // NOTE: Only show this component when the game format is team
+            <>
+              <p>Team Name</p>
+              <InlineEdit
+                value={gameTeamName}
+                style={{ width: 500 }}
+                onCancel={() => {
+                  setGameTeamName(gameTeam?.name);
+                }}
+                onChange={(val, e) => {
+                  setGameTeamName(val);
+                }}
+                onSave={(e) => {
+                  if (gameTeamName) {
+                    changeTeamNameMutation.mutate({ name: gameTeamName });
+                  }
+                }}
+                disabled={changeTeamNameMutation.isPending}
+              />
+            </>
+          )}
         </div>
       }
       content={
