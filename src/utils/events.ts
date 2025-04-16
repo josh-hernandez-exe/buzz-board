@@ -1,6 +1,7 @@
 import EventEmitter, { on } from "node:events";
 
 import type { Game, GameUser } from "@prisma/client";
+import { LRUCache } from "typescript-lru-cache";
 import { ok, err, Result } from "neverthrow";
 
 import { db } from "@/server/db";
@@ -26,8 +27,20 @@ export interface GameEvents {
   whoBuzzedIn: [gameId: Game["id"], WhoBuzzedIn | null];
 }
 
-// TODO: replace with a Redis-like service
 export const gameEventEmitter = new IterableEventEmitter<GameEvents>();
+
+// TODO: replace with a Redis-like service
+export const gameEventCache = {
+  publicGameStateUpdate: new LRUCache<
+    Game["id"],
+    GameEvents["publicGameStateUpdate"][1]
+  >(),
+  privateGameStateUpdate: new LRUCache<
+    Game["id"],
+    GameEvents["privateGameStateUpdate"][1]
+  >(),
+  whoBuzzedIn: new LRUCache<Game["id"], GameEvents["whoBuzzedIn"][1]>(),
+};
 
 export async function emitUpdatedGameState({
   gameId,
@@ -46,13 +59,17 @@ export async function emitUpdatedGameState({
     return err(privateResult.error);
   }
 
+  gameEventCache.publicGameStateUpdate.set(gameId, publicResult.value);
   gameEventEmitter.emit("publicGameStateUpdate", gameId, publicResult.value);
+
+  gameEventCache.privateGameStateUpdate.set(gameId, privateResult.value);
   gameEventEmitter.emit("privateGameStateUpdate", gameId, privateResult.value);
 
   return ok();
 }
 
 export async function clearWhoBuzzedIn({ gameId }: { gameId: Game["id"] }) {
+  gameEventCache.whoBuzzedIn.set(gameId, null);
   gameEventEmitter.emit("whoBuzzedIn", gameId, null);
 }
 
@@ -103,6 +120,7 @@ export async function emitWhoBuzzedIn({
     },
   };
 
+  gameEventCache.whoBuzzedIn.set(game.id, data);
   gameEventEmitter.emit("whoBuzzedIn", game.id, data);
 
   return ok();

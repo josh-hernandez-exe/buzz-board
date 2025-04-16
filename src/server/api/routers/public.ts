@@ -9,7 +9,11 @@ import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 import { getPublicGameState } from "@/server/db/common";
 import { generateToken } from "@/utils/codeGeneration";
 
-import { gameEventEmitter, emitUpdatedGameState } from "@/utils/events";
+import {
+  gameEventEmitter,
+  emitUpdatedGameState,
+  gameEventCache,
+} from "@/utils/events";
 
 export const publicRouter = createTRPCRouter({
   joinGame: publicProcedure
@@ -103,12 +107,16 @@ export const publicRouter = createTRPCRouter({
     .subscription(async function* ({ ctx, input, signal }) {
       const { gameId } = input;
 
-      const result = await getPublicGameState({ gameId });
-      if (result.isErr()) {
-        throw result.error;
+      if (!gameEventCache.publicGameStateUpdate.has(gameId)) {
+        const result = await getPublicGameState({ gameId });
+        if (result.isErr()) {
+          throw result.error;
+        }
+
+        gameEventCache.publicGameStateUpdate.set(gameId, result.value);
       }
 
-      yield result.value;
+      yield gameEventCache.publicGameStateUpdate.get(gameId);
 
       for await (const [eventGameId, gameState] of gameEventEmitter.toIterable(
         "publicGameStateUpdate",

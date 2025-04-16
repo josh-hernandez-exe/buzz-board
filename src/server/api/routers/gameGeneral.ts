@@ -6,7 +6,7 @@ import {
 } from "@/server/api/trpc";
 
 import { getPrivateGameState } from "@/server/db/common";
-import { gameEventEmitter } from "@/utils/events";
+import { gameEventEmitter, gameEventCache } from "@/utils/events";
 
 import { logger } from "@/utils/logger";
 
@@ -26,12 +26,16 @@ export const gameGeneralRouter = createTRPCRouter({
   }) {
     const { id: gameId } = ctx.gameSession;
 
-    const result = await getPrivateGameState({ gameId });
-    if (result.isErr()) {
-      throw result.error;
+    if (!gameEventCache.privateGameStateUpdate.has(gameId)) {
+      const result = await getPrivateGameState({ gameId });
+      if (result.isErr()) {
+        throw result.error;
+      }
+
+      gameEventCache.privateGameStateUpdate.set(gameId, result.value);
     }
 
-    yield result.value;
+    yield gameEventCache.privateGameStateUpdate.get(gameId);
 
     for await (const [eventGameId, gameState] of gameEventEmitter.toIterable(
       "privateGameStateUpdate",
