@@ -90,6 +90,10 @@ export const gameUserRouter = createTRPCRouter({
     }
 
     const gameTeam = await ctx.db.gameTeam.findUnique({
+      select: {
+        id: true,
+        buzzerState: true,
+      },
       where: {
         id: gameTeamId,
       },
@@ -103,25 +107,46 @@ export const gameUserRouter = createTRPCRouter({
       return;
     }
 
-    await ctx.db.$transaction([
-      ctx.db.gameTeam.update({
-        where: {
-          id: gameTeamId,
-        },
-        data: {
-          buzzerState: BuzzerState.selected,
-        },
-      }),
-      ctx.db.game.update({
-        where: {
-          id: gameUser.gameId,
-        },
-        data: {
-          isBuzzerListening: false,
-        },
-      }),
-    ]);
+    await ctx.db.$transaction(async (trx) => {
+      // Note1: to act as a psuedo mutex we only write with the expected buzzer state
+      //        only if both updates are successful will this take.
+      //        furthermore, if someone else made the query at the exact same time
+      //        the where clause will hopefully be enough to deal with that.
+      // Note2: This end point is likely getting hit with high bursts.
+      //        So we select to reduce the amount of data grabbed for it to be successful.
+      const [updatedTeam, updatedGame] = await Promise.all([
+        trx.gameTeam.update({
+          select: {
+            id: true,
+          },
+          where: {
+            id: gameTeamId,
+            buzzerState: BuzzerState.avilalble,
+          },
+          data: {
+            buzzerState: BuzzerState.selected,
+          },
+        }),
+        trx.game.update({
+          select: {
+            id: true,
+          },
+          where: {
+            id: gameUser.gameId,
+            isBuzzerListening: true,
+          },
+          data: {
+            isBuzzerListening: false,
+          },
+        }),
+      ]);
+      if (!updatedTeam || !updatedGame) {
+        // throw and rollback
+        throw new Error("Invalid buzzer state.");
+      }
+    });
 
+    // only emit above query is successful.
     await emitUpdatedGameState({
       gameId: gameUser.gameId,
     });
