@@ -6,6 +6,7 @@ import { api } from "@/trpc/react";
 import { GameAdminScoreboardControl } from "@/app/_components/client/GameAdminScoreboardControl";
 import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
 import { GameAdminBuzzerControl } from "@/app/_components/client/GameAdminBuzzerControl";
+import { GameAdminScoreboardAdvancedControl } from "@/app/_components/client/GameAdminScoreboardAdvancedControl";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { useGameIdData } from "@/app/_hooks/gameTokenData";
 
@@ -44,6 +45,9 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
       <p>Number of Players: {gameTeams.length ?? 0}</p>
       <GameWhoBuzzedIn />
       <GameAdminBuzzerControl />
+      <GameAdminScoreboardAdvancedControl
+        gameTeams={gameTeams.map(({ gameUsers, ...gameTeam }) => gameTeam)}
+      />
       <GameAdminScoreboardControl
         gameTeams={gameTeams.map(({ gameUsers, ...gameTeam }) => gameTeam)}
       />
