@@ -20,6 +20,8 @@ export const publicRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const user = ctx?.session?.user;
+
       const game = await ctx.db.game.findUnique({
         where: { code: input.gameCode },
         include: { gameTeams: true },
@@ -54,6 +56,8 @@ export const publicRouter = createTRPCRouter({
             gameId: game.id,
             name: `Player ${curIndex}`,
             index: curIndex,
+            // if a user is authed, then link
+            userId: user?.id,
             token: generateToken(),
           },
         });

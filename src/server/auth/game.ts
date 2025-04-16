@@ -1,4 +1,4 @@
-import type { Game, GameAdmin, GameUser } from "@prisma/client";
+import type { Game, GameAdmin, GameUser, User } from "@prisma/client";
 import { cookies } from "next/headers";
 
 import { ok, err } from "neverthrow";
@@ -21,9 +21,11 @@ import { logger } from "@/utils/logger";
 async function gameUserAuth({
   gameId,
   gameUserToken,
+  user,
 }: {
   gameId: string | undefined;
   gameUserToken: string | undefined;
+  user?: Pick<User, "id"> | undefined;
 }): Promise<{ gameUser: GameUser | undefined | null }> {
   let gameUser;
 
@@ -41,6 +43,23 @@ async function gameUserAuth({
   if (gameUser && gameUser.gameId !== gameId) {
     logger.warn("Game User found is not for the current game.");
     gameUser = null;
+  }
+
+  if (
+    typeof user?.id === "string" &&
+    gameUser &&
+    gameUser?.userId !== user.id
+  ) {
+    // user is authed and game user is authed and not linked
+    // link them
+    await db.gameUser.update({
+      where: {
+        id: gameUser.id,
+      },
+      data: {
+        userId: user.id,
+      },
+    });
   }
 
   return {
@@ -151,6 +170,7 @@ export async function gameAuth({
     gameUserAuth({
       gameId,
       gameUserToken,
+      user,
     }),
     gameAdminAuth({
       gameId,
