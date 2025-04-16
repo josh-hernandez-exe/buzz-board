@@ -32,8 +32,9 @@ import { db } from "@/server/db"
 
 # TODO
 
-- Make component for team swtiching that will invalidate `api.gameUser.getSelfInfo`
-- Make component for viewing self game user info that allows you to edit your name
+- [x] Make component for team swtiching that will invalidate `api.gameUser.getSelfInfo`
+- [x] Update who buzzed in component to show user profile is user is linked
+- [x] Make component for viewing self game user info that allows you to edit your name
 	- if a user is associated to have an avatar
 	- somehow make this a common component between user and game user
 		- or make one for both
@@ -57,7 +58,8 @@ import { db } from "@/server/db"
 	- buzzer tab
 	- game info tab
 		- this tab should tell you infor about the game and who is on your team
-
+- Refactor game event cache to use a redis-like service
+	- this should be added to the docker compose
 
 # Future Feature
 
