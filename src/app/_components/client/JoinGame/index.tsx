@@ -3,11 +3,18 @@
 import { useState } from "react";
 
 import { useRouter } from "next/navigation";
+import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 
 import { Button } from "@/app/_components/ui/button";
-import { Input } from "@/app/_components/ui/input";
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 import { api } from "@/trpc/react";
+
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@/app/_components/ui/input-otp";
 
 import { logger } from "@/utils/logger";
 
@@ -48,13 +55,25 @@ export function JoinGameComponent() {
 
   return (
     <div>
-      <Input
-        type="text"
-        placeholder="Enter Game Code"
+      <p>Enter Game Code</p>
+      <InputOTP
+        maxLength={6}
+        onChange={setGameCode}
         value={gameCode}
-        onChange={(e) => setGameCode(e.target.value)}
-        className="mb-4 rounded border border-gray-300 p-2"
-      />
+        pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
+      >
+        <InputOTPGroup>
+          <InputOTPSlot index={0} />
+          <InputOTPSlot index={1} />
+          <InputOTPSlot index={2} />
+        </InputOTPGroup>
+        <InputOTPSeparator />
+        <InputOTPGroup>
+          <InputOTPSlot index={3} />
+          <InputOTPSlot index={4} />
+          <InputOTPSlot index={5} />
+        </InputOTPGroup>
+      </InputOTP>
       {error && <p className="mb-4 text-red-500">{error}</p>}
       <Button
         onClick={handleJoinGame}
