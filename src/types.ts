@@ -11,6 +11,31 @@ export type GameWithRelations = Prisma.GameGetPayload<{
   };
 }>;
 
+export type GameUserWithRelations = Prisma.GameUserGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    index: true;
+    data: true;
+    gameId: true;
+    gameTeamId: true;
+    gameTeam: {
+      select: {
+        id: true;
+        name: true;
+        index: true;
+      };
+    };
+    user: {
+      select: {
+        id: true;
+        name: true;
+        image: true;
+      };
+    };
+  };
+}>;
+
 export type PublicGameState = {
   game: {
     id: Game["id"];

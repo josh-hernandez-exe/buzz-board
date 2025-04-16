@@ -9,6 +9,7 @@ import {
 } from "@/server/api/trpc";
 
 import { emitUpdatedGameState, emitWhoBuzzedIn } from "@/utils/events";
+import type { GameUserWithRelations } from "@/types";
 
 export const gameUserRouter = createTRPCRouter({
   ping: protectedGameUserProcedure.query(({ ctx }) => {
@@ -21,13 +22,21 @@ export const gameUserRouter = createTRPCRouter({
       `Get simple info from game user: ${ctx.gameSession.gameUser.id}`,
     );
 
-    const gameUser = await ctx.db.gameUser.findUnique({
+    const gameUser = (await ctx.db.gameUser.findUnique({
       select: {
         id: true,
         name: true,
         index: true,
         data: true,
+        gameId: true,
         gameTeamId: true,
+        gameTeam: {
+          select: {
+            id: true,
+            name: true,
+            index: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -39,7 +48,7 @@ export const gameUserRouter = createTRPCRouter({
       where: {
         id: ctx.gameSession.gameUser.id,
       },
-    });
+    })) as GameUserWithRelations;
 
     if (!gameUser) {
       throw new Error("Game user not found");
@@ -49,7 +58,7 @@ export const gameUserRouter = createTRPCRouter({
   changeName: protectedGameUserProcedure
     .input(
       z.object({
-        name: z.string().min(1).max(20),
+        name: z.string().min(1).max(32),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -60,14 +69,69 @@ export const gameUserRouter = createTRPCRouter({
         return;
       }
 
-      await ctx.db.gameUser.update({
+      const nameChangePromises: any = [
+        ctx.db.gameUser.update({
+          where: {
+            id: gameUser.id,
+          },
+          data: {
+            name: input.name,
+          },
+        }),
+      ];
+
+      if (gameUser.gameTeamId && ctx.gameSession.format === GameFormat.single) {
+        nameChangePromises.push(
+          ctx.db.gameTeam.update({
+            where: {
+              id: gameUser.gameTeamId,
+            },
+            data: {
+              name: input.name,
+            },
+          }),
+        );
+      }
+
+      ctx.db.$transaction(nameChangePromises);
+    }),
+  changeTeamName: protectedGameUserProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(32),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { gameUser } = ctx.gameSession;
+
+      if (ctx.gameSession.format === GameFormat.single) {
+        throw new Error("Game format does not support teams");
+      }
+
+      if (!gameUser.gameTeamId) {
+        throw new Error("GameUser is not on a team.");
+      }
+
+      const gameTeam = await ctx.db.gameTeam.findUnique({
         where: {
-          id: gameUser.id,
+          id: gameUser.gameTeamId,
+        },
+      });
+
+      if (gameUser.name === input.name) {
+        // name is already the same and do not do anything
+        return;
+      }
+
+      await ctx.db.gameTeam.update({
+        where: {
+          id: gameUser.gameTeamId,
         },
         data: {
           name: input.name,
         },
       });
+      await emitUpdatedGameState({ gameId: ctx.gameSession.id });
     }),
   changeTeams: protectedGameUserProcedure
     .input(
