@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import type { Game, GameTeam, GameUser } from "@prisma/client";
+import type { Game, GameTeam, GameUser, User } from "@prisma/client";
 
 export type GameWithRelations = Prisma.GameGetPayload<{
   include: {
@@ -60,6 +60,9 @@ export type WhoBuzzedIn = {
     gameTeam: {
       id: GameTeam["id"];
       name: GameTeam["name"];
+    };
+    user: {
+      image: User["image"];
     };
   };
 };

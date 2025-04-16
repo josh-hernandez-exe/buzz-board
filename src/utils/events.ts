@@ -78,6 +78,11 @@ export async function emitWhoBuzzedIn({
           format: true,
         },
       },
+      user: {
+        select: {
+          image: true,
+        },
+      },
     },
   });
 
