@@ -52,7 +52,7 @@ async function gameUserAuth({
   ) {
     // user is authed and game user is authed and not linked
     // link them
-    await db.gameUser.update({
+    gameUser = await db.gameUser.update({
       where: {
         id: gameUser.id,
       },
