@@ -93,7 +93,7 @@ export const gameUserRouter = createTRPCRouter({
         );
       }
 
-      ctx.db.$transaction(nameChangePromises);
+      await ctx.db.$transaction(nameChangePromises);
     }),
   changeTeamName: protectedGameUserProcedure
     .input(
@@ -103,10 +103,6 @@ export const gameUserRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { gameUser } = ctx.gameSession;
-
-      if (ctx.gameSession.format === GameFormat.single) {
-        throw new Error("Game format does not support teams");
-      }
 
       if (!gameUser.gameTeamId) {
         throw new Error("GameUser is not on a team.");
@@ -123,14 +119,32 @@ export const gameUserRouter = createTRPCRouter({
         return;
       }
 
-      await ctx.db.gameTeam.update({
-        where: {
-          id: gameUser.gameTeamId,
-        },
-        data: {
-          name: input.name,
-        },
-      });
+      const nameChangePromises: any = [
+        ctx.db.gameTeam.update({
+          where: {
+            id: gameUser.gameTeamId,
+          },
+          data: {
+            name: input.name,
+          },
+        }),
+      ];
+
+      if (ctx.gameSession.format === GameFormat.single) {
+        nameChangePromises.push(
+          ctx.db.gameUser.update({
+            where: {
+              id: gameUser.id,
+            },
+            data: {
+              name: input.name,
+            },
+          }),
+        );
+      }
+
+      await ctx.db.$transaction(nameChangePromises);
+
       await emitUpdatedGameState({ gameId: ctx.gameSession.id });
     }),
   changeTeams: protectedGameUserProcedure
