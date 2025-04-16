@@ -46,6 +46,29 @@ export const gameUserRouter = createTRPCRouter({
     }
     return gameUser;
   }),
+  changeName: protectedGameUserProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(20),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { gameUser } = ctx.gameSession;
+
+      if (gameUser.name === input.name) {
+        // name is already the same and do not do anything
+        return;
+      }
+
+      await ctx.db.gameUser.update({
+        where: {
+          id: gameUser.id,
+        },
+        data: {
+          name: input.name,
+        },
+      });
+    }),
   changeTeams: protectedGameUserProcedure
     .input(
       z.object({

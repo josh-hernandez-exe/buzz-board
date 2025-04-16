@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { GameFormat, type GameUser } from "@prisma/client";
+import { InlineEdit } from "rsuite";
 
 import { GenericCard } from "@/app/_components/GenericCard";
 import { api } from "@/trpc/react";
@@ -16,7 +18,14 @@ export function GameUserInfo({
   initialGameState: PublicGameState;
 }) {
   // TODO: Make this component react to when switch teams
+  const utils = api.useUtils();
+  const [gameUserName, setGameUserName] = useState(initialGameUser.name);
   const gameSelfInfo = api.gameUser.getSelfInfo.useQuery();
+  const changeNameMutation = api.gameUser.changeName.useMutation({
+    onSuccess: async () => {
+      utils.gameUser.getSelfInfo.invalidate();
+    },
+  });
   const gameStateSub = api.public.gameState.useSubscription({
     gameId: initialGameState.game.id,
   });
@@ -31,7 +40,22 @@ export function GameUserInfo({
   return (
     <GenericCard
       key={gameUser.id}
-      title={gameUser.name}
+      title={
+        <InlineEdit
+          value={gameUserName}
+          style={{ width: 500 }}
+          onCancel={() => {
+            setGameUserName(gameUser.name);
+          }}
+          onChange={(val, e) => {
+            setGameUserName(val);
+          }}
+          onSave={(e) => {
+            changeNameMutation.mutate({ name: gameUserName });
+          }}
+          disabled={changeNameMutation.isPending}
+        />
+      }
       content={
         <div>
           <h1 className="mb-4 text-2xl font-bold">
