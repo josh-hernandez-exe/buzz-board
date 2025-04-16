@@ -3,7 +3,6 @@ import { db } from "@/server/db";
 import { ok, err, Result } from "neverthrow";
 
 import type { PublicGameState, PrivateGameState } from "@/types";
-import { gameEventEmitter } from "@/utils/events";
 
 export async function getPublicGameState({
   gameId,
@@ -148,29 +147,6 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
   });
 
   return ok(data);
-}
-
-export async function emitUpdatedGameState({
-  gameId,
-}: {
-  gameId: Game["id"];
-}): Promise<Result<void, Error>> {
-  const [publicResult, privateResult] = await Promise.all([
-    getPublicGameState({ gameId }),
-    getPrivateGameState({ gameId }),
-  ]);
-
-  if (publicResult.isErr()) {
-    return err(publicResult.error);
-  }
-  if (privateResult.isErr()) {
-    return err(privateResult.error);
-  }
-
-  gameEventEmitter.emit("publicGameStateUpdate", gameId, publicResult.value);
-  gameEventEmitter.emit("privateGameStateUpdate", gameId, privateResult.value);
-
-  return ok();
 }
 
 export async function checkTeamsAndGetCurrentScores({
