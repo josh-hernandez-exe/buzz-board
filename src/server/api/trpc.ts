@@ -59,6 +59,15 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
         zodError:
           error.cause instanceof ZodError ? error.cause.flatten() : null,
       },
+      ping: {
+        // Enable periodic ping messages to keep connection alive
+        enabled: true,
+        // Send ping message every 2s
+        intervalMs: 2_000,
+      },
+      client: {
+        reconnectAfterInactivityMs: 3_000,
+      },
     };
   },
 });
