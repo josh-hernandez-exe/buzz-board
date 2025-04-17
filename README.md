@@ -54,10 +54,15 @@ import { db } from "@/server/db"
 			- similar to team format, but instead of the teams, just all who is rejected and "all" selected
 			- this feature will likely need a refactor to treat buzzers like scoreboards.
 	- quick score control will have a list of all the teams
-- Game User should have two tabs
+- [x] Game User should have two tabs
 	- buzzer tab
 	- game info tab
 		- this tab should tell you infor about the game and who is on your team
+- Game User Buzzer tab should have more feedback in error states
+	- [x] when they buzz in
+	- [x] when someone else buzzes in
+	- [ ] when someone on your team buzzes in
+	-
 - Refactor game event cache to use a redis-like service
 	- this should be added to the docker compose
 - Add more login providers:
