@@ -15,6 +15,9 @@ import { Input } from "@/app/_components/ui/input";
 import { Button } from "@/app/_components/ui/button";
 import { logger } from "@/utils/logger";
 
+import { DataTable } from "./GameTeamsTable";
+import { type GameTeamDataTableRow, columns } from "./gameTeamTableColumns";
+
 function GameTeamToggleGroup({
   gameTeams,
   onChange,
@@ -135,8 +138,17 @@ export function GameAdminScoreboardAdvancedControl({
       description="Update the score for a team"
       content={
         <div>
-          <GameTeamToggleGroup
-            gameTeams={gameTeams}
+          <DataTable
+            columns={columns}
+            data={gameTeams.map((team) => {
+              return {
+                id: team.id,
+                name: team.name,
+                index: team.index,
+                buzzerState: team.buzzerState,
+                score: 0,
+              } as GameTeamDataTableRow;
+            })}
             onChange={setSelectedGameTeams}
           />
           <Input
