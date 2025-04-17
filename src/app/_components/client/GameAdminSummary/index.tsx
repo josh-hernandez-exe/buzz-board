@@ -3,7 +3,6 @@
 import { GameFormat, type Game } from "@prisma/client";
 
 import { api } from "@/trpc/react";
-import { GameAdminScoreboardControl } from "@/app/_components/client/GameAdminScoreboardControl";
 import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
 import { GameAdminBuzzerControl } from "@/app/_components/client/GameAdminBuzzerControl";
 import { GameAdminScoreboardAdvancedControl } from "@/app/_components/client/GameAdminScoreboardAdvancedControl";
@@ -46,9 +45,6 @@ export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
       <GameWhoBuzzedIn />
       <GameAdminBuzzerControl />
       <GameAdminScoreboardAdvancedControl
-        gameTeams={gameTeams.map(({ gameUsers, ...gameTeam }) => gameTeam)}
-      />
-      <GameAdminScoreboardControl
         gameTeams={gameTeams.map(({ gameUsers, ...gameTeam }) => gameTeam)}
       />
       {gameTeams.map(({ gameUsers, score, ...gameTeam }) => {
