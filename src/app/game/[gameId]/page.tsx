@@ -5,6 +5,14 @@ import { ok, err } from "neverthrow";
 import { api, HydrateClient } from "@/trpc/server";
 import { GameBuzzer } from "@/app/_components/client/GameBuzzer";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
+
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/app/_components/ui/tabs";
+
 import { logger } from "@/utils/logger";
 import { GameUserInfo } from "./GameUserInfo";
 
@@ -46,16 +54,28 @@ export default async function GamePage({
     <HydrateClient>
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
         <div className="flex min-h-screen flex-col items-center justify-center">
-          <GameUserInfo
-            initialGameUser={gameUser}
-            initialGameState={currentGameState}
-          />
-          <GameWhoBuzzedIn gameUserId={gameUser.id} />
-          <GameBuzzer
-            game={game}
-            gameTeams={gameTeams}
-            initialGameTeamId={gameUser.gameTeamId}
-          />
+          <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
+            <Tabs defaultValue="buzzer" className="w-[400px]">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="buzzer">Buzzer</TabsTrigger>
+                <TabsTrigger value="gameinfo">GameInfo</TabsTrigger>
+              </TabsList>
+              <TabsContent value="buzzer">
+                <GameWhoBuzzedIn gameUserId={gameUser.id} />
+                <GameBuzzer
+                  game={game}
+                  gameTeams={gameTeams}
+                  initialGameTeamId={gameUser.gameTeamId}
+                />
+              </TabsContent>
+              <TabsContent value="gameinfo">
+                <GameUserInfo
+                  initialGameUser={gameUser}
+                  initialGameState={currentGameState}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </main>
     </HydrateClient>
