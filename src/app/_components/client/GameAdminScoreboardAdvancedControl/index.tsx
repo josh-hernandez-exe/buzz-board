@@ -21,7 +21,9 @@ import { type GameTeamDataTableRow, columns } from "./gameTeamTableColumns";
 export function GameAdminScoreboardAdvancedControl({
   gameTeams,
 }: {
-  gameTeams: Pick<GameTeam, "id" | "name" | "index" | "buzzerState">[];
+  gameTeams: Array<
+    Pick<GameTeam, "id" | "name" | "index" | "buzzerState"> & { score: number }
+  >;
 }) {
   logger.debug(`GameAdminScoreboardControl`);
   const [score, setScore] = useState<number>(0);
@@ -68,7 +70,7 @@ export function GameAdminScoreboardAdvancedControl({
                 name: team.name,
                 index: team.index,
                 buzzerState: team.buzzerState,
-                score: 0,
+                score: team.score,
               } as GameTeamDataTableRow;
             })}
             onChange={setSelectedGameTeams}

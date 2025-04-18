@@ -78,10 +78,10 @@ export const columns: ColumnDef<GameTeamDataTableRow>[] = [
       }
     },
   },
-  // {
-  //   accessorKey: "score",
-  //   header: "Score",
-  //   enableSorting: false,
-  //   enableHiding: false,
-  // },
+  {
+    accessorKey: "score",
+    header: "Score",
+    enableSorting: false,
+    enableHiding: false,
+  },
 ];
