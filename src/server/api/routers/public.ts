@@ -19,7 +19,7 @@ export const publicRouter = createTRPCRouter({
   joinGame: publicProcedure
     .input(
       z.object({
-        gameCode: z.string(),
+        gameCode: z.string().toUpperCase(),
         token: z.string().optional(),
       }),
     )
