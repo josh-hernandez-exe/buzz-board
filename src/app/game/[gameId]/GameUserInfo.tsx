@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { GameFormat, type GameUser } from "@prisma/client";
+import { useState, useEffect } from "react";
+import { GameFormat } from "@prisma/client";
 import { InlineEdit } from "rsuite";
 
 import { GenericCard } from "@/app/_components/GenericCard";
@@ -44,6 +44,16 @@ export function GameUserInfo({
   const gameStateSub = api.public.gameState.useSubscription({
     gameId: initialGameUser.gameId,
   });
+
+  useEffect(() => {
+    if (
+      gameSelfInfo.data?.gameTeamId !== initialGameUser.gameTeamId &&
+      typeof gameSelfInfo.data?.gameTeam?.name === "string"
+    ) {
+      // if the user swtiched teams from outside this component.
+      setGameTeamName(gameSelfInfo.data?.gameTeam?.name);
+    }
+  }, [gameSelfInfo.data?.gameTeamId]);
 
   const currentGameState = gameStateSub.data ?? initialGameState;
 
