@@ -13,14 +13,11 @@ import {
 
 import { logger } from "@/utils/logger";
 
-export function GameWhoBuzzedIn({
-  gameUserId,
-  gameTeamUserId,
-}: {
-  gameUserId?: GameUser["id"] | null;
-  gameTeamUserId?: GameTeam["id"] | null;
-}) {
+export function GameWhoBuzzedIn() {
+  const gameSelfInfo = api.gameUser.getSelfInfo.useQuery();
   const whoBuzzedInResult = api.gameGeneral.whoBuzzedIn.useSubscription();
+
+  const selfGameUser = gameSelfInfo.data;
 
   let content;
 
@@ -29,7 +26,7 @@ export function GameWhoBuzzedIn({
   if (whoBuzzedInResult.data) {
     const { game, gameUser } = whoBuzzedInResult.data;
 
-    if (gameUser && gameUser.id === gameUserId) {
+    if (gameUser && gameUser.id === selfGameUser?.id) {
       content = <p>You have buzz in!</p>;
     } else if (gameUser) {
       logger.debug(`GameWhoBuzzedIn userImageUrl: ${gameUser.image}`);
@@ -37,7 +34,7 @@ export function GameWhoBuzzedIn({
 
       if (
         game.format === GameFormat.team &&
-        gameUser.gameTeam.id === gameTeamUserId
+        gameUser.gameTeam.id === selfGameUser?.gameTeamId
       ) {
         message = `[${gameUser.name}] from your team has buzzed in.`;
       } else if (game.format === GameFormat.team) {
