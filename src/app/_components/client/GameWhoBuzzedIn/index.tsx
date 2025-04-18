@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { api } from "@/trpc/react";
 
-import { GameFormat, type GameUser } from "@prisma/client";
+import { GameFormat, type GameUser, type GameTeam } from "@prisma/client";
 import { GenericCard } from "@/app/_components/GenericCard";
 import {
   Avatar,
@@ -15,8 +15,10 @@ import { logger } from "@/utils/logger";
 
 export function GameWhoBuzzedIn({
   gameUserId,
+  gameTeamUserId,
 }: {
-  gameUserId?: GameUser["id"];
+  gameUserId?: GameUser["id"] | null;
+  gameTeamUserId?: GameTeam["id"] | null;
 }) {
   const whoBuzzedInResult = api.gameGeneral.whoBuzzedIn.useSubscription();
 
@@ -33,7 +35,12 @@ export function GameWhoBuzzedIn({
       logger.debug(`GameWhoBuzzedIn userImageUrl: ${gameUser.image}`);
       let message;
 
-      if (game.format === GameFormat.team) {
+      if (
+        game.format === GameFormat.team &&
+        gameUser.gameTeam.id === gameTeamUserId
+      ) {
+        message = `[${gameUser.name}] from your team has buzzed in.`;
+      } else if (game.format === GameFormat.team) {
         message = `[${gameUser.name}] from [${gameUser.gameTeam?.name}] has buzzed in.`;
       } else if (game.format === GameFormat.individual) {
         message = `[${gameUser.name}] has buzzed in.`;
