@@ -1,45 +1,94 @@
-import EventEmitter, { on } from "node:events";
+import { type RedisClientType } from "redis";
 
 import type { Game, GameUser } from "@prisma/client";
-import { LRUCache } from "typescript-lru-cache";
 import { ok, err, Result } from "neverthrow";
+import { createClient } from "redis";
 
 import { db } from "@/server/db";
 import { getPublicGameState, getPrivateGameState } from "@/server/db/common";
 import type { PublicGameState, PrivateGameState, WhoBuzzedIn } from "@/types";
+import { createRedisChannelAsyncIterator } from "@/utils/asyncGenerator";
 
-export type EventMap<T> = Record<keyof T, any[]>;
+import { logger } from "@/utils/logger";
 
-export class IterableEventEmitter<
-  T extends EventMap<T>,
-> extends EventEmitter<T> {
-  toIterable<TEventName extends keyof T & string>(
-    eventName: TEventName,
-    opts?: NonNullable<Parameters<typeof on>[2]>,
-  ): AsyncIterable<T[TEventName]> {
-    return on(this as any, eventName, opts) as any;
-  }
+// Initialize KeyDB client
+const redisClient = await createClient({
+  url: process.env.KEYDB_URL, // Ensure this is set in your .env file
+});
+
+redisClient.on("error", (err) => {
+  // You MUST listen to error events.
+  // If a client doesn't have at least one error listener registered and an error occurs,
+  // that error will be thrown and the Node.js process will exit.
+  logger.error("Redis Client Error", err);
+});
+
+await redisClient.connect();
+
+function cacheFactory<T>(prefix: string) {
+  return {
+    async set(gameId: Game["id"], data: T) {
+      const key = `${prefix}:${gameId}`;
+      await redisClient.set(key, JSON.stringify(data));
+    },
+    async get(gameId: Game["id"]): Promise<T | null> {
+      const key = `${prefix}:${gameId}`;
+      const data = await redisClient.get(key);
+      return data ? (JSON.parse(data) as T) : null;
+    },
+    async has(gameId: Game["id"]): Promise<boolean> {
+      const key = `${prefix}:${gameId}`;
+      return (await redisClient.exists(key)) > 0;
+    },
+  };
 }
 
-export interface GameEvents {
-  publicGameStateUpdate: [gameId: Game["id"], PublicGameState];
-  privateGameStateUpdate: [gameId: Game["id"], PrivateGameState];
-  whoBuzzedIn: [gameId: Game["id"], WhoBuzzedIn | null];
-}
-
-export const gameEventEmitter = new IterableEventEmitter<GameEvents>();
-
-// TODO: replace with a Redis-like service
 export const gameEventCache = {
-  publicGameStateUpdate: new LRUCache<
-    Game["id"],
-    GameEvents["publicGameStateUpdate"][1]
-  >(),
-  privateGameStateUpdate: new LRUCache<
-    Game["id"],
-    GameEvents["privateGameStateUpdate"][1]
-  >(),
-  whoBuzzedIn: new LRUCache<Game["id"], GameEvents["whoBuzzedIn"][1]>(),
+  publicGameStateUpdate: cacheFactory<PublicGameState>("publicGameStateUpdate"),
+  privateGameStateUpdate: cacheFactory<PrivateGameState>(
+    "privateGameStateUpdate",
+  ),
+  whoBuzzedIn: cacheFactory<WhoBuzzedIn | null>("whoBuzzedIn"),
+};
+
+// NOTE: Important redis pub/sub docs
+//       https://redis.io/docs/manual/pubsub/
+
+function emitterFactory<T>(prefix: string) {
+  return {
+    async publish(gameId: Game["id"], state: T) {
+      const channel = `${prefix}:${gameId}`;
+
+      // NOTE: publishing does not take over the client
+      //       see subscription use
+      await redisClient.publish(channel, JSON.stringify(state));
+    },
+    subscribe({
+      gameId,
+      signal,
+    }: {
+      gameId: Game["id"];
+      signal?: AbortSignal;
+    }) {
+      const channel = `${prefix}:${gameId}`;
+
+      return createRedisChannelAsyncIterator<T>({
+        redisClient: redisClient as RedisClientType,
+        channel,
+        signal,
+      });
+    },
+  };
+}
+
+export const gameEventEmitter = {
+  publicGameStateUpdate: emitterFactory<PublicGameState>(
+    "publicGameStateUpdate",
+  ),
+  privateGameStateUpdate: emitterFactory<PrivateGameState>(
+    "privateGameStateUpdate",
+  ),
+  whoBuzzedIn: emitterFactory<WhoBuzzedIn | null>("whoBuzzedIn"),
 };
 
 export async function emitUpdatedGameState({
@@ -59,18 +108,27 @@ export async function emitUpdatedGameState({
     return err(privateResult.error);
   }
 
-  gameEventCache.publicGameStateUpdate.set(gameId, publicResult.value);
-  gameEventEmitter.emit("publicGameStateUpdate", gameId, publicResult.value);
+  // Set cache BEFORE publishing new state
 
-  gameEventCache.privateGameStateUpdate.set(gameId, privateResult.value);
-  gameEventEmitter.emit("privateGameStateUpdate", gameId, privateResult.value);
+  await Promise.all([
+    gameEventCache.publicGameStateUpdate.set(gameId, publicResult.value),
+    gameEventCache.privateGameStateUpdate.set(gameId, privateResult.value),
+  ]);
+
+  await Promise.all([
+    gameEventEmitter.publicGameStateUpdate.publish(gameId, publicResult.value),
+    gameEventEmitter.privateGameStateUpdate.publish(
+      gameId,
+      privateResult.value,
+    ),
+  ]);
 
   return ok();
 }
 
 export async function clearWhoBuzzedIn({ gameId }: { gameId: Game["id"] }) {
-  gameEventCache.whoBuzzedIn.set(gameId, null);
-  gameEventEmitter.emit("whoBuzzedIn", gameId, null);
+  await gameEventCache.whoBuzzedIn.set(gameId, null);
+  await gameEventEmitter.whoBuzzedIn.publish(gameId, null);
 }
 
 export async function emitWhoBuzzedIn({
@@ -120,8 +178,8 @@ export async function emitWhoBuzzedIn({
     },
   };
 
-  gameEventCache.whoBuzzedIn.set(game.id, data);
-  gameEventEmitter.emit("whoBuzzedIn", game.id, data);
+  await gameEventCache.whoBuzzedIn.set(game.id, data);
+  await gameEventEmitter.whoBuzzedIn.publish(game.id, data);
 
   return ok();
 }

@@ -23,6 +23,8 @@ export function GameWhoBuzzedIn({
 
   let content;
 
+  logger.debug(`GameWhoBuzzedIn: ${JSON.stringify(whoBuzzedInResult?.data)}`);
+
   if (whoBuzzedInResult.data) {
     const {
       id: userId,

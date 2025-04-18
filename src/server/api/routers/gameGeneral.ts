@@ -26,24 +26,21 @@ export const gameGeneralRouter = createTRPCRouter({
   }) {
     const { id: gameId } = ctx.gameSession;
 
-    if (!gameEventCache.privateGameStateUpdate.has(gameId)) {
+    let gameState = await gameEventCache.privateGameStateUpdate.get(gameId);
+    if (!gameState) {
       const result = await getPrivateGameState({ gameId });
       if (result.isErr()) {
         throw result.error;
       }
-
-      gameEventCache.privateGameStateUpdate.set(gameId, result.value);
+      gameState = result.value;
     }
 
-    yield gameEventCache.privateGameStateUpdate.get(gameId);
+    yield gameState;
 
-    for await (const [eventGameId, gameState] of gameEventEmitter.toIterable(
-      "privateGameStateUpdate",
-      { signal },
+    for await (const gameState of gameEventEmitter.privateGameStateUpdate.subscribe(
+      { gameId, signal },
     )) {
-      if (eventGameId === gameId) {
-        yield gameState;
-      }
+      yield gameState;
     }
   }),
   whoBuzzedIn: protectedGameGeneralProcedure.subscription(async function* ({
@@ -52,13 +49,11 @@ export const gameGeneralRouter = createTRPCRouter({
   }) {
     const game = ctx.gameSession;
 
-    for await (const [
-      eventGameId,
-      whoBuzzedInData,
-    ] of gameEventEmitter.toIterable("whoBuzzedIn", { signal })) {
-      if (eventGameId === game.id) {
-        yield whoBuzzedInData;
-      }
+    for await (const whoBuzzedIn of gameEventEmitter.whoBuzzedIn.subscribe({
+      gameId: game.id,
+      signal,
+    })) {
+      yield whoBuzzedIn;
     }
   }),
 });

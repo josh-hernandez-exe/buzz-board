@@ -107,24 +107,21 @@ export const publicRouter = createTRPCRouter({
     .subscription(async function* ({ ctx, input, signal }) {
       const { gameId } = input;
 
-      if (!gameEventCache.publicGameStateUpdate.has(gameId)) {
+      let gameState = await gameEventCache.publicGameStateUpdate.get(gameId);
+      if (!gameState) {
         const result = await getPublicGameState({ gameId });
         if (result.isErr()) {
           throw result.error;
         }
-
-        gameEventCache.publicGameStateUpdate.set(gameId, result.value);
+        gameState = result.value;
       }
 
-      yield gameEventCache.publicGameStateUpdate.get(gameId);
+      yield gameState;
 
-      for await (const [eventGameId, gameState] of gameEventEmitter.toIterable(
-        "publicGameStateUpdate",
-        { signal },
+      for await (const gameState of gameEventEmitter.publicGameStateUpdate.subscribe(
+        { gameId, signal },
       )) {
-        if (eventGameId === gameId) {
-          yield gameState;
-        }
+        yield gameState;
       }
     }),
 });

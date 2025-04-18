@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   db:
     # https://hub.docker.com/_/postgres
@@ -25,3 +23,14 @@ services:
     restart: always
     ports:
       - 8080:8080
+
+  keydb:
+    image: eqalpha/keydb
+    command: keydb-server /etc/keydb/redis.conf --server-threads 2  --maxmemory 16mb  --maxmemory-policy allkeys-lru  --maxmemory-samples 5
+    environment:
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      # - ALLOW_EMPTY_PASSWORD=yes
+      - KEYDB_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
+      - KEYDB_PASSWORD=${KEYDB_PASSWORD}
+    ports:
+      - 6379:6379
