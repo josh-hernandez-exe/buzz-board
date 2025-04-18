@@ -40,7 +40,7 @@ export function GameAdminScoreboardAdvancedControl({
     return undefined;
   }
 
-  const getScorePayload = () => {
+  const getScorePayload = (): Record<GameTeam["id"], number> => {
     return Object.fromEntries(
       Object.entries(selectedGameTeams)
         .map(([gameTeamId, shouldAffect]) => [
@@ -92,6 +92,22 @@ export function GameAdminScoreboardAdvancedControl({
             className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
           >
             Add
+          </Button>
+          <Button
+            onClick={() => {
+              if (isScoreReady) {
+                const payloadEntries = Object.entries(getScorePayload());
+                addScoreMutation.mutate(
+                  Object.fromEntries(
+                    payloadEntries.map(([teamId, score]) => [teamId, -score]),
+                  ),
+                );
+              }
+            }}
+            disabled={!isScoreReady}
+            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+          >
+            Subtract
           </Button>
           <Button
             onClick={() => {
