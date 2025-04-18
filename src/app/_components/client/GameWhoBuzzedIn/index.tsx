@@ -18,7 +18,6 @@ export function GameWhoBuzzedIn({
 }: {
   gameUserId?: GameUser["id"];
 }) {
-  const [hasSeenData, setHasSeenData] = useState(false);
   const whoBuzzedInResult = api.gameGeneral.whoBuzzedIn.useSubscription();
 
   let content;
@@ -26,38 +25,41 @@ export function GameWhoBuzzedIn({
   logger.debug(`GameWhoBuzzedIn: ${JSON.stringify(whoBuzzedInResult?.data)}`);
 
   if (whoBuzzedInResult.data) {
-    const {
-      id: userId,
-      name: userName,
-      index: userIndex,
-      gameTeam: { name: teamName },
-      image: userImageUrl,
-    } = whoBuzzedInResult.data.gameUser;
+    const { game, gameUser } = whoBuzzedInResult.data;
 
-    if (gameUserId === userId) {
-      content = <p>You have managed to buzz in!</p>;
-    } else {
-      logger.debug(`GameWhoBuzzedIn userImageUrl: ${userImageUrl}`);
+    if (gameUser && gameUser.id === gameUserId) {
+      content = <p>You have buzz in!</p>;
+    } else if (gameUser) {
+      logger.debug(`GameWhoBuzzedIn userImageUrl: ${gameUser.image}`);
+      let message;
+
+      if (game.format === GameFormat.team) {
+        message = `[${gameUser.name}] from [${gameUser.gameTeam?.name}] has buzzed in.`;
+      } else if (game.format === GameFormat.individual) {
+        message = `[${gameUser.name}] has buzzed in.`;
+      }
+
       content = (
         <div>
           <Avatar>
             <AvatarImage
-              src={userImageUrl ?? undefined}
+              src={gameUser.image ?? undefined}
               referrerPolicy="no-referrer" // needed for google images to load
             />
-            <AvatarFallback>P{userIndex}</AvatarFallback>
+            <AvatarFallback>P{gameUser.index}</AvatarFallback>
           </Avatar>
-          <p>{`[${userName}] from [${teamName}] has buzzed in.`}</p>
+          <p>{message}</p>
         </div>
       );
+    } else if (!gameUser && game.isBuzzerListening) {
+      content = <p>Buzzer is listening and no one has buzzed in yet.</p>;
+    } else if (!gameUser && !game.isBuzzerListening) {
+      content = <p>Buzzer is not listening.</p>;
+    } else {
+      content = <p>Unknown state.</p>;
     }
-    if (!hasSeenData) {
-      setHasSeenData(true);
-    }
-  } else if (hasSeenData) {
-    content = <p>No one has buzzed in yet.</p>;
   } else {
-    content = "";
+    content = <p>Loading.</p>;
   }
 
   return <GenericCard content={content} />;

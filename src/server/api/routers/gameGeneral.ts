@@ -49,6 +49,11 @@ export const gameGeneralRouter = createTRPCRouter({
   }) {
     const game = ctx.gameSession;
 
+    let whoBuzzedIn = await gameEventCache.whoBuzzedIn.get(game.id);
+    if (whoBuzzedIn) {
+      yield whoBuzzedIn;
+    }
+
     for await (const whoBuzzedIn of gameEventEmitter.whoBuzzedIn.subscribe({
       gameId: game.id,
       signal,

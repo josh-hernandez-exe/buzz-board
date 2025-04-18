@@ -126,9 +126,29 @@ export async function emitUpdatedGameState({
   return ok();
 }
 
-export async function clearWhoBuzzedIn({ gameId }: { gameId: Game["id"] }) {
-  await gameEventCache.whoBuzzedIn.set(gameId, null);
-  await gameEventEmitter.whoBuzzedIn.publish(gameId, null);
+export async function updateBuzzerListeningState({
+  gameId,
+}: {
+  gameId: Game["id"];
+}) {
+  const game = await db.game.findUnique({
+    select: {
+      id: true,
+      format: true,
+      isBuzzerListening: true,
+    },
+    where: {
+      id: gameId,
+    },
+  });
+
+  const data: WhoBuzzedIn = {
+    game: game!,
+    gameUser: undefined,
+  };
+
+  await gameEventCache.whoBuzzedIn.set(gameId, data);
+  await gameEventEmitter.whoBuzzedIn.publish(gameId, data);
 }
 
 export async function emitWhoBuzzedIn({
@@ -151,6 +171,7 @@ export async function emitWhoBuzzedIn({
         select: {
           id: true,
           format: true,
+          isBuzzerListening: true,
         },
       },
       user: {

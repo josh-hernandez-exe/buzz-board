@@ -8,7 +8,10 @@ import {
 
 import { checkTeamsAndGetCurrentScores } from "@/server/db/common";
 
-import { emitUpdatedGameState, clearWhoBuzzedIn } from "@/utils/events";
+import {
+  emitUpdatedGameState,
+  updateBuzzerListeningState,
+} from "@/utils/events";
 
 import { logger } from "@/utils/logger";
 
@@ -121,10 +124,8 @@ export const gameAdminRouter = createTRPCRouter({
 
     await Promise.all([
       emitUpdatedGameState({ gameId: game.id }),
-      clearWhoBuzzedIn({ gameId: game.id }),
+      updateBuzzerListeningState({ gameId: game.id }),
     ]);
-
-    clearWhoBuzzedIn;
   }),
   pauseBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { gameAdmin, ...game } = ctx.gameSession;
@@ -143,7 +144,10 @@ export const gameAdminRouter = createTRPCRouter({
       },
     });
 
-    await emitUpdatedGameState({ gameId: game.id });
+    await Promise.all([
+      emitUpdatedGameState({ gameId: game.id }),
+      updateBuzzerListeningState({ gameId: game.id }),
+    ]);
   }),
   resetBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { gameAdmin, ...game } = ctx.gameSession;
@@ -169,7 +173,7 @@ export const gameAdminRouter = createTRPCRouter({
 
     await Promise.all([
       emitUpdatedGameState({ gameId: game.id }),
-      clearWhoBuzzedIn({ gameId: game.id }),
+      updateBuzzerListeningState({ gameId: game.id }),
     ]);
   }),
   addScore: protectedGameAdminProcedure

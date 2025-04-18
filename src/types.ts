@@ -78,15 +78,18 @@ export type WhoBuzzedIn = {
   game: {
     id: Game["id"];
     format: Game["format"];
+    isBuzzerListening: Game["isBuzzerListening"];
   };
-  gameUser: {
-    id: GameUser["id"];
-    name: GameUser["name"];
-    index: GameUser["index"];
-    gameTeam: {
-      id: GameTeam["id"];
-      name: GameTeam["name"];
-    };
-    image: User["image"] | undefined;
-  };
+  gameUser:
+    | {
+        id: GameUser["id"];
+        name: GameUser["name"];
+        index: GameUser["index"];
+        gameTeam: {
+          id: GameTeam["id"];
+          name: GameTeam["name"];
+        };
+        image: User["image"] | undefined;
+      }
+    | undefined;
 };
