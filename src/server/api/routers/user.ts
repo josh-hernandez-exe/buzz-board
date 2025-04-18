@@ -11,7 +11,7 @@ export const userRouter = createTRPCRouter({
       .input(
         z.object({
           name: z.string().min(1),
-          format: z.enum([GameFormat.single, GameFormat.team]),
+          format: z.enum([GameFormat.individual, GameFormat.team]),
         }),
       )
       .mutation(async ({ ctx, input }) => {

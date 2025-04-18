@@ -16,7 +16,7 @@ export const gameAdminRouter = createTRPCRouter({
   addTeam: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const { id: gameId, gameAdmin, format: gameFormat } = ctx.gameSession;
 
-    if (gameFormat === GameFormat.single) {
+    if (gameFormat === GameFormat.individual) {
       throw new Error("Game format does not support teams");
     }
 
@@ -44,7 +44,7 @@ export const gameAdminRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { id: gameId, gameAdmin, format: gameFormat } = ctx.gameSession;
       const { gameTeamId } = input;
-      if (gameFormat === GameFormat.single) {
+      if (gameFormat === GameFormat.individual) {
         throw new Error("Game format does not support teams");
       }
       const gameTeam = await ctx.db.gameTeam.findUnique({

@@ -17,7 +17,7 @@ type GameData = Pick<Game, "name" | "format">;
 export function CreateGame() {
   const router = useRouter();
   const [gameFormat, setGameFormat] = useState<Game["format"]>(
-    GameFormat.single,
+    GameFormat.individual,
   );
   const [gameName, setGameName] = useState<Game["name"]>("");
   const [isDataReady, setIsDataReady] = useState<boolean>(false);
@@ -57,14 +57,14 @@ export function CreateGame() {
       >
         <DropDownSelection<Game["format"]>
           title="Game Format"
-          options={[GameFormat.single, GameFormat.team].map((val) => {
+          options={[GameFormat.individual, GameFormat.team].map((val) => {
             return {
               id: val,
               name: val,
               data: val,
             } as DropdownOption<Game["format"]>;
           })}
-          defaultValue={GameFormat.single}
+          defaultValue={GameFormat.individual}
           onChange={(val) => {
             setGameFormat(val);
             checkIsReady();

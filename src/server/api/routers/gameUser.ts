@@ -80,7 +80,10 @@ export const gameUserRouter = createTRPCRouter({
         }),
       ];
 
-      if (gameUser.gameTeamId && ctx.gameSession.format === GameFormat.single) {
+      if (
+        gameUser.gameTeamId &&
+        ctx.gameSession.format === GameFormat.individual
+      ) {
         nameChangePromises.push(
           ctx.db.gameTeam.update({
             where: {
@@ -130,7 +133,7 @@ export const gameUserRouter = createTRPCRouter({
         }),
       ];
 
-      if (ctx.gameSession.format === GameFormat.single) {
+      if (ctx.gameSession.format === GameFormat.individual) {
         nameChangePromises.push(
           ctx.db.gameUser.update({
             where: {
@@ -156,7 +159,7 @@ export const gameUserRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { gameUser } = ctx.gameSession;
 
-      if (ctx.gameSession.format === GameFormat.single) {
+      if (ctx.gameSession.format === GameFormat.individual) {
         throw new Error("Game format does not support teams");
       }
 

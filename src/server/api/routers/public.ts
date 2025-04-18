@@ -66,7 +66,7 @@ export const publicRouter = createTRPCRouter({
           },
         });
 
-        if (game.format === GameFormat.single) {
+        if (game.format === GameFormat.individual) {
           await tx.gameTeam.create({
             data: {
               gameId: game.id,
@@ -83,7 +83,7 @@ export const publicRouter = createTRPCRouter({
         return gUser;
       });
 
-      if (game.format === GameFormat.single) {
+      if (game.format === GameFormat.individual) {
         // only emit event when a new team is made
         await emitUpdatedGameState({ gameId: game.id });
       }

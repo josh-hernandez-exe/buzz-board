@@ -68,7 +68,7 @@ model VerificationToken {
 }
 
 enum GameFormat {
-  single
+  individual
   team
 }
 
