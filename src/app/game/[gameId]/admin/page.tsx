@@ -3,21 +3,31 @@ import { type Game } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { api, HydrateClient } from "@/trpc/server";
+import { headers } from "next/headers";
 
-import { auth } from "@/server/auth";
+import { auth, gameAuth } from "@/server/auth";
 
-import { CreateGame } from "@/app/_components/client/GameCreate";
-import { UserGameView } from "@/app/_components/client/UserGameView";
+import { GameAdminSummary } from "@/app/_components/client/GameAdminSummary";
 
 import { logger } from "@/utils/logger";
 
-export default async function DashboardPage() {
+export default async function GameAdminPage({
+  params,
+}: {
+  params: { gameId: string };
+}) {
+  const { gameId } = await params;
   const session = await auth();
-  const games = await api.user.game.getAll();
+  const gameSession = await gameAuth({
+    headers: await headers(),
+    user: session?.user,
+  });
 
-  if (!session) {
+  if (!gameSession) {
     redirect("/dashboard");
   }
+
+  const currentGameState = await api.gameGeneral.currentGameState();
 
   return (
     <HydrateClient>
@@ -32,14 +42,13 @@ export default async function DashboardPage() {
           >
             {session ? "Sign out" : "Sign in"}
           </Link>
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            Create New Game
-          </h1>
-          <CreateGame />
         </div>
 
         <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <UserGameView games={games} />
+          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
+            Inspect Existing Games
+          </h1>
+          <GameAdminSummary gameId={gameId} />
         </div>
       </main>
     </HydrateClient>

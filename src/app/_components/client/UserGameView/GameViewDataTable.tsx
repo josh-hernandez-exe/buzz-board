@@ -13,14 +13,21 @@ import {
   TableRow,
 } from "@/app/_components/ui/table";
 
-import { type GameViewDataTableRow, columns } from "./gameViewColumns";
+import { type GameViewDataTableRow, columnGenerator } from "./gameViewColumns";
 
-export function GameTeamUserTable({ data }: { data: GameViewDataTableRow[] }) {
+export function GameTeamUserTable({
+  data,
+  onSelectClick,
+}: {
+  data: GameViewDataTableRow[];
+  onSelectClick: (gameId: string) => void;
+}) {
+  const columns = columnGenerator({ onSelectClick });
   const table = useReactTable({
     data,
-    columns,
+    columns: columnGenerator({ onSelectClick }),
     getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => row.id,
+    getRowId: (row) => row.gameId,
   });
 
   return (
