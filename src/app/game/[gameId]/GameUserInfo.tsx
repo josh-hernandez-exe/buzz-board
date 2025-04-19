@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { GameFormat } from "@prisma/client";
-import { InlineEdit } from "rsuite";
 
 import { GenericCard } from "@/app/_components/GenericCard";
+import { GameUserEditSheet } from "@/app/_components/client/GameUserEditSheet";
 import { api } from "@/trpc/react";
 import type { PublicGameState, GameUserWithRelations } from "@/types";
 
@@ -17,43 +16,13 @@ export function GameUserInfo({
   initialGameUser: GameUserWithRelations;
   initialGameState: PublicGameState;
 }) {
-  // TODO: Make this component react to when switch teams
   const utils = api.useUtils();
-  const [gameUserName, setGameUserName] = useState(initialGameUser.name);
-  const [gameTeamName, setGameTeamName] = useState(
-    initialGameUser.gameTeam?.name,
-  );
 
   const gameSelfInfo = api.gameUser.getSelfInfo.useQuery();
-  const changeNameMutation = api.gameUser.changeName.useMutation({
-    onSuccess: async () => {
-      utils.gameUser.getSelfInfo.invalidate();
-    },
-    onError: async () => {
-      setGameUserName(gameUser.name);
-    },
-  });
-  const changeTeamNameMutation = api.gameUser.changeTeamName.useMutation({
-    onSuccess: async () => {
-      utils.gameUser.getSelfInfo.invalidate();
-    },
-    onError: async () => {
-      setGameTeamName(gameTeam?.name);
-    },
-  });
+
   const gameStateSub = api.public.gameState.useSubscription({
     gameId: initialGameUser.gameId,
   });
-
-  useEffect(() => {
-    if (
-      gameSelfInfo.data?.gameTeamId !== initialGameUser.gameTeamId &&
-      typeof gameSelfInfo.data?.gameTeam?.name === "string"
-    ) {
-      // if the user swtiched teams from outside this component.
-      setGameTeamName(gameSelfInfo.data?.gameTeam?.name);
-    }
-  }, [gameSelfInfo.data?.gameTeamId]);
 
   const currentGameState = gameStateSub.data ?? initialGameState;
 
@@ -67,63 +36,35 @@ export function GameUserInfo({
       key={gameUser.id}
       title={
         <div>
-          <p>Player Name</p>
-          <InlineEdit
-            value={gameUserName}
-            style={{ width: 500 }}
-            onCancel={() => {
-              setGameUserName(gameUser.name);
-            }}
-            onChange={(val, e) => {
-              setGameUserName(val);
-            }}
-            onSave={(e) => {
-              changeNameMutation.mutate({ name: gameUserName });
-            }}
-            disabled={changeNameMutation.isPending}
-          />
+          <GameUserEditSheet />
+          <p> Player Name: {gameUser.name} </p>
           <br></br>
           {game.format === GameFormat.team && (
-            // NOTE: Only show this component when the game format is team
-            <>
-              <p>Team Name</p>
-              <InlineEdit
-                value={gameTeamName}
-                style={{ width: 500 }}
-                onCancel={() => {
-                  setGameTeamName(gameTeam?.name);
-                }}
-                onChange={(val, e) => {
-                  setGameTeamName(val);
-                }}
-                onSave={(e) => {
-                  if (gameTeamName) {
-                    changeTeamNameMutation.mutate({ name: gameTeamName });
-                  }
-                }}
-                disabled={changeTeamNameMutation.isPending}
-              />
-            </>
+            <p> Team Name: {gameTeam?.name} </p>
           )}
         </div>
       }
       content={
         <div>
-          <h1 className="mb-4 text-2xl font-bold">
-            Welcome to Game {game?.name}
-          </h1>
           <p>Game ID: {game?.id}</p>
+          <p>Game Name: {game?.name}</p>
           <p>
             Game Buzzer Listening State :{" "}
             {game.isBuzzerListening ? "Listening" : "Not Listening"}
           </p>
-          <p>Player ID: {gameUser.id}</p>
-          <p>Player Team ID: {gameUser.gameTeamId}</p>
+          <p>Player No: {gameUser.index}</p>
           {gameUser.gameTeam && (
-            <p>Player Team Name: {gameUser.gameTeam.name}</p>
+            <div>
+              {game.format === GameFormat.team && (
+                <div>
+                  <p>Player Team Name: {gameUser.gameTeam.name}</p>
+                  <p>Player Team No: {gameUser.gameTeam.index}</p>
+                </div>
+              )}
+              <p>Player Team Buzzer State: {gameTeam?.buzzerState}</p>
+              <p>Player Team Score: {gameTeam?.score}</p>
+            </div>
           )}
-          {gameTeam && <p>Player Team Buzzer State: {gameTeam.buzzerState}</p>}
-          {gameTeam && <p>Player Team Score: {gameTeam.score}</p>}
         </div>
       }
     />

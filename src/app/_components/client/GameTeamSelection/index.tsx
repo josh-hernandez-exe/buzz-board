@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { GameFormat, type GameTeam } from "@prisma/client";
-import { InlineEdit } from "rsuite";
 
 import { GenericCard } from "@/app/_components/GenericCard";
 
