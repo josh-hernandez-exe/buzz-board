@@ -33,7 +33,7 @@ export function JoinGameComponent() {
         gameId: data.gameId,
       });
 
-      router.push(`/game/${data.gameId}`);
+      router.push(`/game/${data.gameId}/user`);
     },
     onError: (err) => {
       setError(err.message);

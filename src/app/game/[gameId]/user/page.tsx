@@ -16,7 +16,7 @@ import {
 import { logger } from "@/utils/logger";
 import { InformationTab } from "./InformationTab";
 
-export default async function GamePage({
+export default async function GameUserPage({
   params,
 }: {
   params: { gameId: string };
