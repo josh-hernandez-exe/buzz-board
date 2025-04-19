@@ -38,6 +38,7 @@ export function GameUserEditSheet() {
   const changeTeamNameMutation = api.gameUser.changeTeamName.useMutation({
     onSuccess: async () => {
       utils.gameUser.getSelfInfo.invalidate();
+      utils.gameUser.getSelfTeamInfo.invalidate();
     },
     onError: async () => {
       if (gameSelfInfo.data?.gameTeam?.name) {
