@@ -5,6 +5,8 @@ import { createTRPCRouter, protectedUserProcedure } from "@/server/api/trpc";
 import { generateShortCode } from "@/utils/codeGeneration";
 import { logger } from "@/utils/logger";
 
+import type { GameWithRelations } from "@/types";
+
 export const userRouter = createTRPCRouter({
   game: {
     create: protectedUserProcedure
@@ -95,7 +97,7 @@ export const userRouter = createTRPCRouter({
         return game;
       }),
     getAll: protectedUserProcedure.query(async ({ ctx }) => {
-      const games = await ctx.db.game.findMany({
+      const games: GameWithRelations[] = await ctx.db.game.findMany({
         orderBy: { createdAt: "asc" },
         where: {
           OR: [
@@ -113,8 +115,6 @@ export const userRouter = createTRPCRouter({
           gameUsers: true,
           gameTeams: true,
           gameAdmins: true,
-          scoreboard: true,
-          scoreboardStates: true,
         },
       });
 

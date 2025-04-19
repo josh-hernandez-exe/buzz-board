@@ -9,6 +9,8 @@ import { auth } from "@/server/auth";
 import { CreateGame } from "@/app/_components/client/GameCreate";
 import { GameInfoAdmin } from "@/app/_components/client/GameInfoAdmin";
 
+import { UserGameView } from "@/app/_components/client/UserGameView";
+
 import { logger } from "@/utils/logger";
 
 export default async function DashboardPage() {
@@ -39,18 +41,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            View Existing Games
-          </h1>
-          <ul>
-            {games.map((game) => {
-              return (
-                <li key={game.id}>
-                  {game.name} ({game.id})
-                </li>
-              );
-            })}
-          </ul>
+          <UserGameView games={games} />
         </div>
 
         <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">

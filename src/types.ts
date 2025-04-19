@@ -6,8 +6,6 @@ export type GameWithRelations = Prisma.GameGetPayload<{
     gameUsers: true;
     gameTeams: true;
     gameAdmins: true;
-    scoreboard: true;
-    scoreboardStates: true;
   };
 }>;
 
@@ -31,6 +29,29 @@ export type GameUserWithRelations = Prisma.GameUserGetPayload<{
         id: true;
         name: true;
         image: true;
+      };
+    };
+  };
+}>;
+
+export type GameTeamWithRelations = Prisma.GameTeamGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    index: true;
+    gameId: true;
+    gameUsers: {
+      select: {
+        id: true;
+        name: true;
+        index: true;
+        user: {
+          select: {
+            id: true;
+            name: true;
+            image: true;
+          };
+        };
       };
     };
   };
@@ -69,7 +90,7 @@ export type PrivateGameState = {
     gameUsers: Array<{
       id: GameUser["id"];
       name: GameUser["name"];
-index: GameUser["index"];
+      index: GameUser["index"];
       image: User["image"] | undefined;
     }>;
     score: number;
