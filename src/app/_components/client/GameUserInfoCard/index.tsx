@@ -1,5 +1,7 @@
 "use client";
 
+import { Prisma } from "@prisma/client";
+
 import {
   Card,
   CardContent,
@@ -15,12 +17,31 @@ import { api } from "@/trpc/react";
 
 import { logger } from "@/utils/logger";
 
-export function GameUserInfoCard() {
+type GameUserProps = Prisma.GameUserGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    index: true;
+    user: {
+      select: {
+        image: true;
+      };
+    };
+  };
+}>;
+
+export function GameUserInfoCard({
+  gameUser: initialGameUser,
+}: {
+  gameUser?: GameUserProps | undefined;
+}) {
   const gameSelfInfo = api.gameUser.getSelfInfo.useQuery();
 
   if (gameSelfInfo.isLoading) {
     return <div>Loading...</div>;
   }
+
+  const gameUser = initialGameUser || gameSelfInfo.data;
 
   return (
     <Card>
@@ -30,10 +51,10 @@ export function GameUserInfoCard() {
       </CardHeader>
       <CardContent>
         <GameUserAvatar
-          image={gameSelfInfo?.data?.user?.image ?? undefined}
-          index={gameSelfInfo?.data?.index!}
+          image={gameUser?.user?.image ?? undefined}
+          index={gameUser?.index!}
         />
-        <p>Player Name: {gameSelfInfo.data?.name}</p>
+        <p>Player Name: {gameUser?.name}</p>
         <p>Player Index Number: {gameSelfInfo.data?.index}</p>
         <p>Player Id: {gameSelfInfo.data?.id}</p>
       </CardContent>

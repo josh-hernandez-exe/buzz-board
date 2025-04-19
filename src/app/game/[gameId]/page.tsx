@@ -69,7 +69,10 @@ export default async function GamePage({
                 />
               </TabsContent>
               <TabsContent value="information">
-                <InformationTab game={game} />
+                <InformationTab
+                  gameState={currentGameState}
+                  gameUser={gameUser}
+                />
               </TabsContent>
             </Tabs>
           </div>

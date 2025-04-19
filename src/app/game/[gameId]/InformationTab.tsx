@@ -6,18 +6,30 @@ import { GameUserInfoCard } from "@/app/_components/client/GameUserInfoCard";
 import { GameTeamInfoCard } from "@/app/_components/client/GameTeamInfoCard";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
 
-import { api } from "@/trpc/react";
+import type {
+  PrivateGameState,
+  GameUserWithRelations,
+  GameTeamWithRelations,
+} from "@/types";
 
 export function InformationTab({
-  game,
+  gameState,
+  gameUser,
 }: {
-  game: Pick<Game, "id" | "name" | "format" | "code">;
+  gameState: PrivateGameState;
+  gameUser: GameUserWithRelations;
 }) {
+  const initialGameTeam = gameState.gameTeams.find(
+    (team) => team.id === gameUser.gameTeamId,
+  ) as GameTeamWithRelations | undefined;
+
   return (
     <div className="flex flex-col items-center justify-center">
-      <GameBasicInfoCard game={game} />
-      <GameUserInfoCard />
-      {game.format === GameFormat.team && <GameTeamInfoCard />}
+      <GameBasicInfoCard game={gameState.game} />
+      <GameUserInfoCard gameUser={gameUser} />
+      {gameState.game.format === GameFormat.team && (
+        <GameTeamInfoCard gameTeam={initialGameTeam} />
+      )}
     </div>
   );
 }
