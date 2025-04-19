@@ -9,7 +9,7 @@ import {
 } from "@/server/api/trpc";
 
 import { emitUpdatedGameState, emitWhoBuzzedIn } from "@/utils/events";
-import type { GameUserWithRelations } from "@/types";
+import type { GameUserWithRelations, GameTeamWithRelations } from "@/types";
 
 export const gameUserRouter = createTRPCRouter({
   ping: protectedGameUserProcedure.query(({ ctx }) => {
