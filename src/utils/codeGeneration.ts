@@ -7,7 +7,7 @@ import { logger } from "@/utils/logger";
 export function generateShortCode(
   length: number,
   { characters, maxRepeat }: { characters: string; maxRepeat: number } = {
-    characters: ["ABCDEFGHIJKLMNPQRSTUVWXYZ", "123456789"].join(""),
+    characters: ["ABCDEFGHJKLMNPQRSTUVWXYZ", "123456789"].join(""),
     maxRepeat: 3,
   },
 ): string {
