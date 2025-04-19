@@ -5,13 +5,13 @@ import { GameFormat } from "@prisma/client";
 import type { Game, GameTeam, GameUser } from "@prisma/client";
 
 import { Button } from "@/app/_components/ui/button";
-import { GameTeamSelectionDropDown } from "@/app/_components/client/GameTeamSelectionDropDown";
+import { GameTeamSelection } from "@/app/_components/client/GameTeamSelection";
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 import { api } from "@/trpc/react";
 
 import { logger } from "@/utils/logger";
 
-export function GameBuzzer({
+export function GameBuzzerTab({
   game,
   gameTeams,
   initialGameTeamId,
@@ -65,9 +65,9 @@ export function GameBuzzer({
   return (
     <div>
       {game.format === GameFormat.team && (
-        <GameTeamSelectionDropDown
+        <GameTeamSelection
           gameTeams={gameTeams}
-          onChange={onTeamChange}
+          initialGameTeamId={initialGameTeamId}
         />
       )}
       {!changeTeamMutation.isPending && selectedGameTeam && (

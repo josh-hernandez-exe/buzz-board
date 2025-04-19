@@ -3,7 +3,7 @@ import { GameFormat } from "@prisma/client";
 import { ok, err } from "neverthrow";
 
 import { api, HydrateClient } from "@/trpc/server";
-import { GameBuzzer } from "@/app/_components/client/GameBuzzer";
+import { GameBuzzerTab } from "@/app/_components/client/GameBuzzerTab";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 
 import {
@@ -62,7 +62,7 @@ export default async function GamePage({
               </TabsList>
               <TabsContent value="buzzer">
                 <GameWhoBuzzedIn />
-                <GameBuzzer
+                <GameBuzzerTab
                   game={game}
                   gameTeams={gameTeams}
                   initialGameTeamId={gameUser.gameTeamId}
