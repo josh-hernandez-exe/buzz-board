@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "@/trpc/react";
 
 import { GameFormat, type GameUser, type GameTeam } from "@prisma/client";
+import { GameUserAvatar } from "@/app/_components/client/GameUserAvatar";
 import { GenericCard } from "@/app/_components/GenericCard";
 import {
   Avatar,
@@ -45,13 +46,10 @@ export function GameWhoBuzzedIn() {
 
       content = (
         <div>
-          <Avatar>
-            <AvatarImage
-              src={gameUser.image ?? undefined}
-              referrerPolicy="no-referrer" // needed for google images to load
-            />
-            <AvatarFallback>P{gameUser.index}</AvatarFallback>
-          </Avatar>
+          <GameUserAvatar
+            image={gameUser.image ?? undefined}
+            index={gameUser.index!}
+          />
           <p>{message}</p>
         </div>
       );
