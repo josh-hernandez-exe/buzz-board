@@ -17,15 +17,19 @@ import { logger } from "@/utils/logger";
 import { GameTeamUserTable } from "./GameTeamUserTable";
 
 export function GameTeamInfoCard() {
-  const gameTeamInfo = api.gameUser.getSelfTeamInfo.useQuery(undefined, {
-    staleTime: 10_000,
-  });
+  const gameTeamInfo = api.gameUser.getSelfTeamInfo.useQuery();
+  const gameState = api.gameGeneral.gameState.useSubscription();
 
   if (gameTeamInfo.isLoading) {
     return <div>Loading...</div>;
   }
 
-  gameTeamInfo.data!.gameUsers.sort((a, b) => a.index - b.index);
+  const gameTeamFromState = gameState?.data?.gameTeams.find(
+    (team) => team.id === gameTeamInfo.data?.id,
+  );
+  const gameTeam = gameTeamFromState || gameTeamInfo.data!;
+
+  gameTeam.gameUsers.sort((a, b) => a.index - b.index);
 
   return (
     <Card>

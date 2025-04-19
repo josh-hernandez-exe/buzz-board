@@ -69,6 +69,8 @@ export type PrivateGameState = {
     gameUsers: Array<{
       id: GameUser["id"];
       name: GameUser["name"];
+index: GameUser["index"];
+      image: User["image"] | undefined;
     }>;
     score: number;
   }>;
