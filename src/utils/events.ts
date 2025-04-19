@@ -9,11 +9,12 @@ import { getPublicGameState, getPrivateGameState } from "@/server/db/common";
 import type { PublicGameState, PrivateGameState, WhoBuzzedIn } from "@/types";
 import { createRedisChannelAsyncIterator } from "@/utils/asyncGenerator";
 
+import { env } from "@/env";
 import { logger } from "@/utils/logger";
 
 // Initialize KeyDB client
 const redisClient = await createClient({
-  url: process.env.KEYDB_URL, // Ensure this is set in your .env file
+  url: env.KEYDB_URL, // Ensure this is set in your .env file
 });
 
 redisClient.on("error", (err) => {
