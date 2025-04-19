@@ -73,7 +73,7 @@ export function GameBuzzerTab({
       {!changeTeamMutation.isPending && selectedGameTeam && (
         <Button
           onClick={() => buzzInMutation.mutate()}
-          className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+          className="h-40 w-full bg-blue-500 text-white hover:bg-blue-600"
         >
           Buzzer
         </Button>
