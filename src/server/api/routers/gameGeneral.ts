@@ -11,6 +11,20 @@ import { gameEventEmitter, gameEventCache } from "@/utils/events";
 import { logger } from "@/utils/logger";
 
 export const gameGeneralRouter = createTRPCRouter({
+  getBasicGameInfo: protectedGameGeneralProcedure.query(({ ctx }) => {
+    const { gameSession } = ctx;
+    const game = ctx.db.game.findUnique({
+      where: { id: gameSession.id },
+      select: {
+        id: true,
+        name: true,
+        format: true,
+        code: true,
+      },
+    });
+
+    return game;
+  }),
   currentGameState: protectedGameGeneralProcedure.query(async ({ ctx }) => {
     const { id: gameId } = ctx.gameSession;
 

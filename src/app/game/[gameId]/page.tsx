@@ -14,7 +14,7 @@ import {
 } from "@/app/_components/ui/tabs";
 
 import { logger } from "@/utils/logger";
-import { GameUserInfo } from "./GameUserInfo";
+import { InformationTab } from "./InformationTab";
 
 export default async function GamePage({
   params,
@@ -35,7 +35,7 @@ export default async function GamePage({
   }
 
   const gameUser = await api.gameUser.getSelfInfo();
-  const currentGameState = await api.public.currentGameState({ gameId });
+  const currentGameState = await api.gameGeneral.currentGameState();
 
   if (!gameUser) {
     return (
@@ -58,7 +58,7 @@ export default async function GamePage({
             <Tabs defaultValue="buzzer" className="w-[400px]">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="buzzer">Buzzer</TabsTrigger>
-                <TabsTrigger value="gameinfo">GameInfo</TabsTrigger>
+                <TabsTrigger value="information">Information</TabsTrigger>
               </TabsList>
               <TabsContent value="buzzer">
                 <GameWhoBuzzedIn />
@@ -68,11 +68,8 @@ export default async function GamePage({
                   initialGameTeamId={gameUser.gameTeamId}
                 />
               </TabsContent>
-              <TabsContent value="gameinfo">
-                <GameUserInfo
-                  initialGameUser={gameUser}
-                  initialGameState={currentGameState}
-                />
+              <TabsContent value="information">
+                <InformationTab game={game} />
               </TabsContent>
             </Tabs>
           </div>

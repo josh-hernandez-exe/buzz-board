@@ -55,6 +55,48 @@ export const gameUserRouter = createTRPCRouter({
     }
     return gameUser;
   }),
+  getSelfTeamInfo: protectedGameUserProcedure.query(async ({ ctx }) => {
+    const { gameUser } = ctx.gameSession;
+
+    if (!gameUser.gameTeamId) {
+      throw new Error("GameUser is not on a team.");
+    }
+    if (ctx.gameSession.format !== GameFormat.team) {
+      throw new Error("Game format does not support teams");
+    }
+
+    const gameTeam = (await ctx.db.gameTeam.findUnique({
+      select: {
+        id: true,
+        name: true,
+        index: true,
+        gameId: true,
+        gameUsers: {
+          select: {
+            id: true,
+            name: true,
+            index: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+      },
+      where: {
+        id: gameUser.gameTeamId,
+      },
+    })) as GameTeamWithRelations;
+
+    if (!gameTeam) {
+      throw new Error("Game team not found");
+    }
+
+    return gameTeam;
+  }),
   changeName: protectedGameUserProcedure
     .input(
       z.object({
