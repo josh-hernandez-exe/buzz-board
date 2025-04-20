@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { useRouter } from "next/navigation";
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
@@ -18,8 +18,12 @@ import {
 
 import { logger } from "@/utils/logger";
 
-export function JoinGameComponent() {
-  const [gameCode, setGameCode] = useState("");
+export function JoinGameComponent({
+  code: inputCode,
+}: {
+  code?: string | undefined | null;
+}) {
+  const [gameCode, setGameCode] = useState(inputCode ?? "");
   const [error, setError] = useState("");
   const [gameTokenData, setGameTokenData] = useGameTokenData();
 
@@ -52,6 +56,15 @@ export function JoinGameComponent() {
       token: gameTokenData.tokenStorage?.[gameCode],
     });
   };
+
+  useEffect(() => {
+    // Automatically attempt to join if the code is set in the input code.
+    // which is defined from the search params.
+    if (inputCode) {
+      setGameCode(inputCode);
+      handleJoinGame();
+    }
+  }, [inputCode]);
 
   return (
     <div>
