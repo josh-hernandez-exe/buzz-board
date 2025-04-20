@@ -7,7 +7,7 @@ import { auth, gameAuth } from "@/server/auth";
 
 import { GameAdminInfo } from "./GameAdminInfo";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export default async function GameAdminPage({
   params,

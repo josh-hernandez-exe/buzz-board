@@ -15,7 +15,7 @@ import { EventSourcePolyfill } from "event-source-polyfill";
 
 import { type AppRouter } from "@/server/api/root";
 import { createQueryClient } from "./query-client";
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 let clientQueryClientSingleton: QueryClient | undefined = undefined;
 const getQueryClient = () => {

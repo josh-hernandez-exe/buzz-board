@@ -1,6 +1,6 @@
 import { type RedisClientType } from "redis";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 /**
  * Creates an async iterator for a Redis/KeyDB channel with support for an abort signal.

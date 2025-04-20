@@ -12,7 +12,7 @@ import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 
 import type { PrivateGameState, BasicGameInfo } from "@/types";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export function GameAdminInfo({
   gameState: initialGameState,

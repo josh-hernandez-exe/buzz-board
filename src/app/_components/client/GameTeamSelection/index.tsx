@@ -23,7 +23,7 @@ import { RadioGroup, RadioGroupItem } from "@/app/_components/ui/radio-group";
 import { api } from "@/trpc/react";
 import type { PublicGameState, GameUserWithRelations } from "@/types";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export function GameTeamSelection({
   initialGameTeamId,

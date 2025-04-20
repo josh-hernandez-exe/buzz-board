@@ -6,11 +6,11 @@ import {
 } from "@/server/api/trpc";
 
 import { getPrivateGameState } from "@/server/db/common";
-import { gameEventEmitter, gameEventCache } from "@/utils/events";
+import { gameEventEmitter, gameEventCache } from "@/server/utils/events";
 
 import type { BasicGameInfo } from "@/types";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export const gameGeneralRouter = createTRPCRouter({
   getBasicGameInfo: protectedGameGeneralProcedure.query(({ ctx }) => {

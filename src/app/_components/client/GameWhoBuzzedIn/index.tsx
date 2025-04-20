@@ -12,7 +12,7 @@ import {
   AvatarImage,
 } from "@/app/_components/ui/avatar";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export function GameWhoBuzzedIn({
   gameUserId: selfGameUserId,

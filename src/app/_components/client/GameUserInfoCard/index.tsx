@@ -15,7 +15,7 @@ import { GameUserAvatar } from "@/app/_components/client/GameUserAvatar";
 import { GameUserEditSheet } from "@/app/_components/client/GameUserEditSheet";
 import { api } from "@/trpc/react";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 type GameUserProps = Prisma.GameUserGetPayload<{
   select: {

@@ -3,7 +3,7 @@
 import { api } from "@/trpc/react";
 import type { PrivateGameState, GameTeamFromPrivateState } from "@/types";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 import { GameScoreboardTeamCard } from "@/app/_components/client/GameScoreboardTeamCard";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";

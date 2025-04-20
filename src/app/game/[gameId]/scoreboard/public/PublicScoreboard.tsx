@@ -7,7 +7,7 @@ import { GamePublicInfoCard } from "@/app/_components/client/GamePublicInfoCard"
 
 import type { PublicGameState, GameTeamFromPublicState } from "@/types";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export function PublicScoreboard({
   gameState: initialGameState,

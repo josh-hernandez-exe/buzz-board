@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { ok, err } from "neverthrow";
 
 import { db } from "@/server/db";
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 /**
  * Finds if the client is a user for the current game.

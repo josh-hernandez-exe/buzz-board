@@ -12,7 +12,7 @@ import {
 import { GameUserEditSheet } from "@/app/_components/client/GameUserEditSheet";
 import { api } from "@/trpc/react";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 import type { GameTeamWithRelations, GameTeamFromPrivateState } from "@/types";
 
 import { GameTeamUserTable } from "./GameTeamUserTable";

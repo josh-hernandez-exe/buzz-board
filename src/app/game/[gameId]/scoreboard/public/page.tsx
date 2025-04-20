@@ -1,6 +1,6 @@
 import { api, HydrateClient } from "@/trpc/server";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 import { PublicScoreboard } from "./PublicScoreboard";
 

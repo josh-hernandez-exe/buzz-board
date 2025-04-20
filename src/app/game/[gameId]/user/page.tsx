@@ -16,7 +16,7 @@ import {
   TabsTrigger,
 } from "@/app/_components/ui/tabs";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 import { InformationTab } from "./InformationTab";
 
 export default async function GameUserPage({

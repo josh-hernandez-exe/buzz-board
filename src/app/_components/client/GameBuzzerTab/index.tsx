@@ -9,7 +9,7 @@ import { GameTeamSelection } from "@/app/_components/client/GameTeamSelection";
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 import { api } from "@/trpc/react";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export function GameBuzzerTab({
   game,

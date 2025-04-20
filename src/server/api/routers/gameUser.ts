@@ -1,14 +1,14 @@
 import { GameFormat, BuzzerState } from "@prisma/client";
 import { z } from "zod";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 import {
   createTRPCRouter,
   protectedGameUserProcedure,
 } from "@/server/api/trpc";
 
-import { emitUpdatedGameState, emitWhoBuzzedIn } from "@/utils/events";
+import { emitUpdatedGameState, emitWhoBuzzedIn } from "@/server/utils/events";
 import type { GameUserWithRelations, GameTeamWithRelations } from "@/types";
 
 export const gameUserRouter = createTRPCRouter({

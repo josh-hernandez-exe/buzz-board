@@ -4,7 +4,7 @@ import { api } from "@/trpc/react";
 
 import { Button } from "@/app/_components/ui/button";
 import { GenericCard } from "@/app/_components/GenericCard";
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export function GameAdminBuzzerControl() {
   logger.debug(`GameAdminBuzzerControl`);

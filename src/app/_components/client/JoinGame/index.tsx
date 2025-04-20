@@ -16,7 +16,7 @@ import {
   InputOTPSlot,
 } from "@/app/_components/ui/input-otp";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export function JoinGameComponent({
   code: inputCode,

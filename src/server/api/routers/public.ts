@@ -2,18 +2,18 @@ import type { Game } from "@prisma/client";
 import { GameFormat } from "@prisma/client";
 import { z } from "zod";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 
 import { getPublicGameState } from "@/server/db/common";
-import { generateToken } from "@/utils/codeGeneration";
+import { generateToken } from "@/server/utils/codeGeneration";
 
 import {
   gameEventEmitter,
   emitUpdatedGameState,
   gameEventCache,
-} from "@/utils/events";
+} from "@/server/utils/events";
 
 export const publicRouter = createTRPCRouter({
   joinGame: publicProcedure

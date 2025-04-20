@@ -7,10 +7,10 @@ import { createClient } from "redis";
 import { db } from "@/server/db";
 import { getPublicGameState, getPrivateGameState } from "@/server/db/common";
 import type { PublicGameState, PrivateGameState, WhoBuzzedIn } from "@/types";
-import { createRedisChannelAsyncIterator } from "@/utils/asyncGenerator";
+import { createRedisChannelAsyncIterator } from "@/server/utils/asyncGenerator";
 
 import { env } from "@/env";
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 // Initialize KeyDB client
 const redisClient = await createClient({

@@ -13,7 +13,7 @@ import { ZodError } from "zod";
 
 import { auth, gameAuth } from "@/server/auth";
 import { db } from "@/server/db";
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 /**
  * 1. CONTEXT

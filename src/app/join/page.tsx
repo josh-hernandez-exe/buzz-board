@@ -1,4 +1,4 @@
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 import { JoinGameComponent } from "@/app/_components/client/JoinGame";
 import { HydrateClient } from "@/trpc/server";
 

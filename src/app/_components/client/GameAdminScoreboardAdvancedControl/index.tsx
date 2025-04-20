@@ -8,7 +8,7 @@ import { api } from "@/trpc/react";
 import { GenericCard } from "@/app/_components/GenericCard";
 import { Input } from "@/app/_components/ui/input";
 import { Button } from "@/app/_components/ui/button";
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 import { DataTable } from "./GameTeamsTable";
 import { type GameTeamDataTableRow, columns } from "./gameTeamTableColumns";

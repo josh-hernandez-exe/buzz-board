@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 
 import type { GameWithRelations } from "@/types";
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 import { GameTeamUserTable } from "./GameViewDataTable";
 import type { GameViewDataTableRow } from "./gameViewColumns";

@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/app/_components/ui/select";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export type DropdownOption<T> = { id: string; name: string; data: T };
 

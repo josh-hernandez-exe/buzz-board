@@ -4,7 +4,7 @@ import { api, HydrateClient } from "@/trpc/server";
 
 import { auth, gameAuth } from "@/server/auth";
 import { Scoreboard } from "./Scoreboard";
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export default async function GamePage({
   params,

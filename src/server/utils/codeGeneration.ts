@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import _ from "lodash";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export function generateShortCode(
   length: number,

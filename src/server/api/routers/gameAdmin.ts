@@ -11,9 +11,9 @@ import { checkTeamsAndGetCurrentScores } from "@/server/db/common";
 import {
   emitUpdatedGameState,
   updateBuzzerListeningState,
-} from "@/utils/events";
+} from "@/server/utils/events";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export const gameAdminRouter = createTRPCRouter({
   addTeam: protectedGameAdminProcedure.mutation(async ({ ctx }) => {

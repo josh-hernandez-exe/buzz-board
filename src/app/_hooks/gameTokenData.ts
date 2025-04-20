@@ -6,7 +6,7 @@ import { useLocalStorage } from "usehooks-ts";
 import { useCookiesNext } from "cookies-next/client";
 import { updateExtraHeaders } from "@/trpc/react";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 type GameTokenData = {
   token: string | null;

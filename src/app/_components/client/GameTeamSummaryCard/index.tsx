@@ -4,7 +4,7 @@ import type { GameTeam, GameUser, BuzzerState } from "@prisma/client";
 
 import { GenericCard } from "@/app/_components/GenericCard";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export function GameTeamSummaryCard({
   gameTeam,

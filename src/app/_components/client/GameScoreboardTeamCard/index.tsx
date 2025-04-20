@@ -14,7 +14,7 @@ import {
 
 import { api } from "@/trpc/react";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 import type { GameTeamFromPrivateState } from "@/types";
 

@@ -15,7 +15,7 @@ import { api } from "@/trpc/react";
 
 import type { PrivateGameState } from "@/types";
 
-import { logger } from "@/utils/logger";
+import { logger } from "@/logger";
 
 export function GameBasicInfoCard({
   game,
