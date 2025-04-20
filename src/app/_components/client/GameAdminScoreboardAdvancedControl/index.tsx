@@ -1,14 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { BuzzerState, type GameTeam } from "@prisma/client";
+import { useState } from "react";
+import { type GameTeam } from "@prisma/client";
 
 import { api } from "@/trpc/react";
-
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/app/_components/ui/toggle-group";
 
 import { GenericCard } from "@/app/_components/GenericCard";
 import { Input } from "@/app/_components/ui/input";

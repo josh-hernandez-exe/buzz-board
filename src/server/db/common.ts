@@ -92,7 +92,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
             select: {
               id: true,
               name: true,
-index: true,
+              index: true,
               user: {
                 select: {
                   id: true,
@@ -143,7 +143,7 @@ index: true,
       gameUsers: gameTeam.gameUsers.map((gameUser) => ({
         id: gameUser.id,
         name: gameUser.name,
-index: gameUser.index,
+        index: gameUser.index,
         image: gameUser.user?.image,
       })),
       score: scoreboardState[gameTeam.id] ?? 0,

@@ -18,10 +18,6 @@ export const gameUserRouter = createTRPCRouter({
     return "pong";
   }),
   getSelfInfo: protectedGameUserProcedure.query(async ({ ctx }) => {
-    logger.info(
-      `Get simple info from game user: ${ctx.gameSession.gameUser.id}`,
-    );
-
     const gameUser = (await ctx.db.gameUser.findUnique({
       select: {
         id: true,
