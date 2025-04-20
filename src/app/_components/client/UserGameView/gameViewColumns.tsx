@@ -75,7 +75,7 @@ export function columnGenerator({
       enableHiding: true,
       cell: ({ row }) => {
         const createdAt: DateTime = row.getValue("createdAt");
-        return <span>{createdAt.toFormat("ff")}</span>;
+        return <span suppressHydrationWarning>{createdAt.toFormat("ff")}</span>;
       },
     },
     {
