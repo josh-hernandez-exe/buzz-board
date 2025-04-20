@@ -16,19 +16,19 @@ import { api } from "@/trpc/react";
 
 import { logger } from "@/utils/logger";
 
-import type { GameTeamFromState } from "@/types";
+import type { GameTeamFromPrivateState } from "@/types";
 
 import { cn } from "@/app/_lib/utils";
 
 export function GameScoreboardTeamCard({
   gameTeam: initialGameTeam,
 }: {
-  gameTeam: GameTeamFromState;
+  gameTeam: GameTeamFromPrivateState;
 }) {
   const { id: gameTeamId } = initialGameTeam;
   const gameState = api.gameGeneral.gameState.useSubscription();
 
-  const gameTeamFromState: GameTeamFromState | undefined =
+  const gameTeamFromState: GameTeamFromPrivateState | undefined =
     gameState?.data?.gameTeams.find((team) => team.id === gameTeamId);
 
   const gameTeam = gameTeamFromState || initialGameTeam;

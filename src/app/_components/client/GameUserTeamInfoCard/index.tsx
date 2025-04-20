@@ -13,24 +13,25 @@ import { GameUserEditSheet } from "@/app/_components/client/GameUserEditSheet";
 import { api } from "@/trpc/react";
 
 import { logger } from "@/utils/logger";
-import type { GameTeamWithRelations, GameTeamFromState } from "@/types";
+import type { GameTeamWithRelations, GameTeamFromPrivateState } from "@/types";
 
 import { GameTeamUserTable } from "./GameTeamUserTable";
 
 export function GameUserTeamInfoCard({
   gameTeam: initialGameTeam,
 }: {
-  gameTeam?: GameTeamFromState | undefined;
+  gameTeam?: GameTeamFromPrivateState | undefined;
 }) {
   const gameTeamInfo = api.gameUser.getSelfTeamInfo.useQuery();
   const gameState = api.gameGeneral.gameState.useSubscription();
 
-  const gameTeamFromState: GameTeamFromState | undefined =
+  const GameTeamFromPrivateState: GameTeamFromPrivateState | undefined =
     gameState?.data?.gameTeams.find(
       (team) => team.id === gameTeamInfo.data?.id,
     );
 
-  const gameTeam = gameTeamFromState || gameTeamInfo.data || initialGameTeam;
+  const gameTeam =
+    GameTeamFromPrivateState || gameTeamInfo.data || initialGameTeam;
 
   if (!gameTeam) {
     return <div>Loading...</div>;
@@ -56,7 +57,7 @@ export function GameUserTeamInfoCard({
               gameUser as GameTeamWithRelations["gameUsers"][number]
             ).user?.image;
             const imageFromGameState = (
-              gameUser as GameTeamFromState["gameUsers"][number]
+              gameUser as GameTeamFromPrivateState["gameUsers"][number]
             ).image;
             const image = imageFromRelation || imageFromGameState;
             return {

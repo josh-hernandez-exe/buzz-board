@@ -1,7 +1,7 @@
 "use client";
 
 import { api } from "@/trpc/react";
-import type { PrivateGameState, GameTeamFromState } from "@/types";
+import type { PrivateGameState, GameTeamFromPrivateState } from "@/types";
 
 import { logger } from "@/utils/logger";
 
@@ -29,7 +29,7 @@ export function Scoreboard({
         return (
           <GameScoreboardTeamCard
             key={gameTeam.id}
-            gameTeam={gameTeam as GameTeamFromState}
+            gameTeam={gameTeam as GameTeamFromPrivateState}
           />
         );
       })}

@@ -11,20 +11,17 @@ import {
   CardTitle,
 } from "@/app/_components/ui/card";
 
-import { GameUserEditSheet } from "@/app/_components/client/GameUserEditSheet";
 import { api } from "@/trpc/react";
+
+import type { PrivateGameState } from "@/types";
 
 import { logger } from "@/utils/logger";
 
 export function GameBasicInfoCard({
   game,
 }: {
-  game: Pick<Game, "id" | "name" | "format" | "code" | "isBuzzerListening">;
+  game: PrivateGameState["game"];
 }) {
-  const gameBasicInfo = api.gameGeneral.getBasicGameInfo.useQuery();
-
-  const gameInfo = gameBasicInfo.data ?? game;
-
   return (
     <Card>
       <CardHeader>
@@ -32,10 +29,10 @@ export function GameBasicInfoCard({
         <CardDescription>Game related information</CardDescription>
       </CardHeader>
       <CardContent>
-        <p>Game Name: {gameInfo?.name}</p>
-        <p>Game Id: {gameInfo?.id}</p>
-        <p>Game Code: {gameInfo?.code}</p>
-        <p>Game Format: {gameInfo?.format}</p>
+        <p>Game Name: {game?.name}</p>
+        <p>Game Id: {game?.id}</p>
+        <p>Game Code: {game?.code}</p>
+        <p>Game Format: {game?.format}</p>
         <p>
           Game Buzzer State :{" "}
           {game.isBuzzerListening ? "Listening" : "Not Listening"}

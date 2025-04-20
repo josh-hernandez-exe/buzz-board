@@ -107,7 +107,7 @@ export type PrivateGameState = {
   }>;
 };
 
-export type GameTeamFromState = PrivateGameState["gameTeams"][number];
+export type GameTeamFromPrivateState = PrivateGameState["gameTeams"][number];
 
 export type WhoBuzzedIn = {
   game: {

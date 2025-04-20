@@ -9,7 +9,7 @@ import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
 import type {
   PrivateGameState,
   GameUserWithRelations,
-  GameTeamFromState,
+  GameTeamFromPrivateState,
 } from "@/types";
 
 export function InformationTab({
@@ -21,7 +21,7 @@ export function InformationTab({
 }) {
   const initialGameTeam = gameState.gameTeams.find(
     (team) => team.id === gameUser.gameTeamId,
-  ) as GameTeamFromState | undefined;
+  ) as GameTeamFromPrivateState | undefined;
 
   return (
     <div className="flex flex-col items-center justify-center">
