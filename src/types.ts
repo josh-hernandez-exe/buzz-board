@@ -1,6 +1,16 @@
 import { Prisma } from "@prisma/client";
 import type { Game, GameTeam, GameUser, User } from "@prisma/client";
 
+export type BasicGameInfo = Prisma.GameGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    format: true;
+    code: true;
+    isBuzzerListening: true;
+  };
+}>;
+
 export type GameWithRelations = Prisma.GameGetPayload<{
   include: {
     gameUsers: true;

@@ -8,6 +8,8 @@ import {
 import { getPrivateGameState } from "@/server/db/common";
 import { gameEventEmitter, gameEventCache } from "@/utils/events";
 
+import type { BasicGameInfo } from "@/types";
+
 import { logger } from "@/utils/logger";
 
 export const gameGeneralRouter = createTRPCRouter({
@@ -21,7 +23,7 @@ export const gameGeneralRouter = createTRPCRouter({
         format: true,
         code: true,
       },
-    });
+    }) as any as BasicGameInfo;
 
     return game;
   }),

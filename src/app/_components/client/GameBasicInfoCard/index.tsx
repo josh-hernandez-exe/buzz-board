@@ -19,7 +19,7 @@ import { logger } from "@/utils/logger";
 export function GameBasicInfoCard({
   game,
 }: {
-  game: Pick<Game, "id" | "name" | "format" | "code">;
+  game: Pick<Game, "id" | "name" | "format" | "code" | "isBuzzerListening">;
 }) {
   const gameBasicInfo = api.gameGeneral.getBasicGameInfo.useQuery();
 
@@ -36,6 +36,10 @@ export function GameBasicInfoCard({
         <p>Game Id: {gameInfo?.id}</p>
         <p>Game Code: {gameInfo?.code}</p>
         <p>Game Format: {gameInfo?.format}</p>
+        <p>
+          Game Buzzer State :{" "}
+          {game.isBuzzerListening ? "Listening" : "Not Listening"}
+        </p>
       </CardContent>
     </Card>
   );

@@ -1,15 +1,16 @@
 "use client";
 
-import { GameFormat, type Game } from "@prisma/client";
-
 import { api } from "@/trpc/react";
+
 import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
 import { GameAdminBuzzerControl } from "@/app/_components/client/GameAdminBuzzerControl";
 import { GameAdminScoreboardAdvancedControl } from "@/app/_components/client/GameAdminScoreboardAdvancedControl";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
+import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
+
 import { useGameIdData } from "@/app/_hooks/gameTokenData";
 
-import { type PrivateGameState } from "@/types";
+import type { PrivateGameState, BasicGameInfo } from "@/types";
 
 import { logger } from "@/utils/logger";
 
@@ -32,18 +33,7 @@ export function GameAdminInfo({
 
   return (
     <div>
-      <p>Game ID: {game.id}</p>
-      <p>Game Name: {game.name}</p>
-      <p>Game Format: {game.format}</p>
-      <p>Game Code: {game.code}</p>
-      <p>
-        Game Buzzer Listening State :{" "}
-        {game.isBuzzerListening ? "Listening" : "Not Listening"}
-      </p>
-      {game.format === GameFormat.team && (
-        <p>Number of Teams: {gameTeams.length ?? 0}</p>
-      )}
-      <p>Number of Players: {gameTeams.length ?? 0}</p>
+      <GameBasicInfoCard game={game as BasicGameInfo} />
       <GameWhoBuzzedIn />
       <GameAdminBuzzerControl />
       <GameAdminScoreboardAdvancedControl
