@@ -10,6 +10,7 @@ Blank
 docker compose --file ./docker-compose.db.yml down
 docker compose --file ./docker-compose.db.yml up --detach
 docker compose --file ./docker-compose.db.yml logs --follow  keydb
+bun db:push
 ```
 
 # Auth Docs
