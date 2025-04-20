@@ -1,10 +1,11 @@
 "use client";
 
-import { GameFormat } from "@prisma/client";
-
-import { GenericCard } from "@/app/_components/GenericCard";
 import { api } from "@/trpc/react";
-import type { PublicGameState } from "@/types";
+
+import { GamePublicScoreboardTeamCard } from "@/app/_components/client/GamePublicScoreboardTeamCard";
+import { GamePublicInfoCard } from "@/app/_components/client/GamePublicInfoCard";
+
+import type { PublicGameState, GameTeamFromPublicState } from "@/types";
 
 import { logger } from "@/utils/logger";
 
@@ -24,28 +25,13 @@ export function PublicScoreboard({
   return (
     <div>
       <h1 className="mb-4 text-2xl font-bold">Welcome to Game {game?.name}</h1>
-      <p>Game ID: {game?.id}</p>
-      <p>
-        Game Buzzer Listening State :{" "}
-        {game.isBuzzerListening ? "Listening" : "Not Listening"}
-      </p>
-      {game?.format === GameFormat.team && (
-        <p>Number of Teams: {gameTeams.length ?? 0}</p>
-      )}
+      <GamePublicInfoCard game={currentGameState.game} />
       {gameTeams.map((gameTeam) => {
-        const content = (
-          <div>
-            <p>Buzzer: {gameTeam.buzzerState}</p>
-            <p> Score: {gameTeam.score} </p>
-            <p>Number of Players: {gameTeam.numPlayers ?? 0}</p>
-            <p>Team Buzzer State: {gameTeam.buzzerState}</p>
-          </div>
-        );
         return (
-          <GenericCard
+          <GamePublicScoreboardTeamCard
             key={gameTeam.id}
-            title={gameTeam.name}
-            content={content}
+            gameId={game.id}
+            gameTeam={gameTeam as GameTeamFromPublicState}
           />
         );
       })}

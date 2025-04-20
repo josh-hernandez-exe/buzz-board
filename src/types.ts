@@ -84,6 +84,8 @@ export type PublicGameState = {
   }>;
 };
 
+export type GameTeamFromPublicState = PublicGameState["gameTeams"][number];
+
 export type PrivateGameState = {
   game: {
     id: Game["id"];
