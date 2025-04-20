@@ -8,7 +8,7 @@ import { GameAdminScoreboardAdvancedControl } from "@/app/_components/client/Gam
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
 
-import { useGameIdData } from "@/app/_hooks/gameTokenData";
+import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 
 import type { PrivateGameState, BasicGameInfo } from "@/types";
 
@@ -19,7 +19,7 @@ export function GameAdminInfo({
 }: {
   gameState: PrivateGameState;
 }) {
-  useGameIdData();
+  useGameTokenData();
   const gameStateSub = api.gameGeneral.gameState.useSubscription();
 
   const currentGameState: PrivateGameState =

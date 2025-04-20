@@ -6,7 +6,7 @@ import { api } from "@/trpc/react";
 
 import { useRouter } from "next/navigation";
 
-import { useGameIdData } from "@/app/_hooks/gameTokenData";
+import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 
 import type { GameWithRelations } from "@/types";
 import { logger } from "@/utils/logger";
@@ -20,7 +20,7 @@ export function UserGameView({
   games: GameWithRelations[];
 }) {
   const router = useRouter();
-  const [, setGameIdData] = useGameIdData();
+  const [, setGameIdData] = useGameTokenData();
   const gameInfo = api.user.game.getAll.useQuery();
 
   const gameData = gameInfo.data || initialGames;
