@@ -9,24 +9,26 @@ import { GameAdminScoreboardAdvancedControl } from "@/app/_components/client/Gam
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { useGameIdData } from "@/app/_hooks/gameTokenData";
 
+import { type PrivateGameState } from "@/types";
+
 import { logger } from "@/utils/logger";
 
-export function GameAdminSummary({ gameId }: { gameId: Game["id"] }) {
-  if (gameId === undefined) {
-    logger.error("GameAdminSummary has an undefined game");
-    return undefined;
-  }
-  logger.debug(`GameAdminSummary: ${gameId}`);
-
+export function GameAdminInfo({
+  gameState: initialGameState,
+}: {
+  gameState: PrivateGameState;
+}) {
   useGameIdData();
-
   const gameStateSub = api.gameGeneral.gameState.useSubscription();
 
-  if (!gameStateSub.data) {
+  const currentGameState: PrivateGameState =
+    gameStateSub.data ?? initialGameState;
+
+  if (!currentGameState) {
     return undefined;
   }
 
-  const { game, gameTeams } = gameStateSub.data;
+  const { game, gameTeams } = currentGameState;
 
   return (
     <div>

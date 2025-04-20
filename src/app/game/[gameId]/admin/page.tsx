@@ -7,7 +7,7 @@ import { headers } from "next/headers";
 
 import { auth, gameAuth } from "@/server/auth";
 
-import { GameAdminSummary } from "@/app/_components/client/GameAdminSummary";
+import { GameAdminInfo } from "./GameAdminInfo";
 
 import { logger } from "@/utils/logger";
 
@@ -23,7 +23,8 @@ export default async function GameAdminPage({
     user: session?.user,
   });
 
-  if (!gameSession) {
+  if (!gameSession?.gameAdmin || gameSession.gameAdmin.gameId !== gameId) {
+    logger.error("Game admin not found for this game.");
     redirect("/dashboard");
   }
 
@@ -48,7 +49,7 @@ export default async function GameAdminPage({
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
             Inspect Existing Games
           </h1>
-          <GameAdminSummary gameId={gameId} />
+          <GameAdminInfo gameState={currentGameState} />
         </div>
       </main>
     </HydrateClient>
