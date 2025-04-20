@@ -61,7 +61,7 @@ export default async function GameUserPage({
                 <TabsTrigger value="information">Information</TabsTrigger>
               </TabsList>
               <TabsContent value="buzzer">
-                <GameWhoBuzzedIn />
+                <GameWhoBuzzedIn gameUserId={gameUser.id} />
                 <GameBuzzerTab
                   game={game}
                   gameTeams={gameTeams}

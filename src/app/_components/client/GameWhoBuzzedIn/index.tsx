@@ -14,11 +14,15 @@ import {
 
 import { logger } from "@/utils/logger";
 
-export function GameWhoBuzzedIn() {
+export function GameWhoBuzzedIn({
+  gameUserId: selfGameUserId,
+}: {
+  gameUserId?: string;
+}) {
+  // NOTE: it's okay if getSelfInfo fails for an admin user
   const gameSelfInfo = api.gameUser.getSelfInfo.useQuery();
   const whoBuzzedInResult = api.gameGeneral.whoBuzzedIn.useSubscription();
-
-  const selfGameUser = gameSelfInfo.data;
+  const selfTeamId = gameSelfInfo.data?.gameTeamId;
 
   let content;
 
@@ -27,7 +31,7 @@ export function GameWhoBuzzedIn() {
   if (whoBuzzedInResult.data) {
     const { game, gameUser } = whoBuzzedInResult.data;
 
-    if (gameUser && gameUser.id === selfGameUser?.id) {
+    if (gameUser && gameUser.id === selfGameUserId) {
       content = <p>You have buzz in!</p>;
     } else if (gameUser) {
       logger.debug(`GameWhoBuzzedIn userImageUrl: ${gameUser.image}`);
@@ -35,7 +39,7 @@ export function GameWhoBuzzedIn() {
 
       if (
         game.format === GameFormat.team &&
-        gameUser.gameTeam.id === selfGameUser?.gameTeamId
+        gameUser.gameTeam.id === selfTeamId
       ) {
         message = `[${gameUser.name}] from your team has buzzed in.`;
       } else if (game.format === GameFormat.team) {
