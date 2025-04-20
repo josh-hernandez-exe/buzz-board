@@ -2,6 +2,7 @@
 
 import { api } from "@/trpc/react";
 
+import { GameAdminTeamControl } from "@/app/_components/client/GameAdminTeamControl";
 import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
 import { GameAdminBuzzerControl } from "@/app/_components/client/GameAdminBuzzerControl";
 import { GameAdminScoreboardAdvancedControl } from "@/app/_components/client/GameAdminScoreboardAdvancedControl";
@@ -34,6 +35,7 @@ export function GameAdminInfo({
   return (
     <div>
       <GameBasicInfoCard game={game as BasicGameInfo} />
+      <GameAdminTeamControl />
       <GameWhoBuzzedIn />
       <GameAdminBuzzerControl />
       <GameAdminScoreboardAdvancedControl
