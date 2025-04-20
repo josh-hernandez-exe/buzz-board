@@ -19,6 +19,9 @@ docker compose --file ./docker-compose.db.yml logs --follow  keydb
 Redirects:
 
 - `http://localhost:3000/api/auth/callback/discord`
+- `http://{CODESPACE-SUBDOMAIN}.app.github.dev/api/auth/callback/discord`
+- `https://{CODESPACE-SUBDOMAIN}.l`
+- https://musical-space-engine-49grxqww6pfqvjq-3000.app.github.dev/api/auth/callback/discord
 
 ## Google
 
@@ -42,6 +45,15 @@ import { db } from "@/server/db"
 
 # TODO
 
+- Create admin version of scoreboard
+  - [x] this version should have the join game code present
+  - create QR code for join page and auto fill
+- Allow the admin to toggle between allowing users between being open for users to join and locking user out.
+- Need Team Management Page for admin
+  - needs to add and remove teams
+  - needs to be able to move players between teams
+- Admin page should have a tab for game user managed ment.
+  - this management should should have a full user view and by team view
 - [x] Make component for team swtiching that will invalidate `api.gameUser.getSelfInfo`
 - [x] Update who buzzed in component to show user profile is user is linked
 - [x] Make component for viewing self game user info that allows you to edit your name
@@ -52,22 +64,16 @@ import { db } from "@/server/db"
 - Update buzzer button visuals
   - [x] make larger
   - encode off buzzer with color and icon
-- Update scoreboard visuals
+- [x] Update scoreboard visuals
   - tile teams better
   - team score cards updates
-    - encode off buzzer state with color and icon
-    - score should be larrger
-    - number of playsers should be displayed somewhere nicely
-- Join page should have search params to auto load join code
-- Create admin version of scoreboard
-  - this version should have the join game code present
-  - create QR code for join page and auto fill
+    - [x] encode off buzzer state with color and icon
+    - [x] score should be larrger
+    - [x] number of playsers should be displayed somewhere nicely
+- [x] Join page should have search params to auto load join code
 - [x] Make a component for viewing team info and allowing the user to change the team name
   - [x] this should trigger a state change for the name to appear else where
-- Refactor game selection to be a table and redirect you to say `/game/{gameId}/admin
-- Allow the admin to toggle between allowing users between being open for users to join and locking user out.
-- Admin page should have a tab for game user managed ment.
-  - this management should should have a full user view and by team view
+- [x] Refactor game selection to be a table and redirect you to say `/game/{gameId}/admin
 - [x] Game User info should show team mates
   - [x] need game user endpoint to get team mades and profile images
     - client should regularly invalidate this query, but not frequently
@@ -86,7 +92,7 @@ import { db } from "@/server/db"
   - buzzer tab
   - game info tab
     - this tab should tell you infor about the game and who is on your team
-- Game User Buzzer tab should have more feedback in error states
+- [x] Game User Buzzer tab should have more feedback in error states
   - [x] when they buzz in
   - [x] when someone else buzzes in
   - [x] when someone on your team buzzes in
