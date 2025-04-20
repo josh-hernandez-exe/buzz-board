@@ -2,7 +2,7 @@ import { api, HydrateClient } from "@/trpc/server";
 
 import { logger } from "@/utils/logger";
 
-import { Scoreboard } from "./Scoreboard";
+import { PublicScoreboard } from "./PublicScoreboard";
 
 export default async function GamePage({
   params,
@@ -41,7 +41,7 @@ export default async function GamePage({
     <HydrateClient>
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
         <div className="flex min-h-screen flex-col items-center justify-center">
-          <Scoreboard initialGameState={currentGameState} />
+          <PublicScoreboard gameState={currentGameState} />
         </div>
       </main>
     </HydrateClient>

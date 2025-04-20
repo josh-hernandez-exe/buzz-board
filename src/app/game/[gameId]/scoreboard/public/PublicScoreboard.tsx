@@ -8,10 +8,10 @@ import type { PublicGameState } from "@/types";
 
 import { logger } from "@/utils/logger";
 
-export function Scoreboard({
-  initialGameState,
+export function PublicScoreboard({
+  gameState: initialGameState,
 }: {
-  initialGameState: PublicGameState;
+  gameState: PublicGameState;
 }) {
   const gameStateSub = api.public.gameState.useSubscription({
     gameId: initialGameState.game.id,
