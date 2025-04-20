@@ -158,7 +158,7 @@ export async function gameAuth({
   }
 
   gameId = cookieStore.get("buzz-board-game-id")?.value;
-  if (!gameUserToken) {
+  if (!gameId) {
     gameId = headers.get("x-buzz-board-game-id") as string | undefined;
   }
 
