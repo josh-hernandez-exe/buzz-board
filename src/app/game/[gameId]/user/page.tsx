@@ -1,6 +1,9 @@
 import { GameFormat } from "@prisma/client";
-
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { ok, err } from "neverthrow";
+
+import { auth, gameAuth } from "@/server/auth";
 
 import { api, HydrateClient } from "@/trpc/server";
 import { GameBuzzerTab } from "@/app/_components/client/GameBuzzerTab";
@@ -22,6 +25,16 @@ export default async function GameUserPage({
   params: { gameId: string };
 }) {
   const { gameId } = await params;
+  const session = await auth();
+  const gameSession = await gameAuth({
+    headers: await headers(),
+    user: session?.user,
+  });
+
+  if (!gameSession?.gameUser || gameSession.gameUser.gameId !== gameId) {
+    logger.error("Game user not found for this game.");
+    redirect("/join");
+  }
 
   if (!gameId) {
     return (
