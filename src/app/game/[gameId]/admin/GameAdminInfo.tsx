@@ -1,5 +1,6 @@
 "use client";
 
+import { type GameTeam } from "@prisma/client";
 import { api } from "@/trpc/react";
 
 import { GameAdminTeamControl } from "@/app/_components/client/GameAdminTeamControl";
@@ -35,7 +36,7 @@ export function GameAdminInfo({
   return (
     <div>
       <GameBasicInfoCard game={game as BasicGameInfo} />
-      <GameAdminTeamControl />
+      <GameAdminTeamControl gameTeams={gameTeams} />
       <GameWhoBuzzedIn />
       <GameAdminBuzzerControl />
       <GameAdminScoreboardAdvancedControl
