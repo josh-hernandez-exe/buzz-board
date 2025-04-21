@@ -111,7 +111,7 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
                 headers: {
                   "x-buzz-board-game-id": headers.get("x-buzz-board-game-id")!,
                   "x-buzz-board-game-user-token": headers.get(
-                    "x-buzz-board-game-id",
+                    "x-buzz-board-game-user-token",
                   )!,
                 },
               };
