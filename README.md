@@ -9,8 +9,8 @@ Blank
 ```bash
 docker compose --file ./docker-compose.db.yml down
 docker compose --file ./docker-compose.db.yml up --detach
-docker compose --file ./docker-compose.db.yml logs --follow  keydb
 bun db:push
+docker compose --file ./docker-compose.db.yml logs --follow  keydb
 ```
 
 # Auth Docs
@@ -46,12 +46,14 @@ import { db } from "@/server/db"
 
 # TODO
 
+- BUG: selecting / swtich teams on the user side doesn't always let the buzzer appear
+  - also selecting a team should close the drawer
 - Create admin version of scoreboard
   - [x] this version should have the join game code present
-  - create QR code for join page and auto fill
+  - [x] create QR code for join page and auto fill
 - Allow the admin to toggle between allowing users between being open for users to join and locking user out.
 - Need Team Management Page for admin
-  - needs to add and remove teams
+  - [x] needs to add and remove teams
   - needs to be able to move players between teams
 - Admin page should have a tab for game user managed ment.
   - this management should should have a full user view and by team view
