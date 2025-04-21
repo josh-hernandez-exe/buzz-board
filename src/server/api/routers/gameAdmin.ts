@@ -83,6 +83,9 @@ export const gameAdminRouter = createTRPCRouter({
         ctx.db.gameTeam.updateMany({
           where: {
             gameId: gameTeam.gameId,
+            index: {
+              gt: gameTeam.index,
+            },
           },
           data: {
             index: {
