@@ -4,13 +4,12 @@ Blank
 
 # Docker Docs
 
-## Local DB
+## Common commands
 
 ```bash
-docker compose --file ./docker-compose.db.yml down
 docker compose --file ./docker-compose.db.yml up --detach
 bun db:push
-docker compose --file ./docker-compose.db.yml logs --follow  keydb
+bun dev
 ```
 
 # Auth Docs
@@ -46,8 +45,8 @@ import { db } from "@/server/db"
 
 # TODO
 
-- BUG: selecting / swtich teams on the user side doesn't always let the buzzer appear
-  - also selecting a team should close the drawer
+- [x] BUG: selecting / swtich teams on the user side doesn't always let the buzzer appear
+  - [x] also selecting a team should close the drawer
 - Create admin version of scoreboard
   - [x] this version should have the join game code present
   - [x] create QR code for join page and auto fill
