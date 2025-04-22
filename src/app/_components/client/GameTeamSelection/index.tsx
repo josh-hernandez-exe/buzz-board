@@ -21,18 +21,20 @@ import { Label } from "@/app/_components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/app/_components/ui/radio-group";
 
 import { api } from "@/trpc/react";
-import type { PublicGameState, GameUserWithRelations } from "@/types";
 
 import { logger } from "@/logger";
 
 export function GameTeamSelection({
   initialGameTeamId,
   gameTeams,
+  onChange,
 }: {
   initialGameTeamId: GameTeam["id"] | undefined | null;
   gameTeams: Array<Pick<GameTeam, "id" | "name" | "index">>;
+  onChange?: (gameTeamId: GameTeam["id"]) => void;
 }) {
   const utils = api.useUtils();
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const initialGameTeam = gameTeams.find(
     (team) => team.id === initialGameTeamId,
   );
@@ -40,8 +42,24 @@ export function GameTeamSelection({
   const [gameTeamName, setGameTeamName] = useState(initialGameTeam?.name);
 
   const changeTeamMutation = api.gameUser.changeTeams.useMutation({
-    onSuccess: async ({ gameTeamId }) => {
+    onSuccess: async (updatedGameUser) => {
       utils.gameUser.getSelfInfo.invalidate();
+      const updatedGameTeam = gameTeams.find(
+        (team) => team.id === updatedGameUser.gameTeamId,
+      );
+      if (!updatedGameTeam) {
+        logger.error(
+          `GameTeamSelection: Failed to find updated game team with id ${updatedGameUser.gameTeamId}`,
+        );
+        return;
+      }
+
+      setIsDrawerOpen(false);
+      logger.info(
+        `GameTeamSelection: Successfully changed to team ${updatedGameTeam.name}`,
+      );
+      setGameTeamName(updatedGameTeam.name);
+      onChange?.(updatedGameTeam.id);
     },
   });
 
@@ -59,12 +77,12 @@ export function GameTeamSelection({
       <GenericCard
         title={
           <div className="flex items-center space-x-2">
-            {selectedTeam?.name && (
+            {gameTeamName && (
               <div className="flex items-center space-x-2">
-                <span>{selectedTeam.name}</span>
+                <span>{gameTeamName}</span>
               </div>
             )}
-            {!selectedTeam && (
+            {!gameTeamName && (
               <div className="flex items-center space-x-2">
                 <span>Select your team</span>
               </div>
@@ -72,9 +90,16 @@ export function GameTeamSelection({
           </div>
         }
         content={
-          <Drawer>
+          <Drawer open={isDrawerOpen}>
             <DrawerTrigger asChild>
-              <Button variant="outline">Change Team</Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDrawerOpen(true);
+                }}
+              >
+                Change Team
+              </Button>
             </DrawerTrigger>
             <DrawerContent>
               <div className="mx-auto w-full max-w-sm">
@@ -86,7 +111,8 @@ export function GameTeamSelection({
                 </DrawerHeader>
                 <div className="p-4 pb-0">
                   <RadioGroup
-                    defaultValue={selectedTeam?.id}
+                    // We want to ensure that the value prop is always defined
+                    value={selectedTeam?.id ?? ""}
                     onValueChange={(value: GameTeam["id"]) => {
                       const team = gameTeams.find((team) => team.id === value);
                       if (team) {
@@ -99,7 +125,11 @@ export function GameTeamSelection({
                         key={team.id}
                         className="flex items-center space-x-2"
                       >
-                        <RadioGroupItem value={team.id} id={team.id} />
+                        <RadioGroupItem
+                          value={team.id}
+                          id={team.id}
+                          className="h-6 w-6"
+                        />
                         <Label htmlFor="r1">{team.name}</Label>
                       </div>
                     ))}
@@ -108,8 +138,11 @@ export function GameTeamSelection({
                 <DrawerFooter>
                   {/* TODO: Make this button close the drawer on success */}
                   <Button
-                    disabled={!selectedTeam}
+                    disabled={!selectedTeam || changeTeamMutation.isPending}
                     onClick={() => {
+                      logger.info(
+                        `GameTeamSelection: Changing team to ${selectedTeam?.name}`,
+                      );
                       if (selectedTeam) {
                         changeTeamMutation.mutate({
                           gameTeamId: selectedTeam.id,
@@ -120,7 +153,14 @@ export function GameTeamSelection({
                     Submit
                   </Button>
                   <DrawerClose asChild>
-                    <Button variant="outline">Cancel</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsDrawerOpen(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
                   </DrawerClose>
                 </DrawerFooter>
               </div>

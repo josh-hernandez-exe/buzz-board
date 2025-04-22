@@ -187,6 +187,8 @@ export const gameUserRouter = createTRPCRouter({
       await ctx.db.$transaction(nameChangePromises);
 
       await emitUpdatedGameState({ gameId: ctx.gameSession.id });
+
+      return gameTeam;
     }),
   changeTeams: protectedGameUserProcedure
     .input(
