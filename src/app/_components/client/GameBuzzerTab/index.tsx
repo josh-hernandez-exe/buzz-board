@@ -35,20 +35,6 @@ export function GameBuzzerTab({
     (typeof gameTeams)[number] | undefined
   >(gameTeamFromGameUser);
 
-  const changeTeamMutation = api.gameUser.changeTeams.useMutation({
-    onSuccess: async ({ gameTeamId }) => {
-      setSelectedGameTeam(gameTeams.find((team) => team.id === gameTeamId)!);
-    },
-  });
-
-  const onTeamChange = (gameTeam: Pick<GameTeam, "id" | "name">) => {
-    logger.debug(`GameInfoAdmin selected: ${JSON.stringify(selectedGameTeam)}`);
-    changeTeamMutation.mutate({
-      gameTeamId: gameTeam.id,
-    });
-    utils.gameUser.getSelfInfo.invalidate();
-  };
-
   const buzzInMutation = api.gameUser.buzzIn.useMutation({
     onSuccess: async () => {
       logger.info("Buzzed in");
@@ -68,11 +54,17 @@ export function GameBuzzerTab({
         <GameTeamSelection
           gameTeams={gameTeams}
           initialGameTeamId={initialGameTeamId}
+          onChange={(gameTeamId) => {
+            setSelectedGameTeam(
+              gameTeams.find((team) => team.id === gameTeamId),
+            );
+          }}
         />
       )}
-      {!changeTeamMutation.isPending && selectedGameTeam && (
+      {selectedGameTeam && (
         <Button
           onClick={() => buzzInMutation.mutate()}
+          disabled={buzzInMutation.isPending}
           className="h-40 w-full bg-blue-500 text-white hover:bg-blue-600"
         >
           Buzzer
