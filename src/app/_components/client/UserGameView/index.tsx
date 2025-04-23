@@ -4,8 +4,6 @@ import { DateTime } from "luxon";
 
 import { api } from "@/trpc/react";
 
-import { useRouter } from "next/navigation";
-
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 
 import type { GameWithRelations } from "@/types";
@@ -19,7 +17,6 @@ export function UserGameView({
 }: {
   games: GameWithRelations[];
 }) {
-  const router = useRouter();
   const [, setGameIdData] = useGameTokenData();
   const gameInfo = api.user.game.getAll.useQuery();
 
@@ -42,7 +39,6 @@ export function UserGameView({
   const onSelectClick = (gameId: string) => {
     logger.debug(`GameView selected: ${gameId}`);
     setGameIdData({ gameId });
-    router.push(`/game/${gameId}/admin`);
   };
 
   games.sort((a, b) => a.createdAt.diff(b.createdAt).as("milliseconds"));

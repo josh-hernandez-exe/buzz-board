@@ -1,5 +1,6 @@
 import { GameFormat, type Game } from "@prisma/client";
 import type { DateTime } from "luxon";
+import Link from "next/link";
 
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -84,15 +85,15 @@ export function columnGenerator({
       cell: ({ row }) => {
         const gameId: string = row.getValue("gameId");
 
-        const onClick = () => {
-          onSelectClick(gameId);
-        };
-
         return (
           <div className="flex items-center gap-2">
-            <Button className="text-blue-500" onClick={onClick}>
+            <Link
+              className="text-blue-500"
+              href={`/game/${gameId}/admin`}
+              onNavigate={() => onSelectClick(gameId)}
+            >
               Select
-            </Button>
+            </Link>
             <Button className="text-red-500" disabled={true}>
               Delete
             </Button>
