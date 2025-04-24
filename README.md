@@ -37,6 +37,28 @@ The [T3 Stack](https://create.t3.gg/) is a modular and type-safe full-stack deve
 1. Install Docker and Docker Compose.
 2. Install `bun` for package management.
 
+### Setup Auth
+
+#### Discord
+
+Redirects:
+
+- `http://localhost:3000/api/auth/callback/discord`
+- `http://{CODESPACE-SUBDOMAIN}.app.github.dev/api/auth/callback/discord`
+- `https://{CODESPACE-SUBDOMAIN}.app.github.dev/api/auth/callback/discord`
+- https://musical-space-engine-49grxqww6pfqvjq-3000.app.github.dev/api/auth/callback/discord
+
+#### Google
+
+Redirects:
+
+- `http://localhost:3000/api/auth/callback/google`
+- `http://{CODESPACE-SUBDOMAIN}.app.github.dev/api/auth/callback/google`
+- `https://{CODESPACE-SUBDOMAIN}.app.github.dev/api/auth/callback/google`
+  - NOTE: you need http and https
+  - Avoid wildcard since you can have a persistant code space.
+
+
 ### Getting Started
 1. Clone the repository.
 2. Install dependencies with `bun install`
