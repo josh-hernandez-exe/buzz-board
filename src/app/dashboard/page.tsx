@@ -12,7 +12,7 @@ export default async function DashboardPage() {
   const games = await api.user.game.getAll();
 
   if (!session) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   return (
