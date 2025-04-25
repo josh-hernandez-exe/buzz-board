@@ -39,6 +39,14 @@ The [T3 Stack](https://create.t3.gg/) is a modular and type-safe full-stack deve
 
 ### Setup Auth
 
+Domains to keep in mind:
+- `http://localhost:3000`
+- `http://{CODESPACE-SUBDOMAIN}.app.github.dev`
+- `https://{CODESPACE-SUBDOMAIN}.app.github.dev`
+- `https://buzz-board-game.vercel.app`
+- `https://buzz-board-*-josh-hernandezs-projects.vercel.app`
+
+
 #### Discord
 
 Redirects:
@@ -46,7 +54,8 @@ Redirects:
 - `http://localhost:3000/api/auth/callback/discord`
 - `http://{CODESPACE-SUBDOMAIN}.app.github.dev/api/auth/callback/discord`
 - `https://{CODESPACE-SUBDOMAIN}.app.github.dev/api/auth/callback/discord`
-- https://musical-space-engine-49grxqww6pfqvjq-3000.app.github.dev/api/auth/callback/discord
+- `https://musical-space-engine-49grxqww6pfqvjq-3000.app.github.dev/api/auth/callback/discord`
+- `https://buzz-board-game.vercel.app/api/auth/callback/discord`
 
 #### Google
 
@@ -57,6 +66,7 @@ Redirects:
 - `https://{CODESPACE-SUBDOMAIN}.app.github.dev/api/auth/callback/google`
   - NOTE: you need http and https
   - Avoid wildcard since you can have a persistant code space.
+- `https://buzz-board-game.vercel.app/api/auth/callback/google`
 
 
 ### Getting Started
@@ -142,6 +152,16 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
 
 4. **Verify Connections**:
    - Ensure that your application can connect to the managed PostgreSQL and Redis instances by testing locally or deploying to Vercel.
+
+
+#### Commands
+
+```bash
+# NOTE: VSCode terminal messes up with .env loading sometimes
+bun vercel env pull .env.production
+bun --env-file .env.production db:push
+```
+
 
 #### Notes
 - Vercel's managed PostgreSQL and Redis services are optimized for production use and include features like automatic backups and monitoring.
