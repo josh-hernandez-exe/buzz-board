@@ -47,7 +47,7 @@ export function GameAdminTeamControl({
     | BasicGameTeamInfo[]
     | undefined;
 
-  const gameTeams = gameStateSub.data?.gameTeams ?? initialGameTeams;
+  const gameTeams = gameTeamsFromState ?? initialGameTeams;
 
   return (
     <GenericCard
@@ -72,12 +72,11 @@ export function GameAdminTeamControl({
               <SelectContent>
                 <SelectGroup>
                   <SelectLabel>Team</SelectLabel>
-                  {gameTeams &&
-                    gameTeams.map((team) => (
-                      <SelectItem key={team.id} value={team.id}>
-                        {team.name}
-                      </SelectItem>
-                    ))}
+                  {gameTeams?.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
                 </SelectGroup>
               </SelectContent>
             </Select>

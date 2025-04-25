@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { createTRPCRouter, protectedUserProcedure } from "@/server/api/trpc";
 import { generateShortCode } from "@/server/utils/codeGeneration";
-import { logger } from "@/logger";
 
 import type { GameWithRelations } from "@/types";
 

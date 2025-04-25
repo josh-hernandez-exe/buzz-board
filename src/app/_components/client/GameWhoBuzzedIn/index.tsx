@@ -1,16 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { api } from "@/trpc/react";
 
-import { GameFormat, type GameUser, type GameTeam } from "@prisma/client";
+import { GameFormat } from "@prisma/client";
 import { GameUserAvatar } from "@/app/_components/client/GameUserAvatar";
 import { GenericCard } from "@/app/_components/GenericCard";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/app/_components/ui/avatar";
 
 import { logger } from "@/logger";
 
@@ -52,7 +46,7 @@ export function GameWhoBuzzedIn({
         <div>
           <GameUserAvatar
             image={gameUser.image ?? undefined}
-            index={gameUser.index!}
+            index={gameUser.index}
           />
           <p>{message}</p>
         </div>

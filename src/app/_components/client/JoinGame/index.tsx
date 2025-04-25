@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { useRouter } from "next/navigation";
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
@@ -15,8 +15,6 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from "@/app/_components/ui/input-otp";
-
-import { logger } from "@/logger";
 
 export function JoinGameComponent({
   code: inputCode,
@@ -44,7 +42,7 @@ export function JoinGameComponent({
     },
   });
 
-  const handleJoinGame = async () => {
+  const handleJoinGame = useCallback(async () => {
     if (!gameCode) {
       setError("Game code is required");
       return;
@@ -55,16 +53,16 @@ export function JoinGameComponent({
       // find existing token if any
       token: gameTokenData.tokenStorage?.[gameCode],
     });
-  };
+  }, [gameCode, gameTokenData.tokenStorage, joinGameMutation]);
 
   useEffect(() => {
     // Automatically attempt to join if the code is set in the input code.
     // which is defined from the search params.
     if (inputCode) {
       setGameCode(inputCode);
-      handleJoinGame();
+      void handleJoinGame();
     }
-  }, [inputCode]);
+  }, [inputCode, handleJoinGame]);
 
   return (
     <div>

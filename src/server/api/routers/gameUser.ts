@@ -1,4 +1,4 @@
-import { GameFormat, BuzzerState } from "@prisma/client";
+import { GameFormat, BuzzerState, type Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { logger } from "@/logger";
@@ -107,7 +107,7 @@ export const gameUserRouter = createTRPCRouter({
         return;
       }
 
-      const nameChangePromises: any = [
+      const nameChangePromises: Prisma.PrismaPromise<unknown>[] = [
         ctx.db.gameUser.update({
           where: {
             id: gameUser.id,
@@ -160,7 +160,7 @@ export const gameUserRouter = createTRPCRouter({
         return;
       }
 
-      const nameChangePromises: any = [
+      const nameChangePromises: Promise<unknown>[] = [
         ctx.db.gameTeam.update({
           where: {
             id: gameUser.gameTeamId,
@@ -184,7 +184,9 @@ export const gameUserRouter = createTRPCRouter({
         );
       }
 
-      await ctx.db.$transaction(nameChangePromises);
+      await ctx.db.$transaction(
+        nameChangePromises as Prisma.PrismaPromise<unknown>[],
+      );
 
       await emitUpdatedGameState({ gameId: ctx.gameSession.id });
 

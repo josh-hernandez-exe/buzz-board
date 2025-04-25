@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { GameFormat, type GameTeam } from "@prisma/client";
+import { type GameTeam } from "@prisma/client";
 
 import { GenericCard } from "@/app/_components/GenericCard";
 
@@ -43,7 +43,8 @@ export function GameTeamSelection({
 
   const changeTeamMutation = api.gameUser.changeTeams.useMutation({
     onSuccess: async (updatedGameUser) => {
-      utils.gameUser.getSelfInfo.invalidate();
+      void utils.gameUser.getSelfInfo.invalidate();
+
       const updatedGameTeam = gameTeams.find(
         (team) => team.id === updatedGameUser.gameTeamId,
       );
@@ -60,15 +61,6 @@ export function GameTeamSelection({
       );
       setGameTeamName(updatedGameTeam.name);
       onChange?.(updatedGameTeam.id);
-    },
-  });
-
-  const changeTeamNameMutation = api.gameUser.changeTeamName.useMutation({
-    onSuccess: async () => {
-      utils.gameUser.getSelfInfo.invalidate();
-    },
-    onError: async () => {
-      setGameTeamName(initialGameTeam?.name);
     },
   });
 

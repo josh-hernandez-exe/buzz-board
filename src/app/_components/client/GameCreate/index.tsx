@@ -12,8 +12,6 @@ import {
 
 import { api } from "@/trpc/react";
 
-type GameData = Pick<Game, "name" | "format">;
-
 export function CreateGame() {
   const router = useRouter();
   const [gameFormat, setGameFormat] = useState<Game["format"]>(
@@ -49,9 +47,9 @@ export function CreateGame() {
         onSubmit={(e) => {
           e.preventDefault();
           createGameMutation.mutate({
-            name: gameName!,
-            format: gameFormat!,
-          } as GameData);
+            name: gameName,
+            format: gameFormat,
+          });
         }}
         className="flex flex-col gap-2"
       >

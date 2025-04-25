@@ -42,8 +42,8 @@ export function GameAdminScoreboardAdvancedControl({
           gameTeamId,
           shouldAffect ? score : undefined,
         ])
-        .filter(([, score]) => typeof score === "number"),
-    );
+        .filter(([_, score]) => typeof score === "number"),
+    ) as Record<GameTeam["id"], number>;
   };
 
   const numAffectedTeams = Object.entries(selectedGameTeams).filter(

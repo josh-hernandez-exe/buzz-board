@@ -1,5 +1,3 @@
-import { type Game } from "@prisma/client";
-
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { api, HydrateClient } from "@/trpc/server";
@@ -8,8 +6,6 @@ import { auth } from "@/server/auth";
 
 import { CreateGame } from "@/app/_components/client/GameCreate";
 import { UserGameView } from "@/app/_components/client/UserGameView";
-
-import { logger } from "@/logger";
 
 export default async function DashboardPage() {
   const session = await auth();

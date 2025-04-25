@@ -14,8 +14,6 @@ import {
 
 import { api } from "@/trpc/react";
 
-import { logger } from "@/logger";
-
 import type { GameTeamFromPrivateState } from "@/types";
 
 import { cn } from "@/app/_lib/utils";
@@ -31,7 +29,7 @@ export function GameScoreboardTeamCard({
   const gameTeamFromState: GameTeamFromPrivateState | undefined =
     gameState?.data?.gameTeams.find((team) => team.id === gameTeamId);
 
-  const gameTeam = gameTeamFromState || initialGameTeam;
+  const gameTeam = gameTeamFromState ?? initialGameTeam;
 
   if (!gameTeam) {
     return <div>Loading...</div>;

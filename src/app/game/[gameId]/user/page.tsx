@@ -1,7 +1,5 @@
-import { GameFormat } from "@prisma/client";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { ok, err } from "neverthrow";
 
 import { auth, gameAuth } from "@/server/auth";
 
@@ -22,7 +20,7 @@ import { InformationTab } from "./InformationTab";
 export default async function GameUserPage({
   params,
 }: {
-  params: { gameId: string };
+  params: Promise<{ gameId: string }>;
 }) {
   const { gameId } = await params;
   const session = await auth();

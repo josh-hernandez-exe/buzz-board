@@ -13,11 +13,13 @@ import {
   updateBuzzerListeningState,
 } from "@/server/utils/events";
 
-import { logger } from "@/logger";
-
 export const gameAdminRouter = createTRPCRouter({
   addTeam: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
-    const { id: gameId, gameAdmin, format: gameFormat } = ctx.gameSession;
+    const {
+      id: gameId,
+      gameAdmin: _gameAdmin,
+      format: gameFormat,
+    } = ctx.gameSession;
 
     if (gameFormat === GameFormat.individual) {
       throw new Error("Game format does not support teams");
@@ -41,12 +43,19 @@ export const gameAdminRouter = createTRPCRouter({
     });
 
     await emitUpdatedGameState({ gameId });
+
+    return newTeam;
   }),
   removeTeam: protectedGameAdminProcedure
     .input(z.object({ gameTeamId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const { id: gameId, gameAdmin, format: gameFormat } = ctx.gameSession;
+      const {
+        id: gameId,
+        gameAdmin: _gameAdmin,
+        format: gameFormat,
+      } = ctx.gameSession;
       const { gameTeamId } = input;
+
       if (gameFormat === GameFormat.individual) {
         throw new Error("Game format does not support teams");
       }
@@ -98,7 +107,7 @@ export const gameAdminRouter = createTRPCRouter({
       await emitUpdatedGameState({ gameId });
     }),
   startBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
-    const { gameAdmin, ...game } = ctx.gameSession;
+    const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
 
     if (game.isBuzzerListening) {
       // already listening
@@ -131,7 +140,7 @@ export const gameAdminRouter = createTRPCRouter({
     ]);
   }),
   pauseBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
-    const { gameAdmin, ...game } = ctx.gameSession;
+    const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
 
     if (!game.isBuzzerListening) {
       // already not listening
@@ -153,7 +162,7 @@ export const gameAdminRouter = createTRPCRouter({
     ]);
   }),
   resetBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
-    const { gameAdmin, ...game } = ctx.gameSession;
+    const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
 
     await ctx.db.$transaction([
       ctx.db.gameTeam.updateMany({
@@ -182,7 +191,7 @@ export const gameAdminRouter = createTRPCRouter({
   addScore: protectedGameAdminProcedure
     .input(z.record(z.string(), z.number()))
     .mutation(async ({ ctx, input }) => {
-      const { gameAdmin, ...game } = ctx.gameSession;
+      const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
 
       const result = await checkTeamsAndGetCurrentScores({
         gameId: game.id,
@@ -194,12 +203,9 @@ export const gameAdminRouter = createTRPCRouter({
       }
 
       const { scoreboard, currentScores } = result.value;
-      const oldScoreboardState = scoreboard?.currentState;
 
       Object.entries(input).forEach(([gameTeamId, score]) => {
-        if (currentScores[gameTeamId] === undefined) {
-          currentScores[gameTeamId] = 0;
-        }
+        currentScores[gameTeamId] ??= 0;
         currentScores[gameTeamId] += score;
       });
 
@@ -207,20 +213,22 @@ export const gameAdminRouter = createTRPCRouter({
         const newScoreboardState = await tx.scoreboardState.create({
           data: {
             gameId: game.id,
-            scoreboardId: scoreboard?.id!,
+            scoreboardId: scoreboard?.id,
             state: currentScores,
           },
         });
 
+        const newPastStateIds = scoreboard?.pastStateIds as string[];
+        if (typeof scoreboard?.currentState?.id === "string") {
+          newPastStateIds.push(scoreboard?.currentState.id);
+        }
+
         await tx.scoreboard.update({
           where: {
-            id: scoreboard?.id!,
+            id: scoreboard?.id,
           },
           data: {
-            pastStateIds: [
-              ...(scoreboard?.pastStateIds as string[]),
-              oldScoreboardState?.id!,
-            ],
+            pastStateIds: newPastStateIds,
             currentStateId: newScoreboardState.id,
             futureStateIds: [],
           },
@@ -236,7 +244,7 @@ export const gameAdminRouter = createTRPCRouter({
   setScore: protectedGameAdminProcedure
     .input(z.record(z.string(), z.number()))
     .mutation(async ({ ctx, input }) => {
-      const { gameAdmin, ...game } = ctx.gameSession;
+      const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
 
       const result = await checkTeamsAndGetCurrentScores({
         gameId: game.id,
@@ -248,12 +256,13 @@ export const gameAdminRouter = createTRPCRouter({
       }
 
       const { scoreboard, currentScores } = result.value;
-      const oldScoreboardState = scoreboard?.currentState;
+
+      if (!scoreboard) {
+        throw new Error("Scoreboard not found");
+      }
 
       Object.entries(input).forEach(([gameTeamId, score]) => {
-        if (currentScores[gameTeamId] === undefined) {
-          currentScores[gameTeamId] = 0;
-        }
+        currentScores[gameTeamId] ??= 0;
         currentScores[gameTeamId] = score;
       });
 
@@ -261,20 +270,22 @@ export const gameAdminRouter = createTRPCRouter({
         const newScoreboardState = await tx.scoreboardState.create({
           data: {
             gameId: game.id,
-            scoreboardId: scoreboard?.id!,
+            scoreboardId: scoreboard?.id,
             state: currentScores,
           },
         });
 
+        const newPastStateIds = scoreboard?.pastStateIds as string[];
+        if (typeof scoreboard?.currentState?.id === "string") {
+          newPastStateIds.push(scoreboard?.currentState.id);
+        }
+
         await tx.scoreboard.update({
           where: {
-            id: scoreboard?.id!,
+            id: scoreboard?.id,
           },
           data: {
-            pastStateIds: [
-              ...(scoreboard?.pastStateIds as string[]),
-              scoreboard?.currentState?.id!,
-            ],
+            pastStateIds: newPastStateIds,
             currentStateId: newScoreboardState.id,
             futureStateIds: [],
           },
@@ -288,7 +299,7 @@ export const gameAdminRouter = createTRPCRouter({
       return scoreboardState;
     }),
   undoScore: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
-    const { gameAdmin, ...game } = ctx.gameSession;
+    const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
 
     const scoreboard = await ctx.db.scoreboard.findUnique({
       where: {
@@ -311,6 +322,11 @@ export const gameAdminRouter = createTRPCRouter({
 
     const lastStateId = oldPastStateIds.at(-1);
 
+    let newFutureStateIds = [...oldFutureStateIds];
+    if (typeof scoreboard?.currentState?.id === "string") {
+      newFutureStateIds = [scoreboard?.currentState.id, ...oldFutureStateIds];
+    }
+
     await ctx.db.scoreboard.update({
       where: {
         id: scoreboard.id,
@@ -318,14 +334,14 @@ export const gameAdminRouter = createTRPCRouter({
       data: {
         pastStateIds: [...oldPastStateIds.slice(0, -1)],
         currentStateId: lastStateId,
-        futureStateIds: [scoreboard?.currentState?.id!, ...oldFutureStateIds],
+        futureStateIds: newFutureStateIds,
       },
     });
 
     await emitUpdatedGameState({ gameId: game.id });
   }),
   redoScore: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
-    const { gameAdmin, ...game } = ctx.gameSession;
+    const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
 
     const scoreboard = await ctx.db.scoreboard.findUnique({
       where: {
@@ -348,12 +364,17 @@ export const gameAdminRouter = createTRPCRouter({
 
     const lastStateId = oldFutureStateIds.at(-1);
 
+    const newPastStateIds = [...oldPastStateIds];
+    if (typeof scoreboard?.currentState?.id === "string") {
+      newPastStateIds.push(scoreboard?.currentState.id);
+    }
+
     await ctx.db.scoreboard.update({
       where: {
         id: scoreboard.id,
       },
       data: {
-        pastStateIds: [...oldPastStateIds, scoreboard?.currentState?.id!],
+        pastStateIds: newPastStateIds,
         currentStateId: lastStateId,
         futureStateIds: [...oldFutureStateIds.slice(1)],
       },

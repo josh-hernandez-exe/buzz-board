@@ -1,21 +1,14 @@
 "use client";
 
-import { type Game } from "@prisma/client";
-
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/app/_components/ui/card";
 
-import { api } from "@/trpc/react";
-
 import type { PublicGameState } from "@/types";
-
-import { logger } from "@/logger";
 
 export function GamePublicInfoCard({
   game,

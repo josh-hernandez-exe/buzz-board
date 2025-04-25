@@ -1,8 +1,6 @@
 import type { Game, GameAdmin, GameUser, User } from "@prisma/client";
 import { cookies } from "next/headers";
 
-import { ok, err } from "neverthrow";
-
 import { db } from "@/server/db";
 import { logger } from "@/logger";
 
@@ -150,17 +148,13 @@ export async function gameAuth({
   // check cookie for server side request processing
   // or check headers for client side request
 
-  gameUserToken = cookieStore.get("buzz-board-game-user-token")?.value;
-  if (!gameUserToken) {
-    gameUserToken = headers.get("buzz-board-game-user-token") as
-      | string
-      | undefined;
-  }
+  gameUserToken ??= cookieStore.get("buzz-board-game-user-token")?.value;
+  gameUserToken ??= headers.get("buzz-board-game-user-token") as
+    | string
+    | undefined;
 
-  gameId = cookieStore.get("buzz-board-game-id")?.value;
-  if (!gameId) {
-    gameId = headers.get("x-buzz-board-game-id") as string | undefined;
-  }
+  gameId ??= cookieStore.get("buzz-board-game-id")?.value;
+  gameId ??= headers.get("x-buzz-board-game-id") as string | undefined;
 
   if (!gameId) {
     return {};

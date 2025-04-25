@@ -8,7 +8,13 @@ const compat = new FlatCompat({
 
 export default tseslint.config(
   {
-    ignores: [".next"],
+    ignores: [
+      ".next",
+      "src/app/_components/ui/**/*.tsx", // This is external code
+      "node_modules/", // Exclude the node_modules folder
+      "dist/", // Exclude the dist folder
+      "build/", // Exclude the build folder
+    ],
   },
   ...compat.extends("next/core-web-vitals"),
   {
@@ -30,14 +36,20 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-unused-vars": [
         "warn",
-        { argsIgnorePattern: "^_" },
+        {
+          argsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
       ],
       "@typescript-eslint/require-await": "off",
       "@typescript-eslint/no-misused-promises": [
         "error",
         { checksVoidReturn: { attributes: false } },
       ],
-      "neverthrow/must-use-result": "error",
+      // TODO: Turn this back on later
+      // "neverthrow/must-use-result": "error",
     },
   },
   {

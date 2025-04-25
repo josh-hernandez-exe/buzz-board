@@ -20,7 +20,7 @@ export function UserGameView({
   const [, setGameIdData] = useGameTokenData();
   const gameInfo = api.user.game.getAll.useQuery();
 
-  const gameData = gameInfo.data || initialGames;
+  const gameData = gameInfo.data ?? initialGames;
 
   const games: GameViewDataTableRow[] = gameData.map((game) => {
     return {
@@ -28,7 +28,12 @@ export function UserGameView({
       gameId: game.id,
       numTeams: game.gameTeams.length,
       numPlayers: game.gameUsers.length,
-      createdAt: DateTime.fromJSDate(game.createdAt),
+      createdAt:
+        game.createdAt instanceof Date // is it a built in JS Date type
+          ? // convert to luxon DateTime
+            DateTime.fromJSDate(game.createdAt)
+          : // else default to now
+            DateTime.now(),
     };
   });
 
@@ -41,7 +46,19 @@ export function UserGameView({
     setGameIdData({ gameId });
   };
 
-  games.sort((a, b) => a.createdAt.diff(b.createdAt).as("milliseconds"));
+  games.sort((a, b) => {
+    if (
+      DateTime.isDateTime(a.createdAt) &&
+      DateTime.isDateTime(b.createdAt) &&
+      a.createdAt.isValid &&
+      b.createdAt.isValid
+    ) {
+      return a.createdAt.diff(b.createdAt).as("milliseconds");
+    }
+
+    logger.error("Invalid date format during game sorting.");
+    return 0; // Fallback to no sorting if dates are invalid
+  });
 
   return <GameTeamUserTable data={games} onSelectClick={onSelectClick} />;
 }

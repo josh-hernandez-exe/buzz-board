@@ -1,7 +1,8 @@
 import { type RedisClientType } from "redis";
 
 import type { Game, GameUser } from "@prisma/client";
-import { ok, err, Result } from "neverthrow";
+import { ok, err } from "neverthrow";
+import type { Result } from "neverthrow";
 import { createClient } from "redis";
 
 import { db } from "@/server/db";
@@ -13,8 +14,8 @@ import { env } from "@/env";
 import { logger } from "@/logger";
 
 // Initialize KeyDB client
-const redisClient = await createClient({
-  url: env.KEYDB_URL, // Ensure this is set in your .env file
+const redisClient = createClient({
+  url: env.KEYDB_URL,
 });
 
 redisClient.on("error", (err) => {

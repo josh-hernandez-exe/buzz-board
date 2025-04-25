@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { BuzzerState, type GameTeam } from "@prisma/client";
 
 import {
-  type ColumnDef,
   type RowSelectionState,
   flexRender,
   getCoreRowModel,
@@ -20,7 +19,7 @@ import {
 
 import { Button } from "@/app/_components/ui/button";
 
-import { type GameTeamDataTableRow, columns } from "./gameTeamTableColumns";
+import type { GameTeamDataTableRow, columns } from "./gameTeamTableColumns";
 
 interface DataTableProps {
   columns: typeof columns;

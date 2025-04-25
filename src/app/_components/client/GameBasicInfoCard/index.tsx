@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
-import QRCode from "qrcode";
+import * as QRCode from "qrcode";
 
 import {
   Card,
@@ -12,8 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/app/_components/ui/card";
-
-import { api } from "@/trpc/react";
 
 import type { PrivateGameState } from "@/types";
 
@@ -31,7 +29,6 @@ export function GameBasicInfoCard({
   useEffect(() => {
     const joinUrl = `${env.NEXT_PUBLIC_QRCODE_BASE_URL}/join?code=${game.code}`;
     if (canvasRef.current) {
-      logger.debug(`GameBasicInfoCard: Generating QR code for URL: ${joinUrl}`);
       QRCode.toCanvas(
         canvasRef.current,
         joinUrl,

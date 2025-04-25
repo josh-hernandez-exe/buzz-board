@@ -26,7 +26,7 @@ export function GameUserEditSheet() {
 
   const changeNameMutation = api.gameUser.changeName.useMutation({
     onSuccess: async () => {
-      utils.gameUser.getSelfInfo.invalidate();
+      void utils.gameUser.getSelfInfo.invalidate();
     },
     onError: async () => {
       if (gameSelfInfo.data?.name) {
@@ -37,8 +37,10 @@ export function GameUserEditSheet() {
 
   const changeTeamNameMutation = api.gameUser.changeTeamName.useMutation({
     onSuccess: async () => {
-      utils.gameUser.getSelfInfo.invalidate();
-      utils.gameUser.getSelfTeamInfo.invalidate();
+      return Promise.all([
+        utils.gameUser.getSelfInfo.invalidate(),
+        utils.gameUser.getSelfTeamInfo.invalidate(),
+      ]);
     },
     onError: async () => {
       if (gameSelfInfo.data?.gameTeam?.name) {
@@ -56,7 +58,7 @@ export function GameUserEditSheet() {
       typeof gameUserName === "string" &&
       gameUserName !== gameSelfInfo.data?.name
     ) {
-      changeNameMutation.mutate({
+      void changeNameMutation.mutate({
         name: gameUserName,
       });
     }
@@ -64,7 +66,7 @@ export function GameUserEditSheet() {
       typeof gameTeamName === "string" &&
       gameTeamName !== gameSelfInfo.data?.gameTeam?.name
     ) {
-      changeTeamNameMutation.mutate({
+      void changeTeamNameMutation.mutate({
         name: gameTeamName,
       });
     }
@@ -79,7 +81,10 @@ export function GameUserEditSheet() {
         <SheetHeader>
           <SheetTitle>Edit profile</SheetTitle>
           <SheetDescription>
-            Make changes to your profile here. Click save when you're done.
+            <p className="text-muted-foreground text-sm">
+              Make changes to your profile here. Click save when you&apos;re
+              done.
+            </p>
           </SheetDescription>
         </SheetHeader>
         <div className="grid gap-4 py-4">

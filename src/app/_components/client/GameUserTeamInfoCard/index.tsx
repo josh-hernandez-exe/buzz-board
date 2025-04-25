@@ -12,7 +12,6 @@ import {
 import { GameUserEditSheet } from "@/app/_components/client/GameUserEditSheet";
 import { api } from "@/trpc/react";
 
-import { logger } from "@/logger";
 import type { GameTeamWithRelations, GameTeamFromPrivateState } from "@/types";
 
 import { GameTeamUserTable } from "./GameTeamUserTable";
@@ -31,7 +30,7 @@ export function GameUserTeamInfoCard({
     );
 
   const gameTeam =
-    GameTeamFromPrivateState || gameTeamInfo.data || initialGameTeam;
+    GameTeamFromPrivateState ?? gameTeamInfo.data ?? initialGameTeam;
 
   if (!gameTeam) {
     return <div>Loading...</div>;
@@ -59,7 +58,7 @@ export function GameUserTeamInfoCard({
             const imageFromGameState = (
               gameUser as GameTeamFromPrivateState["gameUsers"][number]
             ).image;
-            const image = imageFromRelation || imageFromGameState;
+            const image = imageFromRelation ?? imageFromGameState;
             return {
               id: gameUser.id,
               name: gameUser.name,

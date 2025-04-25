@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { GameFormat } from "@prisma/client";
-import type { Game, GameTeam, GameUser } from "@prisma/client";
+import type { Game, GameTeam } from "@prisma/client";
 
 import { Button } from "@/app/_components/ui/button";
 import { GameTeamSelection } from "@/app/_components/client/GameTeamSelection";
-import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 import { api } from "@/trpc/react";
 
 import { logger } from "@/logger";
@@ -20,14 +19,6 @@ export function GameBuzzerTab({
   gameTeams: Pick<GameTeam, "id" | "name" | "index">[];
   initialGameTeamId: GameTeam["id"] | undefined | null;
 }) {
-  const utils = api.useUtils();
-
-  useGameTokenData();
-
-  if (!Array.isArray(gameTeams)) {
-    return undefined;
-  }
-
   const gameTeamFromGameUser = gameTeams.find(
     (team) => team.id === initialGameTeamId,
   );
@@ -50,7 +41,7 @@ export function GameBuzzerTab({
 
   return (
     <div>
-      {game.format === GameFormat.team && (
+      {game.format === GameFormat.team && Array.isArray(gameTeams) && (
         <GameTeamSelection
           gameTeams={gameTeams}
           initialGameTeamId={initialGameTeamId}

@@ -9,7 +9,7 @@ import { logger } from "@/logger";
 export default async function GamePage({
   params,
 }: {
-  params: { gameId: string };
+  params: Promise<{ gameId: string }>;
 }) {
   const { gameId } = await params;
   const session = await auth();

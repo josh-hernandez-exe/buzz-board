@@ -1,9 +1,7 @@
 "use client";
 
 import { api } from "@/trpc/react";
-import type { PrivateGameState, GameTeamFromPrivateState } from "@/types";
-
-import { logger } from "@/logger";
+import type { PrivateGameState } from "@/types";
 
 import { GameScoreboardTeamCard } from "@/app/_components/client/GameScoreboardTeamCard";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
@@ -26,12 +24,7 @@ export function Scoreboard({
       <GameWhoBuzzedIn />
       <GameBasicInfoCard game={currentGameState.game} />
       {gameTeams.map((gameTeam) => {
-        return (
-          <GameScoreboardTeamCard
-            key={gameTeam.id}
-            gameTeam={gameTeam as GameTeamFromPrivateState}
-          />
-        );
+        return <GameScoreboardTeamCard key={gameTeam.id} gameTeam={gameTeam} />;
       })}
     </div>
   );

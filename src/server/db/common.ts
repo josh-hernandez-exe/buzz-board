@@ -1,8 +1,11 @@
 import type { Game, GameTeam } from "@prisma/client";
 import { db } from "@/server/db";
-import { ok, err, Result } from "neverthrow";
+import type { Result } from "neverthrow";
+import { err, ok } from "neverthrow";
 
 import type { PublicGameState, PrivateGameState } from "@/types";
+
+type ScoreMap = Record<GameTeam["id"], number>;
 
 export async function getPublicGameState({
   gameId,
@@ -196,8 +199,7 @@ export async function checkTeamsAndGetCurrentScores({
 
   const oldScoreboardState = scoreboard?.currentState;
 
-  const currentScores: { [key: GameTeam["id"]]: number } =
-    (oldScoreboardState?.state as { [key: GameTeam["id"]]: number }) ?? {};
+  const currentScores: ScoreMap = (oldScoreboardState?.state as ScoreMap) ?? {};
 
   return ok({
     scoreboard,

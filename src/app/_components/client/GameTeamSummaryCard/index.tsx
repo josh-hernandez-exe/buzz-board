@@ -1,6 +1,6 @@
 "use client";
 
-import type { GameTeam, GameUser, BuzzerState } from "@prisma/client";
+import type { GameTeam, GameUser } from "@prisma/client";
 
 import { GenericCard } from "@/app/_components/GenericCard";
 

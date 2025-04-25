@@ -1,4 +1,3 @@
-import type { Game } from "@prisma/client";
 import { GameFormat } from "@prisma/client";
 import { z } from "zod";
 
@@ -92,7 +91,7 @@ export const publicRouter = createTRPCRouter({
     }),
   currentGameState: publicProcedure
     .input(z.object({ gameId: z.string() }))
-    .query(async ({ ctx, input }) => {
+    .query(async ({ ctx: _, input }) => {
       const { gameId } = input;
 
       const result = await getPublicGameState({ gameId });
@@ -104,7 +103,7 @@ export const publicRouter = createTRPCRouter({
 
   gameState: publicProcedure
     .input(z.object({ gameId: z.string() }))
-    .subscription(async function* ({ ctx, input, signal }) {
+    .subscription(async function* ({ ctx: _, input, signal }) {
       const { gameId } = input;
 
       let gameState = await gameEventCache.publicGameStateUpdate.get(gameId);

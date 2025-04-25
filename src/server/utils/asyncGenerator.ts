@@ -26,7 +26,10 @@ export function createRedisChannelAsyncIterator<T>({
   // therefore it requires a dedicated connection.
   const subscriber = redisClient.duplicate();
 
-  subscriber.on("error", (err) => logger.error(err)).connect();
+  subscriber
+    .on("error", (err) => logger.error(err))
+    .connect()
+    .catch((err) => logger.error("Failed to connect subscriber:", err));
 
   const iterator = {
     next: async (): Promise<IteratorResult<T>> => {
@@ -36,9 +39,16 @@ export function createRedisChannelAsyncIterator<T>({
 
       return new Promise((resolve, reject) => {
         const listener = (message: string) => {
-          messages.push(JSON.parse(message));
-          resolve({ done: false, value: messages.shift() as T });
-          cleanUp();
+          try {
+            const parsedMessage = JSON.parse(message) as T;
+            messages.push(parsedMessage);
+            resolve({ done: false, value: messages.shift() as T });
+          } catch (err) {
+            logger.error("Failed to parse message:", err);
+            reject(new Error(String(err)));
+          } finally {
+            cleanUp();
+          }
         };
 
         const onAbort = () => {
@@ -47,13 +57,17 @@ export function createRedisChannelAsyncIterator<T>({
         };
 
         const cleanUp = () => {
-          subscriber.unsubscribe(channel, listener);
+          subscriber
+            .unsubscribe(channel, listener)
+            .catch((err) => logger.error("Failed to unsubscribe:", err));
           if (signal) {
             signal.removeEventListener("abort", onAbort);
           }
         };
 
-        subscriber.subscribe(channel, listener);
+        subscriber
+          .subscribe(channel, listener)
+          .catch((err) => logger.error("Failed to subscribe:", err));
 
         if (signal) {
           signal.addEventListener("abort", onAbort);

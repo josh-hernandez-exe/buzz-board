@@ -1,16 +1,12 @@
 "use client";
 
-import { GameFormat, type Game } from "@prisma/client";
+import { GameFormat } from "@prisma/client";
 
 import { GameUserInfoCard } from "@/app/_components/client/GameUserInfoCard";
 import { GameUserTeamInfoCard } from "@/app/_components/client/GameUserTeamInfoCard";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
 
-import type {
-  PrivateGameState,
-  GameUserWithRelations,
-  GameTeamFromPrivateState,
-} from "@/types";
+import type { PrivateGameState, GameUserWithRelations } from "@/types";
 
 export function InformationTab({
   gameState,
@@ -21,7 +17,7 @@ export function InformationTab({
 }) {
   const initialGameTeam = gameState.gameTeams.find(
     (team) => team.id === gameUser.gameTeamId,
-  ) as GameTeamFromPrivateState | undefined;
+  );
 
   return (
     <div className="flex flex-col items-center justify-center">

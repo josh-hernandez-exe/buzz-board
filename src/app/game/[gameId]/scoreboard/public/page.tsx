@@ -7,7 +7,7 @@ import { PublicScoreboard } from "./PublicScoreboard";
 export default async function GamePage({
   params,
 }: {
-  params: { gameId: string };
+  params: Promise<{ gameId: string }>;
 }) {
   const { gameId } = await params;
 

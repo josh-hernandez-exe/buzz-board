@@ -1,6 +1,5 @@
 "use client";
 
-import { type GameTeam } from "@prisma/client";
 import { api } from "@/trpc/react";
 
 import { GameAdminTeamControl } from "@/app/_components/client/GameAdminTeamControl";
@@ -13,8 +12,6 @@ import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 
 import type { PrivateGameState, BasicGameInfo } from "@/types";
-
-import { logger } from "@/logger";
 
 export function GameAdminInfo({
   gameState: initialGameState,
@@ -40,7 +37,9 @@ export function GameAdminInfo({
       <GameWhoBuzzedIn />
       <GameAdminBuzzerControl />
       <GameAdminScoreboardAdvancedControl
-        gameTeams={gameTeams.map(({ gameUsers, ...gameTeam }) => gameTeam)}
+        gameTeams={gameTeams.map(
+          ({ gameUsers: _gameUsers, ...gameTeam }) => gameTeam,
+        )}
       />
       {gameTeams.map(({ gameUsers, score, ...gameTeam }) => {
         // return undefined;

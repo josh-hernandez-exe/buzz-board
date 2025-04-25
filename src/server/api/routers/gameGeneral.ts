@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import {
   createTRPCRouter,
   protectedGameGeneralProcedure,
@@ -10,12 +8,11 @@ import { gameEventEmitter, gameEventCache } from "@/server/utils/events";
 
 import type { BasicGameInfo } from "@/types";
 
-import { logger } from "@/logger";
-
 export const gameGeneralRouter = createTRPCRouter({
-  getBasicGameInfo: protectedGameGeneralProcedure.query(({ ctx }) => {
+  getBasicGameInfo: protectedGameGeneralProcedure.query(async ({ ctx }) => {
     const { gameSession } = ctx;
-    const game = ctx.db.game.findUnique({
+
+    const game = (await ctx.db.game.findUnique({
       where: { id: gameSession.id },
       select: {
         id: true,
@@ -23,7 +20,7 @@ export const gameGeneralRouter = createTRPCRouter({
         format: true,
         code: true,
       },
-    }) as any as BasicGameInfo;
+    })) as BasicGameInfo;
 
     return game;
   }),
@@ -65,7 +62,7 @@ export const gameGeneralRouter = createTRPCRouter({
   }) {
     const game = ctx.gameSession;
 
-    let whoBuzzedIn = await gameEventCache.whoBuzzedIn.get(game.id);
+    const whoBuzzedIn = await gameEventCache.whoBuzzedIn.get(game.id);
     if (whoBuzzedIn) {
       yield whoBuzzedIn;
     }
