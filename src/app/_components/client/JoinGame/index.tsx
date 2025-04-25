@@ -24,6 +24,7 @@ export function JoinGameComponent({
   const [gameCode, setGameCode] = useState(inputCode ?? "");
   const [error, setError] = useState("");
   const [gameTokenData, setGameTokenData] = useGameTokenData();
+  const [attemptedAutoJoin, setAttemptedAutoJoin] = useState(false); // Add this state
 
   const router = useRouter();
 
@@ -39,6 +40,7 @@ export function JoinGameComponent({
     },
     onError: (err) => {
       setError(err.message);
+      setAttemptedAutoJoin(false); // Reset auto-join attempt on error
     },
   });
 
@@ -58,11 +60,13 @@ export function JoinGameComponent({
   useEffect(() => {
     // Automatically attempt to join if the code is set in the input code.
     // which is defined from the search params.
-    if (inputCode) {
+    // Only attempt auto-join once.
+    if (inputCode && !attemptedAutoJoin) {
+      setAttemptedAutoJoin(true);
       setGameCode(inputCode);
       void handleJoinGame();
     }
-  }, [inputCode, handleJoinGame]);
+  }, [inputCode, handleJoinGame, attemptedAutoJoin]); // Add attemptedAutoJoin to dependencies
 
   return (
     <div>
