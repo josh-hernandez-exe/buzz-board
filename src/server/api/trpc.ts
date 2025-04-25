@@ -13,7 +13,6 @@ import { ZodError } from "zod";
 
 import { auth, gameAuth } from "@/server/auth";
 import { db } from "@/server/db";
-import { logger } from "@/logger";
 
 /**
  * 1. CONTEXT
@@ -161,7 +160,6 @@ export const protectedGameUserProcedure = t.procedure
         ctx.gameSession.id === ctx.gameSession.gameUser.gameId
       )
     ) {
-      logger.error(ctx);
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Not a valid game user for this game.",
@@ -200,7 +198,6 @@ export const protectedGameAdminProcedure = t.procedure
         ctx.gameSession.gameAdmin.userId === ctx.session.user.id
       )
     ) {
-      logger.error(ctx);
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Not a valid game admin user for this game.",
@@ -230,7 +227,6 @@ export const protectedGameGeneralProcedure = t.procedure
   .use(({ ctx, next }) => {
     if (!ctx.gameSession.gameAdmin && !ctx.gameSession.gameUser) {
       // neither a game admin nor a game user
-      logger.error(ctx);
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Not a valid game member for this game.",

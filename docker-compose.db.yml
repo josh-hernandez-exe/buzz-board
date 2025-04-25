@@ -1,5 +1,5 @@
 services:
-  db:
+  buzz-board-db:
     # https://hub.docker.com/_/postgres
     image: postgres
     restart: always
@@ -24,7 +24,7 @@ services:
     ports:
       - 8080:8080
 
-  keydb:
+  buzz-board-keydb:
     image: eqalpha/keydb
     command: keydb-server /etc/keydb/redis.conf --server-threads 2  --maxmemory 16mb  --maxmemory-policy allkeys-lru  --maxmemory-samples 5
     environment:

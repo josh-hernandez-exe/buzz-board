@@ -22,17 +22,15 @@ const handler = (req: NextRequest) =>
     req,
     router: appRouter,
     createContext: () => createContext(req),
-    // Conditionally include onError only in development
-    ...(env.NODE_ENV === "development"
-      ? {
-          onError: ({ path, error }: { path?: string; error: Error }) => {
-            logger.error(
-              `❌ tRPC failed on ${path ?? "<no-path>"}: ${error?.message ?? "Unknown error"}`,
-              error,
-            );
-          },
-        }
-      : {}),
+    onError: ({ path, error }: { path?: string; error: Error }) => {
+      // DO NOT log errors in production
+      if (env.NODE_ENV !== "development") return;
+
+      logger.error(
+        `❌ tRPC failed on ${path ?? "<no-path>"}: ${error?.message ?? "Unknown error"}`,
+        error,
+      );
+    },
   });
 
 export { handler as GET, handler as POST };
