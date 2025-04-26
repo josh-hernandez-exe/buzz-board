@@ -99,8 +99,6 @@ async function gameAdminAuth({
     });
   }
 
-  logger.info(JSON.stringify(gameAdmin, null, 2));
-
   if (
     !(
       gameAdmin !== null &&
@@ -109,6 +107,7 @@ async function gameAdminAuth({
       gameAdmin?.userId === user?.id
     )
   ) {
+    logger.warn("Game Admin found is not for the current game.");
     gameAdmin = undefined;
   }
 
@@ -157,6 +156,7 @@ export async function gameAuth({
   gameId ??= headers.get("x-buzz-board-game-id") as string | undefined;
 
   if (!gameId) {
+    logger.debug("No game ID found during auth.");
     return {};
   }
 
@@ -175,6 +175,7 @@ export async function gameAuth({
   const game = await db.game.findUnique({ where: { id: gameId } });
 
   if (game === undefined) {
+    logger.warn("Game not found during auth.");
     return {};
   }
 

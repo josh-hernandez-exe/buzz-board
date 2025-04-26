@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState } from "react";
 import { useLocalStorage } from "usehooks-ts";
 
 import { useCookiesNext } from "cookies-next/client";
@@ -15,7 +15,8 @@ type GameTokenData = {
 };
 
 export function useGameTokenData() {
-  const { setCookie } = useCookiesNext();
+  const { getCookie, setCookie } = useCookiesNext();
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [gameTokenData, setGameTokenDataInLocalStorage] = useLocalStorage(
     "buzz-board-game-token-storage",
     {
@@ -25,12 +26,37 @@ export function useGameTokenData() {
     } as GameTokenData,
   );
 
-  // Memoize gameTokenData to prevent unnecessary rerenders
-  const memoizedGameTokenData = useMemo(() => gameTokenData, [gameTokenData]);
+  const setHeadersFromToken = (gtd: GameTokenData) => {
+    const { token, gameId } = gtd;
+    let updateHeaderOpts = {};
+    if (gameId) {
+      updateHeaderOpts = { ...updateHeaderOpts, gameId };
 
-  logger.debug(
-    `useGameTokenData - gameTokenData: ${JSON.stringify(memoizedGameTokenData, null, 2)}`,
-  );
+      if (gameId !== getCookie("buzz-board-game-id")) {
+        logger.debug(
+          "useGameTokenData - setHeadersFromToken - setCookie - game-id: ",
+          gameId,
+        );
+        setCookie("buzz-board-game-id", gameId, {
+          maxAge: 86400, // 1 day expiration
+        });
+      }
+    }
+    if (token) {
+      updateHeaderOpts = { ...updateHeaderOpts, gameUserToken: token };
+
+      if (token !== getCookie("buzz-board-game-user-token")) {
+        logger.debug(
+          "useGameTokenData - setHeadersFromToken - setCookie - token: ",
+          token,
+        );
+        setCookie("buzz-board-game-user-token", token, {
+          maxAge: 86400, // 1 day expiration
+        });
+      }
+    }
+    updateExtraHeaders(updateHeaderOpts);
+  };
 
   const setGameTokenData = ({
     code,
@@ -45,18 +71,13 @@ export function useGameTokenData() {
       `useGameTokenData - setGameUserToken: ${JSON.stringify({ code, token, gameId })}`,
     );
 
-    let updatedTokenData: GameTokenData = { ...memoizedGameTokenData };
-    let updateHeaderOpts = {};
+    let updatedTokenData: GameTokenData = { ...gameTokenData };
 
     if (token) {
       updatedTokenData = {
         ...updatedTokenData,
         token: token,
       };
-      updateHeaderOpts = { ...updateHeaderOpts, gameUserToken: token };
-      setCookie("buzz-board-game-user-token", token, {
-        maxAge: 86400, // 1 day expiration
-      });
     }
     if (token && code) {
       updatedTokenData = {
@@ -72,14 +93,17 @@ export function useGameTokenData() {
         ...updatedTokenData,
         gameId: gameId,
       };
-      updateHeaderOpts = { ...updateHeaderOpts, gameId };
-      setCookie("buzz-board-game-id", gameId, {
-        maxAge: 86400, // 1 day expiration
-      });
     }
     setGameTokenDataInLocalStorage(updatedTokenData);
-    updateExtraHeaders(updateHeaderOpts);
+    setHeadersFromToken(updatedTokenData);
   };
+
+  if (isFirstLoad) {
+    logger.debug(`useGameTokenData: setting token on first load.`);
+
+    setHeadersFromToken(gameTokenData);
+    setIsFirstLoad(false);
+  }
 
   return [gameTokenData, setGameTokenData] as const;
 }
