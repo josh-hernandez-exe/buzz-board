@@ -52,17 +52,21 @@ export function updateExtraHeaders({
   gameId,
   gameUserToken,
 }: Partial<extraHeaders>) {
-  if (gameId !== undefined) {
+  if (gameId !== undefined && gameId !== extraHeaders.gameId) {
     logger.info(`Update header game id: ${gameId}`);
     extraHeaders.gameId = gameId;
   }
 
-  if (gameUserToken !== undefined) {
+  if (
+    gameUserToken !== undefined &&
+    gameUserToken !== extraHeaders.gameUserToken
+  ) {
     logger.info(`Update GameUser token`);
     extraHeaders.gameUserToken = gameUserToken;
   }
-
-  logger.debug(`Current headers: ${JSON.stringify(extraHeaders, null, 2)}`);
+  if (gameId || gameUserToken) {
+    logger.debug(`Updated headers: ${JSON.stringify(extraHeaders, null, 2)}`);
+  }
 }
 
 /**
