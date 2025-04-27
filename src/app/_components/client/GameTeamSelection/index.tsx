@@ -26,7 +26,7 @@ import { logger } from "@/logger";
 
 export function GameTeamSelection({
   initialGameTeamId,
-  gameTeams,
+  gameTeams: initialGameteams,
   onChange,
 }: {
   initialGameTeamId: GameTeam["id"] | undefined | null;
@@ -35,15 +35,20 @@ export function GameTeamSelection({
 }) {
   const utils = api.useUtils();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const initialGameTeam = gameTeams.find(
-    (team) => team.id === initialGameTeamId,
-  );
-  const [selectedTeam, setSelectedTeam] = useState(initialGameTeam);
-  const [gameTeamName, setGameTeamName] = useState(initialGameTeam?.name);
+  const gameTeamInfo = api.gameUser.getSelfTeamInfo.useQuery();
+  const gameState = api.gameGeneral.gameState.useSubscription();
+  const gameTeams = gameState?.data?.gameTeams ?? initialGameteams;
+
+  const curGameTeam =
+    gameTeamInfo.data ??
+    gameTeams.find((team) => team.id === initialGameTeamId);
+
+  const [selectedTeam, setSelectedTeam] = useState(curGameTeam);
 
   const changeTeamMutation = api.gameUser.changeTeams.useMutation({
     onSuccess: async (updatedGameUser) => {
       void utils.gameUser.getSelfInfo.invalidate();
+      void utils.gameUser.getSelfTeamInfo.invalidate();
 
       const updatedGameTeam = gameTeams.find(
         (team) => team.id === updatedGameUser.gameTeamId,
@@ -59,22 +64,27 @@ export function GameTeamSelection({
       logger.info(
         `GameTeamSelection: Successfully changed to team ${updatedGameTeam.name}`,
       );
-      setGameTeamName(updatedGameTeam.name);
       onChange?.(updatedGameTeam.id);
     },
   });
+
+  if (!gameTeams || gameTeams.length === 0) {
+    return <div>No teams available</div>;
+  }
+
+  gameTeams.sort((a, b) => a.index - b.index);
 
   return (
     <div className="flex flex-col items-center justify-center">
       <GenericCard
         title={
           <div className="flex items-center space-x-2">
-            {gameTeamName && (
+            {curGameTeam && (
               <div className="flex items-center space-x-2">
-                <span>{gameTeamName}</span>
+                <span>{curGameTeam.name}</span>
               </div>
             )}
-            {!gameTeamName && (
+            {!curGameTeam && (
               <div className="flex items-center space-x-2">
                 <span>Select your team</span>
               </div>
