@@ -15,7 +15,7 @@ import { logger } from "@/logger";
 
 // Initialize KeyDB client
 const redisClient = createClient({
-  url: env.KEYDB_URL,
+  url: env.KV_URL,
 });
 
 redisClient.on("error", (err) => {

@@ -131,7 +131,7 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
    - Use the [Vercel Redis Integration](https://vercel.com/docs/storage) to provision a managed Redis instance.
    - Update your `.env` file with the Redis connection string:
      ```env
-     KEYDB_URL=your-vercel-redis-connection-string
+     KV_URL=your-vercel-redis-connection-string
      ```
 
 3. **Apply Database Migrations**:
