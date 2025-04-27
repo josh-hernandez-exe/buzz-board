@@ -152,9 +152,6 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
 - Needs to be able to move players between teams.
 - Admin page should have a tab for game user management.
   - This management should have a full user view and a by-team view.
-- Update buzzer button visuals:
-  - Make larger.
-  - Encode off buzzer with color and icon.
 - Update scoreboard visuals:
   - Tile teams better.
   - Team score cards updates:
@@ -183,6 +180,8 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
   - Less than likely:
     - Slack.
     - Battle.net.
+- Migrate from "(Classic) React Query Integration" to pure TanStack React Query
+  - https://trpc.io/docs/client/tanstack-react-query/setup
 
 ### Errors to Investigate
 
