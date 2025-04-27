@@ -98,7 +98,7 @@ export function GameAdminTeamControl({
               <X />
             </Button>
             <Dialog>
-              <DialogTrigger disabled={!teamIdToDelete}>
+              <DialogTrigger asChild>
                 <Button className="bg-red-500" disabled={!teamIdToDelete}>
                   Delete Team
                 </Button>
