@@ -31,14 +31,13 @@ import { Button } from "@/app/_components/ui/button";
 import { GenericCard } from "@/app/_components/GenericCard";
 import { logger } from "@/logger";
 
-type BasicGameTeamInfo = Pick<GameTeam, "id" | "name">;
+type BasicGameTeamInfo = Pick<GameTeam, "id" | "name" | "index">;
 
 export function GameAdminTeamControl({
   gameTeams: initialGameTeams,
 }: {
   gameTeams?: BasicGameTeamInfo[] | undefined;
 }) {
-  logger.debug(`GameAdminTeamControl`);
   const [selectRootKey, setSelectRootKey] = useState(0);
   const [teamIdToDelete, setTeamIdToDelete] = useState<string | undefined>();
   const addTeamMutation = api.gameAdmin.addTeam.useMutation();
@@ -50,6 +49,8 @@ export function GameAdminTeamControl({
     | undefined;
 
   const gameTeams = gameTeamsFromState ?? initialGameTeams;
+
+  gameTeams?.sort((a, b) => a.index - b.index);
 
   return (
     <GenericCard
