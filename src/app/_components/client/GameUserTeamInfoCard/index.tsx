@@ -24,13 +24,12 @@ export function GameUserTeamInfoCard({
   const gameTeamInfo = api.gameUser.getSelfTeamInfo.useQuery();
   const gameState = api.gameGeneral.gameState.useSubscription();
 
-  const GameTeamFromPrivateState: GameTeamFromPrivateState | undefined =
-    gameState?.data?.gameTeams.find(
-      (team) => team.id === gameTeamInfo.data?.id,
-    );
+  const gameTeamFromState = gameState?.data?.gameTeams.find(
+    (team) => team.id === gameTeamInfo.data?.id,
+  );
 
-  const gameTeam =
-    GameTeamFromPrivateState ?? gameTeamInfo.data ?? initialGameTeam;
+  const gameTeam: GameTeamFromPrivateState | GameTeamWithRelations | undefined =
+    gameTeamFromState ?? gameTeamInfo.data ?? initialGameTeam;
 
   if (!gameTeam) {
     return <div>Loading...</div>;
