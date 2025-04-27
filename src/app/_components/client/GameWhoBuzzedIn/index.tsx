@@ -1,5 +1,6 @@
 "use client";
 
+import type { JSX } from "react";
 import { api } from "@/trpc/react";
 
 import { GameFormat } from "@prisma/client";
@@ -9,18 +10,18 @@ import { GenericCard } from "@/app/_components/GenericCard";
 import { logger } from "@/logger";
 
 export function GameWhoBuzzedIn({
-  gameUserId: selfGameUserId,
+  gameUserId: initialSelfUserId,
 }: {
   gameUserId?: string;
 }) {
-  // NOTE: it's okay if getSelfInfo fails for an admin user
-  const gameSelfInfo = api.gameUser.getSelfInfo.useQuery();
+  const gameSelfInfo = api.gameUser.getSelfInfo.useQuery(undefined, {
+    enabled: !!initialSelfUserId,
+  });
   const whoBuzzedInResult = api.gameGeneral.whoBuzzedIn.useSubscription();
   const selfTeamId = gameSelfInfo.data?.gameTeamId;
+  const selfGameUserId = gameSelfInfo.data?.id ?? initialSelfUserId;
 
-  let content;
-
-  logger.debug(`GameWhoBuzzedIn: ${JSON.stringify(whoBuzzedInResult?.data)}`);
+  let content: JSX.Element;
 
   if (whoBuzzedInResult.data) {
     const { game, gameUser } = whoBuzzedInResult.data;
