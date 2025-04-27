@@ -57,8 +57,6 @@ export function DropDownSelection<T>({
     onChange(selectedItem.data);
   };
 
-  logger.debug(options.find((item) => item.id === value)?.name);
-
   return (
     <Select onValueChange={onValueChange}>
       <SelectTrigger className="w-[180px]">
