@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { api } from "@/trpc/react";
 
+import { X } from "lucide-react";
+
 import {
   Select,
   SelectContent,
@@ -37,7 +39,7 @@ export function GameAdminTeamControl({
   gameTeams?: BasicGameTeamInfo[] | undefined;
 }) {
   logger.debug(`GameAdminTeamControl`);
-
+  const [selectRootKey, setSelectRootKey] = useState(0);
   const [teamIdToDelete, setTeamIdToDelete] = useState<string | undefined>();
   const addTeamMutation = api.gameAdmin.addTeam.useMutation();
   const removeTeamMutation = api.gameAdmin.removeTeam.useMutation();
@@ -64,8 +66,12 @@ export function GameAdminTeamControl({
               Add Team
             </Button>
           </div>
-          <div>
-            <Select value={teamIdToDelete} onValueChange={setTeamIdToDelete}>
+          <div className="inline-flex items-center justify-between">
+            <Select
+              key={selectRootKey}
+              value={teamIdToDelete ?? ""}
+              onValueChange={setTeamIdToDelete}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select a team to delete" />
               </SelectTrigger>
@@ -80,9 +86,22 @@ export function GameAdminTeamControl({
                 </SelectGroup>
               </SelectContent>
             </Select>
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                setTeamIdToDelete(undefined);
+                // Increament key of the root select to force a re-render
+                // This is a workaround for to deselect the select value
+                setSelectRootKey((prev) => prev + 1);
+              }}
+            >
+              <X />
+            </Button>
             <Dialog>
-              <DialogTrigger>
-                <Button className="bg-red-500">Delete Team</Button>
+              <DialogTrigger disabled={!teamIdToDelete}>
+                <Button className="bg-red-500" disabled={!teamIdToDelete}>
+                  Delete Team
+                </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
