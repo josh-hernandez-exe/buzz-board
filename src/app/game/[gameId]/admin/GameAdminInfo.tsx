@@ -30,6 +30,8 @@ export function GameAdminInfo({
 
   const { game, gameTeams } = currentGameState;
 
+  gameTeams?.sort((a, b) => a.index - b.index);
+
   return (
     <div>
       <GameBasicInfoCard game={game as BasicGameInfo} />
