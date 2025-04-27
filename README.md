@@ -98,6 +98,11 @@ Redirects:
 
 Buzz Board is designed to be deployed on Vercel for a seamless and scalable hosting experience. Follow the [Vercel Deployment Guide](https://create.t3.gg/en/deployment/vercel) for detailed instructions on deploying T3 Stack applications.
 
+```bash
+git checkout production
+git merge --ff-only development
+```
+
 ### Steps to Deploy on Vercel
 1. **Connect Your Repository**:
    - Log in to your Vercel account and connect your GitHub repository.
