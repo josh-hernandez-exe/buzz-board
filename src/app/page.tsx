@@ -18,16 +18,16 @@ export default async function Home() {
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
             Buzz-Board
           </h1>
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex w-full max-w-xs flex-col items-center gap-2">
             <Link
               href="/join"
-              className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
+              className="w-full rounded-full bg-white/10 px-10 py-3 text-center font-semibold no-underline transition hover:bg-white/20"
             >
               Join a Game
             </Link>
             <Link
               href={session ? "/api/auth/signout" : "/api/auth/signin"}
-              className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
+              className="w-full rounded-full bg-white/10 px-10 py-3 text-center font-semibold no-underline transition hover:bg-white/20"
             >
               {session ? "Sign out" : "Sign in"}
             </Link>
