@@ -64,29 +64,27 @@ export default async function GameUserPage({
   return (
     <HydrateClient>
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-            <Tabs defaultValue="buzzer" className="w-[400px]">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="buzzer">Buzzer</TabsTrigger>
-                <TabsTrigger value="information">Information</TabsTrigger>
-              </TabsList>
-              <TabsContent value="buzzer">
-                <GameWhoBuzzedIn gameUserId={gameUser.id} />
-                <GameBuzzerTab
-                  game={game}
-                  gameTeams={gameTeams}
-                  initialGameTeamId={gameUser.gameTeamId}
-                />
-              </TabsContent>
-              <TabsContent value="information">
-                <InformationTab
-                  gameState={currentGameState}
-                  gameUser={gameUser}
-                />
-              </TabsContent>
-            </Tabs>
-          </div>
+        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
+          <Tabs defaultValue="buzzer" className="w-[400px]">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="buzzer">Buzzer</TabsTrigger>
+              <TabsTrigger value="information">Information</TabsTrigger>
+            </TabsList>
+            <TabsContent value="buzzer">
+              <GameWhoBuzzedIn gameUserId={gameUser.id} />
+              <GameBuzzerTab
+                game={game}
+                gameTeams={gameTeams}
+                initialGameTeamId={gameUser.gameTeamId}
+              />
+            </TabsContent>
+            <TabsContent value="information">
+              <InformationTab
+                gameState={currentGameState}
+                gameUser={gameUser}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </HydrateClient>
