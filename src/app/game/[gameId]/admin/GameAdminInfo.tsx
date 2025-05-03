@@ -11,6 +11,13 @@ import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
 
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/app/_components/ui/tabs";
+
 import type { PrivateGameState, BasicGameInfo } from "@/types";
 
 export function GameAdminInfo({
@@ -33,27 +40,40 @@ export function GameAdminInfo({
   gameTeams?.sort((a, b) => a.index - b.index);
 
   return (
-    <div>
-      <GameBasicInfoCard game={game as BasicGameInfo} />
-      <GameAdminTeamControl gameTeams={gameTeams} />
-      <GameWhoBuzzedIn />
-      <GameAdminBuzzerControl />
-      <GameAdminScoreboardAdvancedControl
-        gameTeams={gameTeams.map(
-          ({ gameUsers: _gameUsers, ...gameTeam }) => gameTeam,
-        )}
-      />
-      {gameTeams.map(({ gameUsers, score, ...gameTeam }) => {
-        // return undefined;
-        return (
-          <GameTeamSummaryCard
-            key={gameTeam.id}
-            gameTeam={gameTeam}
-            gameUsers={gameUsers}
-            score={score}
+    <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
+      <Tabs defaultValue="quick-controls" className="w-[500px]">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="quick-controls">Game Controls</TabsTrigger>
+          <TabsTrigger value="team-management">Team Management</TabsTrigger>
+          <TabsTrigger value="information">Information</TabsTrigger>
+        </TabsList>
+        <TabsContent value="quick-controls">
+          <GameWhoBuzzedIn />
+          <GameAdminBuzzerControl />
+          <GameAdminScoreboardAdvancedControl
+            gameTeams={gameTeams.map(
+              ({ gameUsers: _gameUsers, ...gameTeam }) => gameTeam,
+            )}
           />
-        );
-      })}
+        </TabsContent>
+        <TabsContent value="team-management">
+          <GameAdminTeamControl gameTeams={gameTeams} />
+          {gameTeams.map(({ gameUsers, score, ...gameTeam }) => {
+            // return undefined;
+            return (
+              <GameTeamSummaryCard
+                key={gameTeam.id}
+                gameTeam={gameTeam}
+                gameUsers={gameUsers}
+                score={score}
+              />
+            );
+          })}
+        </TabsContent>
+        <TabsContent value="information">
+          <GameBasicInfoCard game={game as BasicGameInfo} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
