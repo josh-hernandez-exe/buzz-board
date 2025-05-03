@@ -22,9 +22,10 @@ export function GameBuzzerTab({
   const gameTeamFromGameUser = gameTeams.find(
     (team) => team.id === initialGameTeamId,
   );
+  const gameTeamInfo = api.gameUser.getSelfTeamInfo.useQuery();
   const [selectedGameTeam, setSelectedGameTeam] = useState<
     (typeof gameTeams)[number] | undefined
-  >(gameTeamFromGameUser);
+  >(gameTeamInfo.data ?? gameTeamFromGameUser);
 
   const buzzInMutation = api.gameUser.buzzIn.useMutation({
     onSuccess: async () => {
