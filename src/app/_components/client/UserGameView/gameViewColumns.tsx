@@ -5,6 +5,14 @@ import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { Button } from "@/app/_components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/app/_components/ui/tooltip";
+
+import { env } from "@/env";
 
 export type GameViewDataTableRow = {
   gameId: Game["id"];
@@ -30,19 +38,49 @@ export function columnGenerator({
     },
     {
       accessorKey: "format",
-      header: "Game Format",
+      header: () => (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>Format</TooltipTrigger>
+            <TooltipContent>
+              <p>Format of the game. Either team-based or individual.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
       enableSorting: true,
       enableHiding: false,
     },
     {
       accessorKey: "code",
-      header: "Game Code",
+      header: () => (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>Code</TooltipTrigger>
+            <TooltipContent>
+              <p>
+                Code used to join the game on the join page (when using{" "}
+                {env.NEXT_PUBLIC_QRCODE_BASE_URL}/join).
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
       enableSorting: false,
       enableHiding: true,
     },
     {
       accessorKey: "numTeams",
-      header: "Num of Teams",
+      header: () => (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger># Teams</TooltipTrigger>
+            <TooltipContent>
+              <p>Number of Teams in game.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
       enableSorting: true,
       enableHiding: true,
       cell: ({ row }) => {
@@ -65,13 +103,31 @@ export function columnGenerator({
     },
     {
       accessorKey: "numPlayers",
-      header: "Num of Players",
+      header: () => (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger># Players</TooltipTrigger>
+            <TooltipContent>
+              <p>Number of players who have joined Game at any point.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
       enableSorting: true,
       enableHiding: true,
     },
     {
       accessorKey: "createdAt",
-      header: "Created At",
+      header: () => (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>Created At</TooltipTrigger>
+            <TooltipContent>
+              <p>The date and time when a game was created.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
       enableSorting: true,
       enableHiding: true,
       cell: ({ row }) => {
