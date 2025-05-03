@@ -53,7 +53,8 @@ export function createRedisChannelAsyncIterator<T>({
 
         const onAbort = () => {
           cleanUp();
-          reject(new Error("Aborted"));
+          logger.debug("Aborted async iterator");
+          resolve({ done: true, value: undefined });
         };
 
         const cleanUp = () => {
