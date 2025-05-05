@@ -18,12 +18,6 @@ services:
     ports:
       - 5432:5432
 
-  db-adminer:
-    image: adminer
-    restart: always
-    ports:
-      - 8080:8080
-
   buzz-board-keydb:
     image: eqalpha/keydb
     command: keydb-server /etc/keydb/redis.conf --server-threads 2  --maxmemory 16mb  --maxmemory-policy allkeys-lru  --maxmemory-samples 5

@@ -93,6 +93,11 @@ Redirects:
   ```typescript
   import { db } from "@/server/db";
   ```
+- View database with prisma studio
+  ```bash
+  bun db:studio
+  ```
+
 
 ## Deployment
 
