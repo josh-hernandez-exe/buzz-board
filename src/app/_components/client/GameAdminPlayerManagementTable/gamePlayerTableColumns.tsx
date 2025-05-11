@@ -29,11 +29,13 @@ export const columns: ColumnDef<GamePlayerDataTableRow>[] = [
     cell: ({ row }) => (
       <GameUserAvatar
         image={row.getValue("image")}
-        index={row.getValue("index")}
+        index={row.original.index}
       />
     ),
+    enableSorting: false,
   },
   {
+    id: "teamIndex",
     accessorKey: "gameTeamId",
     header: "Team No.",
     cell: ({ row }) => {
@@ -43,18 +45,43 @@ export const columns: ColumnDef<GamePlayerDataTableRow>[] = [
       );
       return currentTeam ? currentTeam.index : "";
     },
+    sortUndefined: "first", //force undefined values to the front
+    sortingFn: (rowA, rowB) => {
+      const playerA = rowA.original;
+      const playerB = rowB.original;
+      const teamA = playerA.allGameTeams.find(
+        (team) => team.id === playerA.gameTeamId,
+      );
+      const teamB = playerB.allGameTeams.find(
+        (team) => team.id === playerB.gameTeamId,
+      );
+      const teamAIndex = teamA?.index ?? 0;
+      const teamBIndex = teamB?.index ?? 0;
+
+      return teamAIndex - teamBIndex;
+    },
   },
   {
+    id: "playerIndex",
     accessorKey: "index",
     header: "Player No.",
+    sortingFn: (rowA, rowB) => {
+      const playerA = rowA.original;
+      const playerB = rowB.original;
+
+      return playerA.index - playerB.index;
+    },
   },
   {
     accessorKey: "name",
     header: "Player Name",
+    sortingFn: "alphanumeric",
   },
   {
+    id: "teamName",
     accessorKey: "gameTeamId",
     header: "Current Team",
+    sortingFn: "alphanumeric",
     cell: ({ row }) => {
       const player = row.original;
       const currentTeam = player.allGameTeams.find(
@@ -66,6 +93,7 @@ export const columns: ColumnDef<GamePlayerDataTableRow>[] = [
   {
     id: "moveTeam",
     header: "Move to Team",
+    enableSorting: false,
     cell: ({ row }) => {
       const player = row.original;
       const movePlayerMutation = api.gameAdmin.movePlayerToTeam.useMutation();

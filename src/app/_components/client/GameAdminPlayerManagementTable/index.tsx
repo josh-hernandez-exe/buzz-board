@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   useReactTable,
+  type SortingState,
 } from "@tanstack/react-table";
 
 import type { PrivateGameState } from "@/types";
@@ -27,20 +31,16 @@ export function GamePlayerManagementTable({
   const allTeams = gameState.gameTeams;
   const allPlayers = gameState.gameUsers;
 
-  allPlayers.sort((a, b) => {
-    const teamA = allTeams.find((team) => team.id === a.gameTeamId);
-    const teamB = allTeams.find((team) => team.id === b.gameTeamId);
-    const teamAIndex = teamA?.index ?? 0;
-    const teamBIndex = teamB?.index ?? 0;
-    const delta = teamAIndex - teamBIndex;
-
-    if (delta !== 0) {
-      return delta;
-    }
-    // If teams are the same, sort by player index
-    return a.index - b.index;
-  });
-
+  const [sorting, setSorting] = useState<SortingState>([
+    {
+      id: "teamIndex",
+      desc: false, // sort by name in descending order by default
+    },
+    {
+      id: "playerIndex",
+      desc: false, // sort by name in descending order by default
+    },
+  ]); // can set initial sorting state here
   const table = useReactTable({
     data: allPlayers.map((player) => ({
       id: player.id,
@@ -51,7 +51,12 @@ export function GamePlayerManagementTable({
       allGameTeams: allTeams,
     })),
     columns,
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     getRowId: (row) => row.id,
   });
 
