@@ -1,5 +1,6 @@
 "use client";
 
+import type { JSX } from "react";
 import { useEffect, useRef } from "react";
 
 import * as QRCode from "qrcode";
@@ -59,7 +60,13 @@ export function GameBasicInfoCard({
     }
   }, [game.code]);
 
-  for (const field of ["name", "id", "code", "format", "buzzerState"]) {
+  for (const field of [
+    "name",
+    "id",
+    "code",
+    "format",
+    "buzzerState",
+  ] as hidableFields[]) {
     if (hideFields.includes(field)) {
       continue;
     }
