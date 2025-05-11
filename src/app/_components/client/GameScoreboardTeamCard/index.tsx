@@ -43,20 +43,26 @@ export function GameScoreboardTeamCard({
 
   const icon =
     gameTeam.buzzerState === BuzzerState.rejected ? (
-      <X className="bottom-0 left-0 h-16 w-16 text-white opacity-30" />
+      <X className="absolute inset-0 h-full w-full text-white opacity-30" />
     ) : null;
 
   return (
-    <Card className={cardColor}>
+    <Card className={cn(cardColor, "relative")}>
+      {icon}
       <CardHeader>
         <CardTitle>
-          Team {gameTeam.index}: {gameTeam.name}
+          <div>
+            <span className="text-sm font-normal">Team {gameTeam.index}:</span>
+            <div className="text-xl font-bold">{gameTeam.name}</div>
+          </div>
         </CardTitle>
         <CardDescription></CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="text-4xl font-bold">Score: {gameTeam.score}</div>
-        {icon}
+      <CardContent className="relative flex flex-col justify-start">
+        <div>
+          <span className="text-sm font-normal">Score:</span>
+          <div className="text-5xl font-bold">{gameTeam.score}</div>
+        </div>
       </CardContent>
       <CardFooter>Num Players: {gameTeam.gameUsers.length}</CardFooter>
     </Card>
