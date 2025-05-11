@@ -8,6 +8,7 @@ import { GameAdminBuzzerControl } from "@/app/_components/client/GameAdminBuzzer
 import { GameAdminScoreboardAdvancedControl } from "@/app/_components/client/GameAdminScoreboardAdvancedControl";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
+import { GamePlayerManagementTable } from "@/app/_components/client/GameAdminPlayerManagementTable";
 
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 
@@ -41,10 +42,11 @@ export function GameAdminInfo({
 
   return (
     <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-      <Tabs defaultValue="quick-controls" className="w-[500px]">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="quick-controls" className="w-[700px]">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="quick-controls">Game Controls</TabsTrigger>
           <TabsTrigger value="team-management">Team Management</TabsTrigger>
+          <TabsTrigger value="player-management">Player Management</TabsTrigger>
           <TabsTrigger value="information">Information</TabsTrigger>
         </TabsList>
         <TabsContent value="quick-controls">
@@ -59,7 +61,6 @@ export function GameAdminInfo({
         <TabsContent value="team-management">
           <GameAdminTeamControl gameTeams={gameTeams} />
           {gameTeams.map(({ gameUsers, score, ...gameTeam }) => {
-            // return undefined;
             return (
               <GameTeamSummaryCard
                 key={gameTeam.id}
@@ -69,6 +70,9 @@ export function GameAdminInfo({
               />
             );
           })}
+        </TabsContent>
+        <TabsContent value="player-management">
+          <GamePlayerManagementTable gameState={currentGameState} />
         </TabsContent>
         <TabsContent value="information">
           <GameBasicInfoCard game={game as BasicGameInfo} />
