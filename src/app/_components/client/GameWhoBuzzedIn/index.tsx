@@ -44,7 +44,7 @@ export function GameWhoBuzzedIn({
       }
 
       content = (
-        <div>
+        <div className="flex items-center space-x-2">
           <GameUserAvatar
             image={gameUser.image ?? undefined}
             index={gameUser.index}
@@ -60,7 +60,9 @@ export function GameWhoBuzzedIn({
       content = <p>Unknown state.</p>;
     }
   } else {
-    content = <p>Loading.</p>;
+    // No content if no current "who buzzed in" data
+    // This is the case when the game is not started yet
+    content = <></>;
   }
 
   return <GenericCard content={content} />;
