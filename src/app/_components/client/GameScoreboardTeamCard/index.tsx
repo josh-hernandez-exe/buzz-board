@@ -53,7 +53,7 @@ export function GameScoreboardTeamCard({
         <CardTitle>
           <div>
             <span className="text-sm font-normal">Team {gameTeam.index}:</span>
-            <div className="text-xl font-bold">{gameTeam.name}</div>
+            <div className="h-14 text-xl font-bold">{gameTeam.name}</div>
           </div>
         </CardTitle>
         <CardDescription></CardDescription>
