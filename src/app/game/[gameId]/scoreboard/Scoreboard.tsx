@@ -3,6 +3,8 @@
 import { api } from "@/trpc/react";
 import type { PrivateGameState } from "@/types";
 
+import { env } from "@/env";
+
 import { GameScoreboardTeamCard } from "@/app/_components/client/GameScoreboardTeamCard";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
@@ -19,9 +21,24 @@ export function Scoreboard({
   const { game, gameTeams } = currentGameState;
 
   return (
-    <div>
-      <h1 className="mb-4 text-2xl font-bold">Welcome to Game {game?.name}</h1>
+    <div className="mx-auto w-full max-w-screen-2xl p-4">
+      <h1 className="mb-4 text-center text-2xl font-bold">
+        Welcome to Game {game?.name}
+      </h1>
       <GameWhoBuzzedIn />
+      <GameBasicInfoCard
+        game={currentGameState.game}
+        hideFields={["description", "name", "id", "format", "buzzerState"]}
+        extraContent={
+          <div className="text-center text-sm text-gray-500">
+            <p>
+              To join the game, go to the join URL and use the game code
+              provided.
+            </p>
+            <p>{env.NEXT_PUBLIC_QRCODE_BASE_URL}/join</p>
+          </div>
+        }
+      />
       <GameBasicInfoCard game={currentGameState.game} />
       {gameTeams.map((gameTeam) => {
         return <GameScoreboardTeamCard key={gameTeam.id} gameTeam={gameTeam} />;
