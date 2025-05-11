@@ -11,6 +11,7 @@ import {
 } from "@/app/_components/client/DropDownSelection";
 
 import { api } from "@/trpc/react";
+import { logger } from "@/logger";
 
 export function CreateGame() {
   const router = useRouter();
@@ -56,13 +57,14 @@ export function CreateGame() {
         <DropDownSelection<Game["format"]>
           title="Game Format"
           options={[GameFormat.individual, GameFormat.team].map((val) => {
+            logger.debug(`Game Format: ${val}`);
             return {
               id: val,
               name: val,
               data: val,
             } as DropdownOption<Game["format"]>;
           })}
-          defaultValue={GameFormat.individual}
+          defaultValue={GameFormat.team}
           onChange={(val) => {
             setGameFormat(val);
             checkIsReady();
