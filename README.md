@@ -162,7 +162,7 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
 - Admin needs to be able to move players between teams.
 - Admin page should have a tab for game user management.
   - This management should have a full user view and a by-team view.
-- Admin must be able to turn off team swtiching
+- Admin must be able to turn off team switching
 - Update scoreboard visuals:
   - Tile teams better.
   - Team score cards updates:
