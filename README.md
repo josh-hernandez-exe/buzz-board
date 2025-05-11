@@ -159,9 +159,10 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
 
 ## TODO
 
-- Needs to be able to move players between teams.
+- Admin needs to be able to move players between teams.
 - Admin page should have a tab for game user management.
   - This management should have a full user view and a by-team view.
+- Admin must be able to turn off team swtiching
 - Update scoreboard visuals:
   - Tile teams better.
   - Team score cards updates:
@@ -192,6 +193,23 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
     - Battle.net.
 - Migrate from "(Classic) React Query Integration" to pure TanStack React Query
   - https://trpc.io/docs/client/tanstack-react-query/setup
+- Consider swtiching from prisma cloud to something else
+  - prisma prices per request ask 100k
+  - supabase free teir caps at 5 GB of bandwidth
+  - neon prices in compute hours after 190
+    - $0.16 per hour over
+    - [compute hours] = [compute size] x [hours your compute runs]
+    - https://neon.tech/pricing#compute-hour
+    - with autoscaling the computer size can decrese
+      - https://neon.tech/docs/introduction/autoscaling
+      - Autoscaling currently supports a range of 1/4 (.25) to 16 vCPUs
+      - free tier
+        - 0.25 CPU would last the whole month
+        - max size is 2 CPU
+        - they offer scaling to zero
+
+
+
 
 ### Errors to Investigate
 
