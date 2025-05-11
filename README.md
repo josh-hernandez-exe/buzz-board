@@ -93,7 +93,7 @@ Redirects:
   ```typescript
   import { db } from "@/server/db";
   ```
-- View database with prisma studio
+- View database with prisma studio. Note by default the this is on port 5555.
   ```bash
   bun db:studio
   ```

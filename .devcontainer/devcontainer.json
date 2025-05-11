@@ -31,7 +31,6 @@
     "forwardPorts": [
         3000,
         5555,
-        8080,
     ],
 
     // Use 'postCreateCommand' to run commands after the container is created.
