@@ -34,7 +34,7 @@ export function GameBasicInfoCard({
   extraContent,
 }: {
   game: PrivateGameState["game"];
-  hideFields: hidableFields[];
+  hideFields?: hidableFields[];
   extraContent?: JSX.Element;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
