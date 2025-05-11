@@ -107,6 +107,13 @@ export type PrivateGameState = {
     }>;
     score: number;
   }>;
+  gameUsers: Array<{
+    id: GameUser["id"];
+    name: GameUser["name"];
+    index: GameUser["index"];
+    gameTeamId: GameUser["gameTeamId"];
+    image: User["image"] | undefined;
+  }>;
 };
 
 export type GameTeamFromPrivateState = PrivateGameState["gameTeams"][number];

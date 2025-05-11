@@ -382,4 +382,46 @@ export const gameAdminRouter = createTRPCRouter({
 
     await emitUpdatedGameState({ gameId: game.id });
   }),
+  movePlayerToTeam: protectedGameAdminProcedure
+    .input(
+      z.object({
+        gameUserId: z.string(),
+        targetGameTeamId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id: gameId } = ctx.gameSession;
+      const { gameUserId, targetGameTeamId } = input;
+
+      const gameUser = await ctx.db.gameUser.findUnique({
+        where: { id: gameUserId, gameId },
+      });
+
+      if (!gameUser) {
+        throw new Error("Player not found in this game.");
+      }
+
+      // If the player is already in the target team (or both are null), no action needed
+      if (gameUser.gameTeamId === targetGameTeamId) {
+        return gameUser; // Or some other indication of no change
+      }
+
+      if (targetGameTeamId) {
+        const targetTeam = await ctx.db.gameTeam.findUnique({
+          where: { id: targetGameTeamId, gameId },
+        });
+        if (!targetTeam) {
+          throw new Error("Target team not found in this game.");
+        }
+      }
+
+      const updatedGameUser = await ctx.db.gameUser.update({
+        where: { id: gameUserId },
+        data: { gameTeamId: targetGameTeamId },
+      });
+
+      await emitUpdatedGameState({ gameId });
+
+      return updatedGameUser;
+    }),
 });

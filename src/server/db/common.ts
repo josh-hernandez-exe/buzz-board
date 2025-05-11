@@ -106,6 +106,20 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
           },
         },
       },
+      gameUsers: {
+        select: {
+          id: true,
+          name: true,
+          index: true,
+          gameTeamId: true,
+          user: {
+            select: {
+              id: true,
+              image: true,
+            },
+          },
+        },
+      },
       scoreboard: {
         select: {
           currentState: {
@@ -150,6 +164,13 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
         image: gameUser.user?.image,
       })),
       score: scoreboardState[gameTeam.id] ?? 0,
+    })),
+    gameUsers: game.gameUsers.map((gameUser) => ({
+      id: gameUser.id,
+      name: gameUser.name,
+      index: gameUser.index,
+      gameTeamId: gameUser.gameTeamId,
+      image: gameUser.user?.image,
     })),
   };
 
