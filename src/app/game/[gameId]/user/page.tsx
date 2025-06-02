@@ -6,6 +6,7 @@ import { auth, gameAuth } from "@/server/auth";
 import { api, HydrateClient } from "@/trpc/server";
 import { GameBuzzerTab } from "@/app/_components/client/GameBuzzerTab";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
+import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
 
 import {
   Tabs,
@@ -64,6 +65,9 @@ export default async function GameUserPage({
   return (
     <HydrateClient>
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
+        {/* Game sound effects for the user's team */}
+        <GameSoundEffects gameTeamId={gameUser.gameTeamId ?? undefined} />
+
         <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
           <Tabs defaultValue="buzzer" className="w-[400px]">
             <TabsList className="grid w-full grid-cols-2">

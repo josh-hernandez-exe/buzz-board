@@ -4,6 +4,7 @@ import { api } from "@/trpc/react";
 
 import { GamePublicScoreboardTeamCard } from "@/app/_components/client/GamePublicScoreboardTeamCard";
 import { GamePublicInfoCard } from "@/app/_components/client/GamePublicInfoCard";
+import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
 
 import type { PublicGameState } from "@/types";
 
@@ -22,6 +23,9 @@ export function PublicScoreboard({
 
   return (
     <div>
+      {/* Game sound effects for all teams */}
+      <GameSoundEffects />
+
       <h1 className="mb-4 text-2xl font-bold">Welcome to Game {game?.name}</h1>
       <GamePublicInfoCard game={currentGameState.game} />
       {gameTeams.map((gameTeam) => {

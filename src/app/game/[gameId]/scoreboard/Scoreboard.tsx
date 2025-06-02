@@ -2,15 +2,16 @@
 
 import { api } from "@/trpc/react";
 import type { PrivateGameState } from "@/types";
-import { ChevronsUpDown } from "lucide-react"
+import { ChevronsUpDown } from "lucide-react";
 
 import { env } from "@/env";
 
 import { GameScoreboardTeamCard } from "@/app/_components/client/GameScoreboardTeamCard";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
+import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
 
-import { Button } from "@/app/_components/ui/button"
+import { Button } from "@/app/_components/ui/button";
 
 import {
   Collapsible,
@@ -31,6 +32,9 @@ export function Scoreboard({
 
   return (
     <div className="mx-auto w-full max-w-screen-2xl p-4">
+      {/* Game sound effects for all teams */}
+      <GameSoundEffects />
+
       <h1 className="mb-4 text-center text-2xl font-bold">
         Welcome to Game {game?.name}
       </h1>
