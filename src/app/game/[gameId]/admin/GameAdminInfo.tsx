@@ -9,6 +9,7 @@ import { GameAdminScoreboardAdvancedControl } from "@/app/_components/client/Gam
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
 import { GamePlayerManagementTable } from "@/app/_components/client/GameAdminPlayerManagementTable";
+import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
 
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 
@@ -42,6 +43,9 @@ export function GameAdminInfo({
 
   return (
     <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
+      {/* Game sound effects for all teams */}
+      <GameSoundEffects />
+
       <Tabs defaultValue="quick-controls" className="w-[700px]">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="quick-controls">Game Controls</TabsTrigger>
