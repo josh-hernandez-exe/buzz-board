@@ -22,12 +22,20 @@ export default async function DashboardPage() {
           <p className="text-center text-2xl text-white">
             {session && <span>Logged in as {session.user?.name}</span>}
           </p>
-          <Link
-            href={session ? "/api/auth/signout" : "/api/auth/signin"}
-            className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
-          >
-            {session ? "Sign out" : "Sign in"}
-          </Link>
+          <div className="flex w-full max-w-xs flex-col items-center gap-2">
+            <Link
+              href={session ? "/api/auth/signout" : "/api/auth/signin"}
+              className="w-full rounded-full bg-white/10 px-10 py-3 text-center font-semibold no-underline transition hover:bg-white/20"
+            >
+              {session ? "Sign out" : "Sign in"}
+            </Link>
+            <Link
+              href="/join"
+              className="w-full rounded-full bg-white/10 px-10 py-3 text-center font-semibold no-underline transition hover:bg-white/20"
+            >
+              Join a Game
+            </Link>
+          </div>
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
             Create New Game
           </h1>
