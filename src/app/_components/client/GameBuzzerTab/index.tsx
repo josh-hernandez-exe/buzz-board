@@ -1,31 +1,22 @@
 "use client";
 
-import { useState } from "react";
 import { GameFormat } from "@prisma/client";
 import type { Game, GameTeam } from "@prisma/client";
 
 import { Button } from "@/app/_components/ui/button";
-import { GameTeamSelection } from "@/app/_components/client/GameTeamSelection";
 import { api } from "@/trpc/react";
 
 import { logger } from "@/logger";
 
 export function GameBuzzerTab({
   game,
-  gameTeams,
-  initialGameTeamId,
+  gameTeam: initialGameTeam,
 }: {
   game: Pick<Game, "id" | "format">;
-  gameTeams: Pick<GameTeam, "id" | "name" | "index">[];
-  initialGameTeamId: GameTeam["id"] | undefined | null;
+  gameTeam: Pick<GameTeam, "id" | "name" | "index"> | undefined | null;
 }) {
-  const gameTeamFromGameUser = gameTeams.find(
-    (team) => team.id === initialGameTeamId,
-  );
   const gameTeamInfo = api.gameUser.getSelfTeamInfo.useQuery();
-  const [selectedGameTeam, setSelectedGameTeam] = useState<
-    (typeof gameTeams)[number] | undefined
-  >(gameTeamInfo.data ?? gameTeamFromGameUser);
+  const selectedGameTeam = gameTeamInfo.data ?? initialGameTeam;
 
   const buzzInMutation = api.gameUser.buzzIn.useMutation({
     onSuccess: async () => {
@@ -38,21 +29,8 @@ export function GameBuzzerTab({
     },
   });
 
-  gameTeams.sort((a, b) => a.index - b.index);
-
   return (
     <div>
-      {game.format === GameFormat.team && Array.isArray(gameTeams) && (
-        <GameTeamSelection
-          gameTeams={gameTeams}
-          initialGameTeamId={initialGameTeamId}
-          onChange={(gameTeamId) => {
-            setSelectedGameTeam(
-              gameTeams.find((team) => team.id === gameTeamId),
-            );
-          }}
-        />
-      )}
       {selectedGameTeam && (
         <Button
           onClick={() => buzzInMutation.mutate()}
@@ -61,6 +39,30 @@ export function GameBuzzerTab({
         >
           Buzzer
         </Button>
+      )}
+      {!selectedGameTeam && game.format === GameFormat.team && (
+        <div className="flex flex-col items-center justify-center p-8">
+          <div className="rounded-lg border border-amber-500 bg-amber-50 p-6 text-center">
+            <h3 className="mb-2 text-lg font-medium text-amber-800">
+              Join a team to buzz in
+            </h3>
+            <p className="text-amber-700">
+              Switch to the Team Switcher tab to select your team.
+            </p>
+          </div>
+        </div>
+      )}
+      {!selectedGameTeam && game.format === GameFormat.individual && (
+        <div className="flex flex-col items-center justify-center p-8">
+          <div className="rounded-lg border border-red-500 bg-red-50 p-6 text-center">
+            <h3 className="mb-2 text-lg font-medium text-red-800">
+              No team assigned
+            </h3>
+            <p className="text-red-700">
+              Please contact the game administrator.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

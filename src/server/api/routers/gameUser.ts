@@ -9,7 +9,11 @@ import {
 } from "@/server/api/trpc";
 
 import { emitUpdatedGameState, emitWhoBuzzedIn } from "@/server/utils/events";
-import type { GameUserWithRelations, GameTeamWithRelations } from "@/types";
+import type {
+  GameUserWithRelations,
+  GameTeamWithRelations,
+  GameSettings,
+} from "@/types";
 
 export const gameUserRouter = createTRPCRouter({
   ping: protectedGameUserProcedure.query(({ ctx }) => {
@@ -199,7 +203,8 @@ export const gameUserRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { gameUser } = ctx.gameSession;
+      const gameUser = ctx.gameSession.gameUser;
+      const settings = ctx.gameSession.settings as GameSettings;
 
       if (ctx.gameSession.format === GameFormat.individual) {
         throw new Error("Game format does not support teams");
@@ -208,6 +213,10 @@ export const gameUserRouter = createTRPCRouter({
       if (gameUser.gameTeamId === input.gameTeamId) {
         // same team do nothing
         return gameUser;
+      }
+
+      if (settings?.freezeTeams) {
+        throw new Error("Team switching is currently disabled");
       }
 
       const gameTeam = await ctx.db.gameTeam.findUnique({

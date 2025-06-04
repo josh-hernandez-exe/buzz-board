@@ -1,10 +1,12 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { GameFormat } from "@prisma/client";
 
 import { auth, gameAuth } from "@/server/auth";
 
 import { api, HydrateClient } from "@/trpc/server";
 import { GameBuzzerTab } from "@/app/_components/client/GameBuzzerTab";
+import { TeamSwitcherTab } from "@/app/_components/client/TeamSwitcherTab";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
 
@@ -61,6 +63,14 @@ export default async function GameUserPage({
   }
 
   const { game, gameTeams } = currentGameState;
+  const isTeamGame = game.format === GameFormat.team;
+  const hasTeamAssigned = gameUser.gameTeamId !== null;
+
+  // Determine default tab:
+  // - For team games: default to team switcher if user has no team, otherwise buzzer
+  // - For individual games: default to buzzer
+  const defaultTab =
+    isTeamGame && !hasTeamAssigned ? "team-switcher" : "buzzer";
 
   return (
     <HydrateClient>
@@ -69,19 +79,34 @@ export default async function GameUserPage({
         <GameSoundEffects gameTeamId={gameUser.gameTeamId ?? undefined} />
 
         <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <Tabs defaultValue="buzzer" className="w-[400px]">
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs defaultValue={defaultTab} className="w-[400px]">
+            <TabsList
+              className={`grid w-full ${isTeamGame ? "grid-cols-3" : "grid-cols-2"}`}
+            >
               <TabsTrigger value="buzzer">Buzzer</TabsTrigger>
+              {isTeamGame && (
+                <TabsTrigger value="team-switcher">Team Switcher</TabsTrigger>
+              )}
               <TabsTrigger value="information">Information</TabsTrigger>
             </TabsList>
             <TabsContent value="buzzer">
               <GameWhoBuzzedIn gameUserId={gameUser.id} />
               <GameBuzzerTab
                 game={game}
-                gameTeams={gameTeams}
-                initialGameTeamId={gameUser.gameTeamId}
+                gameTeam={gameTeams.find(
+                  (gameTeam) => gameTeam.id === gameUser.gameTeamId,
+                )}
               />
             </TabsContent>
+            {isTeamGame && (
+              <TabsContent value="team-switcher">
+                <TeamSwitcherTab
+                  game={game}
+                  gameTeams={gameTeams}
+                  initialGameTeamId={gameUser.gameTeamId}
+                />
+              </TabsContent>
+            )}
             <TabsContent value="information">
               <InformationTab
                 gameState={currentGameState}

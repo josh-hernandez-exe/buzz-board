@@ -1,6 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import type { Game, GameTeam, GameUser, User } from "@prisma/client";
 
+export type GameSettings = {
+  freezeTeams?: boolean;
+};
+
 export type BasicGameInfo = Prisma.GameGetPayload<{
   select: {
     id: true;
@@ -8,6 +12,7 @@ export type BasicGameInfo = Prisma.GameGetPayload<{
     format: true;
     code: true;
     isBuzzerListening: true;
+    settings: true;
   };
 }>;
 
@@ -93,6 +98,7 @@ export type PrivateGameState = {
     code: Game["code"];
     format: Game["format"];
     isBuzzerListening: Game["isBuzzerListening"];
+    settings: Game["settings"] & GameSettings;
   };
   gameTeams: Array<{
     id: GameTeam["id"];

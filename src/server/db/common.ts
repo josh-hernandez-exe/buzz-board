@@ -3,7 +3,7 @@ import { db } from "@/server/db";
 import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
-import type { PublicGameState, PrivateGameState } from "@/types";
+import type { PublicGameState, PrivateGameState, GameSettings } from "@/types";
 
 type ScoreMap = Record<GameTeam["id"], number>;
 
@@ -85,6 +85,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       format: true,
       code: true,
       isBuzzerListening: true,
+      settings: true,
       gameTeams: {
         select: {
           id: true,
@@ -151,6 +152,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       code: game.code,
       format: game.format,
       isBuzzerListening: game.isBuzzerListening,
+      settings: game.settings as GameSettings,
     },
     gameTeams: game.gameTeams.map((gameTeam) => ({
       id: gameTeam.id,
