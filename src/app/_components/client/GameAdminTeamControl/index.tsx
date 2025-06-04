@@ -28,8 +28,10 @@ import {
 } from "@/app/_components/ui/dialog";
 
 import { Button } from "@/app/_components/ui/button";
+import { Switch } from "@/app/_components/ui/switch";
 import { GenericCard } from "@/app/_components/GenericCard";
-import { logger } from "@/logger";
+
+import type { GameSettings } from "@/types";
 
 type BasicGameTeamInfo = Pick<GameTeam, "id" | "name" | "index">;
 
@@ -42,11 +44,17 @@ export function GameAdminTeamControl({
   const [teamIdToDelete, setTeamIdToDelete] = useState<string | undefined>();
   const addTeamMutation = api.gameAdmin.addTeam.useMutation();
   const removeTeamMutation = api.gameAdmin.removeTeam.useMutation();
+  const toggleFreezeTeamsMutation =
+    api.gameAdmin.toggleFreezeTeams.useMutation();
   const gameStateSub = api.gameGeneral.gameState.useSubscription();
 
   const gameTeamsFromState = gameStateSub.data?.gameTeams as
     | BasicGameTeamInfo[]
     | undefined;
+
+  const gameFromState = gameStateSub.data?.game;
+  const settings = gameFromState?.settings as GameSettings | undefined;
+  const isTeamsFrozen = settings?.freezeTeams ?? false;
 
   const gameTeams = gameTeamsFromState ?? initialGameTeams;
 
@@ -57,7 +65,33 @@ export function GameAdminTeamControl({
       title="Admin Team Control"
       description="Control team creation"
       content={
-        <div>
+        <div className="space-y-4">
+          {/* Freeze Teams Control */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div>
+              <h4 className="font-medium">Team Switching</h4>
+              <p className="text-sm text-gray-600">
+                {isTeamsFrozen
+                  ? "Team switching is currently disabled"
+                  : "Players can switch teams freely"}
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <span className="text-sm font-medium text-gray-600">
+                {isTeamsFrozen ? "Off" : "On"}
+              </span>
+              <Switch
+                checked={!isTeamsFrozen}
+                onCheckedChange={(checked: boolean) => {
+                  toggleFreezeTeamsMutation.mutate({ freeze: !checked });
+                }}
+                disabled={toggleFreezeTeamsMutation.isPending}
+                aria-label="Toggle team switching"
+              />
+            </div>
+          </div>
+
+          {/* Add Team Control */}
           <div>
             <Button
               onClick={() => addTeamMutation.mutate()}
@@ -67,6 +101,8 @@ export function GameAdminTeamControl({
               Add Team
             </Button>
           </div>
+
+          {/* Delete Team Control */}
           <div className="inline-flex items-center justify-between">
             <Select
               key={selectRootKey}

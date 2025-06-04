@@ -66,6 +66,12 @@ export function GameTeamSelection({
       );
       onChange?.(updatedGameTeam.id);
     },
+    onError: (error) => {
+      logger.error(
+        `GameTeamSelection: Failed to change team: ${error.message}`,
+      );
+      // Keep drawer open so user can see the error
+    },
   });
 
   if (!gameTeams || gameTeams.length === 0) {
@@ -138,7 +144,11 @@ export function GameTeamSelection({
                   </RadioGroup>
                 </div>
                 <DrawerFooter>
-                  {/* TODO: Make this button close the drawer on success */}
+                  {changeTeamMutation.error && (
+                    <div className="mb-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+                      {changeTeamMutation.error.message}
+                    </div>
+                  )}
                   <Button
                     disabled={!selectedTeam || changeTeamMutation.isPending}
                     onClick={() => {
@@ -152,13 +162,14 @@ export function GameTeamSelection({
                       }
                     }}
                   >
-                    Submit
+                    {changeTeamMutation.isPending ? "Changing..." : "Submit"}
                   </Button>
                   <DrawerClose asChild>
                     <Button
                       variant="outline"
                       onClick={() => {
                         setIsDrawerOpen(false);
+                        changeTeamMutation.reset(); // Clear any error when closing
                       }}
                     >
                       Cancel

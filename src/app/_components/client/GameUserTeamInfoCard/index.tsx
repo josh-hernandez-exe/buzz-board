@@ -31,8 +31,27 @@ export function GameUserTeamInfoCard({
   const gameTeam: GameTeamFromPrivateState | GameTeamWithRelations | undefined =
     gameTeamFromState ?? gameTeamInfo.data ?? initialGameTeam;
 
-  if (!gameTeam) {
+  if (
+    !gameTeam &&
+    (gameTeamInfo.isLoading || gameState.status === "connecting")
+  ) {
+    // If both the query and subscription data are not available, we show a loading state.
     return <div>Loading...</div>;
+  } else if (!gameTeam) {
+    // If no team is assigned, we show a message indicating that the user is not part of any team.
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <div className="rounded-lg border border-red-500 bg-red-50 p-6 text-center">
+          <h3 className="mb-2 text-lg font-medium text-red-800">
+            No team assigned
+          </h3>
+          <p className="text-red-700">
+            You are not currently assigned to any team. Please switch to the
+            Team Switcher tab to select your team.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   gameTeam.gameUsers.sort((a, b) => a.index - b.index);

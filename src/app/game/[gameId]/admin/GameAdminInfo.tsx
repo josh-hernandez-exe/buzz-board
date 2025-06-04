@@ -20,7 +20,7 @@ import {
   TabsTrigger,
 } from "@/app/_components/ui/tabs";
 
-import type { PrivateGameState, BasicGameInfo } from "@/types";
+import type { PrivateGameState } from "@/types";
 
 export function GameAdminInfo({
   gameState: initialGameState,
@@ -79,7 +79,7 @@ export function GameAdminInfo({
           <GamePlayerManagementTable gameState={currentGameState} />
         </TabsContent>
         <TabsContent value="information">
-          <GameBasicInfoCard game={game as BasicGameInfo} />
+          <GameBasicInfoCard game={game} />
         </TabsContent>
       </Tabs>
     </div>

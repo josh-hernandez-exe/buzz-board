@@ -13,6 +13,8 @@ import {
   updateBuzzerListeningState,
 } from "@/server/utils/events";
 
+import type { GameSettings } from "@/types";
+
 export const gameAdminRouter = createTRPCRouter({
   addTeam: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const {
@@ -423,5 +425,38 @@ export const gameAdminRouter = createTRPCRouter({
       await emitUpdatedGameState({ gameId });
 
       return updatedGameUser;
+    }),
+  toggleFreezeTeams: protectedGameAdminProcedure
+    .input(z.object({ freeze: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
+      const currentSettings = (game.settings as GameSettings) ?? {};
+
+      if (game.format === GameFormat.individual) {
+        throw new Error("Game format does not support teams");
+      }
+
+      if (input.freeze === !!currentSettings.freezeTeams) {
+        // no change needed
+        return input.freeze;
+      }
+
+      const updatedSettings = {
+        ...currentSettings,
+        freezeTeams: input.freeze,
+      };
+
+      await ctx.db.game.update({
+        where: {
+          id: game.id,
+        },
+        data: {
+          settings: updatedSettings,
+        },
+      });
+
+      await emitUpdatedGameState({ gameId: game.id });
+
+      return;
     }),
 });
