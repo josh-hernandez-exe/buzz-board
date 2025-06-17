@@ -1,5 +1,6 @@
 import { GameFormat, BuzzerState, type Prisma } from "@prisma/client";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 
 import { logger } from "@/logger";
 
@@ -51,7 +52,10 @@ export const gameUserRouter = createTRPCRouter({
     })) as GameUserWithRelations;
 
     if (!gameUser) {
-      throw new Error("Game user not found");
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Game user not found",
+      });
     }
     return gameUser;
   }),
@@ -59,10 +63,16 @@ export const gameUserRouter = createTRPCRouter({
     const { gameUser } = ctx.gameSession;
 
     if (!gameUser.gameTeamId) {
-      throw new Error("GameUser is not on a team.");
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "GameUser is not on a team.",
+      });
     }
     if (ctx.gameSession.format !== GameFormat.team) {
-      throw new Error("Game format does not support teams");
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Game format does not support teams",
+      });
     }
 
     const gameTeam = (await ctx.db.gameTeam.findUnique({
@@ -92,7 +102,10 @@ export const gameUserRouter = createTRPCRouter({
     })) as GameTeamWithRelations;
 
     if (!gameTeam) {
-      throw new Error("Game team not found");
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Game team not found",
+      });
     }
 
     return gameTeam;
@@ -150,7 +163,10 @@ export const gameUserRouter = createTRPCRouter({
       const { gameUser } = ctx.gameSession;
 
       if (!gameUser.gameTeamId) {
-        throw new Error("GameUser is not on a team.");
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "GameUser is not on a team.",
+        });
       }
 
       const gameTeam = await ctx.db.gameTeam.findUnique({
@@ -207,7 +223,10 @@ export const gameUserRouter = createTRPCRouter({
       const settings = ctx.gameSession.settings as GameSettings;
 
       if (ctx.gameSession.format === GameFormat.individual) {
-        throw new Error("Game format does not support teams");
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Game format does not support teams",
+        });
       }
 
       if (gameUser.gameTeamId === input.gameTeamId) {
@@ -216,7 +235,10 @@ export const gameUserRouter = createTRPCRouter({
       }
 
       if (settings?.freezeTeams) {
-        throw new Error("Team switching is currently disabled");
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Team switching is currently disabled",
+        });
       }
 
       const gameTeam = await ctx.db.gameTeam.findUnique({
@@ -226,10 +248,16 @@ export const gameUserRouter = createTRPCRouter({
       });
 
       if (!gameTeam) {
-        throw new Error("Game team not found");
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Game team not found",
+        });
       }
       if (gameTeam.gameId !== gameUser.gameId) {
-        throw new Error("Game team is not part of this game.");
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Game team is not part of this game.",
+        });
       }
 
       const gameUserUpdated = await ctx.db.gameUser.update({
@@ -252,11 +280,17 @@ export const gameUserRouter = createTRPCRouter({
     const { gameTeamId } = gameUser;
 
     if (!gameTeamId) {
-      throw new Error("Game user is not part of a team");
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Game user is not part of a team",
+      });
     }
 
     if (!isBuzzerListening) {
-      throw new Error("Game is not listening for buzzers");
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Game is not listening for buzzers",
+      });
     }
 
     const gameTeam = await ctx.db.gameTeam.findUnique({
@@ -270,7 +304,10 @@ export const gameUserRouter = createTRPCRouter({
     });
 
     if (gameTeam?.buzzerState === BuzzerState.rejected) {
-      throw new Error("Game team has already buzzed in.");
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Game team has already buzzed in.",
+      });
     }
 
     if (gameTeam?.buzzerState === BuzzerState.selected) {
@@ -312,7 +349,10 @@ export const gameUserRouter = createTRPCRouter({
       ]);
       if (!updatedTeam || !updatedGame) {
         // throw and rollback
-        throw new Error("Invalid buzzer state.");
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Invalid buzzer state.",
+        });
       }
     });
 

@@ -1,5 +1,6 @@
 import { GameFormat } from "@prisma/client";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 
 import { logger } from "@/logger";
 
@@ -31,7 +32,10 @@ export const publicRouter = createTRPCRouter({
       });
 
       if (!game) {
-        throw new Error("Game not found");
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Game not found",
+        });
       }
       if (
         ctx.gameSession.gameUser?.token === input.token &&
