@@ -148,7 +148,7 @@ export async function gameAuth({
   // or check headers for client side request
 
   gameUserToken ??= cookieStore.get("buzz-board-game-user-token")?.value;
-  gameUserToken ??= headers.get("buzz-board-game-user-token") as
+  gameUserToken ??= headers.get("x-buzz-board-game-user-token") as
     | string
     | undefined;
 
