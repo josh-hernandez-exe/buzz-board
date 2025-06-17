@@ -1,5 +1,6 @@
 import { GameFormat, BuzzerState } from "@prisma/client";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 
 import {
   createTRPCRouter,
@@ -24,7 +25,10 @@ export const gameAdminRouter = createTRPCRouter({
     } = ctx.gameSession;
 
     if (gameFormat === GameFormat.individual) {
-      throw new Error("Game format does not support teams");
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Game format does not support teams",
+      });
     }
 
     const aggResult = await ctx.db.gameTeam.aggregate({
@@ -59,7 +63,10 @@ export const gameAdminRouter = createTRPCRouter({
       const { gameTeamId } = input;
 
       if (gameFormat === GameFormat.individual) {
-        throw new Error("Game format does not support teams");
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Game format does not support teams",
+        });
       }
       const gameTeam = await ctx.db.gameTeam.findUnique({
         where: {
@@ -71,10 +78,16 @@ export const gameAdminRouter = createTRPCRouter({
         },
       });
       if (!gameTeam) {
-        throw new Error("Game team not found");
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Game team not found",
+        });
       }
       if (gameTeam.gameId !== gameId) {
-        throw new Error("Game team not found in this game");
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Game team not found in this game",
+        });
       }
 
       await ctx.db.$transaction([
@@ -260,7 +273,10 @@ export const gameAdminRouter = createTRPCRouter({
       const { scoreboard, currentScores } = result.value;
 
       if (!scoreboard) {
-        throw new Error("Scoreboard not found");
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Scoreboard not found",
+        });
       }
 
       Object.entries(input).forEach(([gameTeamId, score]) => {
@@ -313,13 +329,19 @@ export const gameAdminRouter = createTRPCRouter({
     });
 
     if (!scoreboard) {
-      throw new Error("Scoreboard not found");
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Scoreboard not found",
+      });
     }
 
     const oldPastStateIds = scoreboard?.pastStateIds as string[];
     const oldFutureStateIds = scoreboard?.futureStateIds as string[];
     if (oldPastStateIds.length === 0) {
-      throw new Error("No past states to undo");
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "No past states to undo",
+      });
     }
 
     const lastStateId = oldPastStateIds.at(-1);
@@ -355,13 +377,19 @@ export const gameAdminRouter = createTRPCRouter({
     });
 
     if (!scoreboard) {
-      throw new Error("Scoreboard not found");
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Scoreboard not found",
+      });
     }
 
     const oldPastStateIds = scoreboard?.pastStateIds as string[];
     const oldFutureStateIds = scoreboard?.futureStateIds as string[];
     if (oldFutureStateIds.length === 0) {
-      throw new Error("No past states to redo");
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "No past states to redo",
+      });
     }
 
     const lastStateId = oldFutureStateIds.at(-1);
@@ -400,7 +428,10 @@ export const gameAdminRouter = createTRPCRouter({
       });
 
       if (!gameUser) {
-        throw new Error("Player not found in this game.");
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Player not found in this game.",
+        });
       }
 
       // If the player is already in the target team (or both are null), no action needed
@@ -413,7 +444,10 @@ export const gameAdminRouter = createTRPCRouter({
           where: { id: targetGameTeamId, gameId },
         });
         if (!targetTeam) {
-          throw new Error("Target team not found in this game.");
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Target team not found in this game.",
+          });
         }
       }
 
@@ -433,7 +467,10 @@ export const gameAdminRouter = createTRPCRouter({
       const currentSettings = (game.settings as GameSettings) ?? {};
 
       if (game.format === GameFormat.individual) {
-        throw new Error("Game format does not support teams");
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Game format does not support teams",
+        });
       }
 
       if (input.freeze === !!currentSettings.freezeTeams) {
