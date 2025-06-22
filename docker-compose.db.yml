@@ -20,7 +20,7 @@ services:
 
   buzz-board-keydb:
     image: eqalpha/keydb
-    command: keydb-server /etc/keydb/redis.conf --server-threads 2  --maxmemory 16mb  --maxmemory-policy allkeys-lru  --maxmemory-samples 5
+    command: keydb-server /etc/keydb/redis.conf --server-threads 2  --maxmemory 64mb  --maxmemory-policy allkeys-lru  --maxmemory-samples 5
     environment:
       # ALLOW_EMPTY_PASSWORD is recommended only for development.
       # - ALLOW_EMPTY_PASSWORD=yes

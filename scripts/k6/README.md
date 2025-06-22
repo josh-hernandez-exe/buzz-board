@@ -30,17 +30,25 @@ This approach isolates the testing environment from the main application, which 
 
 ## How to Run the Tests
 
-To execute the stress test, run the following command from the root of the project:
+To execute the stress test, you first need to build the test script using the following command:
+
+```bash
+bun k6:build
+```
+
+This will bundle the `test-worker.ts` script and its dependencies into a single file located at `scripts/k6/dist/test-worker.js`. Then, you can run the test using the following command from the root of the project:
 
 ```bash
 BASE_URL=<your_base_url> GAME_CODE=<your_game_join_code> \
-    bun k6 run scripts/k6/test-worker.ts
+    bun k6 run scripts/k6/dist/test-worker.js
 ```
 
 -   **`BASE_URL`**: The base URL of the server to test (e.g., `http://localhost:3000`).
 -   **`GAME_CODE`**: The join code for the game to use for testing.
 
 ### Example Usage
+
 ```bash
-GAME_CODE="2H9S1A" bun k6 run scripts/k6/test-worker.ts
+bun k6:build
+GAME_CODE="2H9S1A" bun k6 run scripts/k6/dist/test-worker.js
 ```
