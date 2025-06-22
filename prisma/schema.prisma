@@ -110,7 +110,7 @@ model GameUser {
 }
 
 enum BuzzerState {
-  avilalble
+  available
   selected
   rejected
 }
@@ -120,7 +120,7 @@ model GameTeam {
   index       Int
   name        String
   gameId      String
-  buzzerState BuzzerState @default(avilalble)
+  buzzerState BuzzerState @default(available)
   data        Json        @default("{}")
 
   createdAt DateTime @default(now())

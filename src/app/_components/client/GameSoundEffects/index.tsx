@@ -80,7 +80,7 @@ export function GameSoundEffects({ gameTeamId }: GameSoundEffectsProps) {
 
       // Check for buzz-in (available -> selected)
       if (
-        previousTeam.buzzerState === BuzzerState.avilalble &&
+        previousTeam.buzzerState === BuzzerState.available &&
         currentTeam.buzzerState === BuzzerState.selected
       ) {
         playBuzzInSound();

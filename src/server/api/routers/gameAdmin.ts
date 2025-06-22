@@ -185,7 +185,7 @@ export const gameAdminRouter = createTRPCRouter({
           gameId: game.id,
         },
         data: {
-          buzzerState: BuzzerState.avilalble,
+          buzzerState: BuzzerState.available,
         },
       }),
       ctx.db.game.update({

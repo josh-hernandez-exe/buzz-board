@@ -69,7 +69,7 @@ export const columns: ColumnDef<GameTeamDataTableRow>[] = [
             <X className="h-4 w-4 text-red-500" />
           </div>
         );
-      } else if (row.getValue("buzzerState") === BuzzerState.avilalble) {
+      } else if (row.getValue("buzzerState") === BuzzerState.available) {
         return (
           <div className="flex items-center justify-center">
             <SquareDashed className="h-4 w-4 text-gray-500" />

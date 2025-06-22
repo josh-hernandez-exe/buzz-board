@@ -372,7 +372,7 @@ export const gameUserRouter = createTRPCRouter({
           },
           where: {
             id: gameTeamId,
-            buzzerState: BuzzerState.avilalble,
+            buzzerState: BuzzerState.available,
           },
           data: {
             buzzerState: BuzzerState.selected,
