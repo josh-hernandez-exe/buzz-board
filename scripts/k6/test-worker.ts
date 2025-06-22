@@ -13,9 +13,8 @@ import { adjectives, nouns } from "./randomName";
 // k6 configuration
 export const options = {
   stages: [
-    { duration: "10s", target: 1 }, // ramp up to 10 virtual users
-    { duration: "10s", target: 1 }, // stay at 10 virtual users
-    { duration: "10s", target: 0 }, // ramp down to 0
+    { duration: "30s", target: 50 }, // ramp up to 10 virtual users
+    { duration: "30s", target: 0 }, // ramp down to 0
   ],
   thresholds: {
     http_req_duration: ["p(95)<500"], // 95% of requests must complete below 500ms
@@ -214,6 +213,8 @@ function buzzIn(trpcUrl: string, authedHeaders: Record<string, string>) {
 export default function testWorker() {
   // Get credentials from environment variables
   const gameCode = __ENV.GAME_CODE;
+  const numLongLoops = __ENV.LONG_LOOPS ? parseInt(__ENV.LONG_LOOPS, 10) : 1;
+  const numShortLoops = __ENV.SHORT_LOOPS ? parseInt(__ENV.SHORT_LOOPS, 10) : 1;
 
   if (!gameCode) {
     console.error("GAME_CODE must be provided");
@@ -245,50 +246,54 @@ export default function testWorker() {
     "x-buzz-board-game-user-token": gameUserToken,
   };
 
-  // 1. Get current game stateGameState
-  const gameState = getCurrentGameState(trpcUrl, authedHeaders);
-  if (!gameState) {
-    return;
-  }
-
-  sleep(1);
-
-  // 2. Get self info
-  const currentGameUserInfo = getSelfInfo(trpcUrl, authedHeaders);
-  if (!currentGameUserInfo) {
-    return;
-  }
-
-  sleep(1);
-
-  // 3. Change name
-  const randomUserAdjective =
-    adjectives[Math.floor(Math.random() * adjectives.length)];
-  const randomUserNoun = nouns[Math.floor(Math.random() * nouns.length)];
-  const randomUserName = `User ${randomUserAdjective} ${randomUserNoun}`;
-  changeName(trpcUrl, authedHeaders, randomUserName);
-
-  sleep(1);
-
-  if (gameState.game.format === GameFormat.team) {
-    if (gameState.gameTeams?.length === 0) {
-      throw new Error("No teams available to change to");
+  for (let i = 0; i < numLongLoops; i++) {
+    // 1. Get current game stateGameState
+    const gameState = getCurrentGameState(trpcUrl, authedHeaders);
+    if (!gameState) {
+      return;
     }
 
-    // 4. Change teams
-    changeTeam(trpcUrl, authedHeaders, gameState, currentGameUserInfo);
     sleep(1);
 
-    // 5. Change team name
-    const randomTeamAdjective =
+    // 2. Get self info
+    const currentGameUserInfo = getSelfInfo(trpcUrl, authedHeaders);
+    if (!currentGameUserInfo) {
+      return;
+    }
+
+    sleep(1);
+
+    // 3. Change name
+    const randomUserAdjective =
       adjectives[Math.floor(Math.random() * adjectives.length)];
-    const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
-    const randomName = `Team ${randomTeamAdjective} ${randomNoun}`;
-    changeTeamName(trpcUrl, authedHeaders, randomName);
-    sleep(1);
-  }
+    const randomUserNoun = nouns[Math.floor(Math.random() * nouns.length)];
+    const randomUserName = `User ${randomUserAdjective} ${randomUserNoun}`;
+    changeName(trpcUrl, authedHeaders, randomUserName);
 
-  // 6. Buzz in
-  buzzIn(trpcUrl, authedHeaders);
-  sleep(1);
+    sleep(1);
+
+    if (gameState.game.format === GameFormat.team) {
+      if (gameState.gameTeams?.length === 0) {
+        throw new Error("No teams available to change to");
+      }
+
+      // 4. Change teams
+      changeTeam(trpcUrl, authedHeaders, gameState, currentGameUserInfo);
+      sleep(1);
+
+      // 5. Change team name
+      const randomTeamAdjective =
+        adjectives[Math.floor(Math.random() * adjectives.length)];
+      const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+      const randomName = `Team ${randomTeamAdjective} ${randomNoun}`;
+      changeTeamName(trpcUrl, authedHeaders, randomName);
+      sleep(1);
+    }
+
+    for (let j = 0; j < numShortLoops; j++) {
+      // 6. Buzz in
+      buzzIn(trpcUrl, authedHeaders);
+      sleep(1);
+    }
+  }
 }

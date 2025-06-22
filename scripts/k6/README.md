@@ -50,5 +50,5 @@ BASE_URL=<your_base_url> GAME_CODE=<your_game_join_code> \
 
 ```bash
 bun k6:build
-GAME_CODE="2H9S1A" bun k6 run scripts/k6/dist/test-worker.js
+GAME_CODE="4J55SM" bun k6 run scripts/k6/dist/test-worker.js
 ```
