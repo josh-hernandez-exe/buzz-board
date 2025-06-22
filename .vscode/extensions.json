@@ -2,6 +2,7 @@
     "recommendations": [
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
-        "k6.k6"
+        "k6.k6",
+        "eamodio.gitlens"
     ]
 }
