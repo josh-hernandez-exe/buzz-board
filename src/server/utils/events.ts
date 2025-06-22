@@ -149,8 +149,12 @@ export async function updateBuzzerListeningState({
     gameUser: undefined,
   };
 
-  await gameEventCache.whoBuzzedIn.set(gameId, data);
-  await gameEventEmitter.whoBuzzedIn.publish(gameId, data);
+  await Promise.all([
+    gameEventCache.whoBuzzedIn.set(gameId, data),
+    gameEventEmitter.whoBuzzedIn.publish(gameId, data),
+  ]);
+
+  return ok();
 }
 
 export async function emitWhoBuzzedIn({
@@ -201,8 +205,10 @@ export async function emitWhoBuzzedIn({
     },
   };
 
-  await gameEventCache.whoBuzzedIn.set(game.id, data);
-  await gameEventEmitter.whoBuzzedIn.publish(game.id, data);
+  await Promise.all([
+    gameEventCache.whoBuzzedIn.set(game.id, data),
+    gameEventEmitter.whoBuzzedIn.publish(game.id, data),
+  ]);
 
   return ok();
 }
