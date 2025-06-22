@@ -19,8 +19,8 @@ export function GameSoundEffects({ gameTeamId }: GameSoundEffectsProps) {
 
   // Initialize audio elements
   useEffect(() => {
-    buzzInAudioRef.current = new Audio("/sounds/buzz-in.wav");
-    wrongAnswerAudioRef.current = new Audio("/sounds/wrong-answer.wav");
+    buzzInAudioRef.current = new Audio("/sounds/buzz-in.mp3");
+    wrongAnswerAudioRef.current = new Audio("/sounds/wrong-answer.mp3");
 
     // Set volume
     if (buzzInAudioRef.current) {
