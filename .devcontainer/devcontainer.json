@@ -41,7 +41,8 @@
         "vscode": {
             "extensions": [
                 "Prisma.prisma",
-                "esbenp.prettier-vscode"
+                "esbenp.prettier-vscode",
+                "k6.k6"
             ]
         }
     },
