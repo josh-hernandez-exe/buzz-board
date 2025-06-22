@@ -21,5 +21,6 @@
     "**/src/**/layout.tsx": "(${dirname})/layout.${extname}",
     "**/src/**/index.tsx": "(${dirname})/index.${extname}",
     "**/src/**/index.ts": "(${dirname})/index.${extname}",
+    "**/README.md": "(${dirname})/README.${extname}",
   },
 }
