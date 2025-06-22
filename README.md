@@ -227,6 +227,16 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
 	* Teams with the state `BUZZER_PRESSED_FAILED` will have their score removed from them.
 	* The team with the state `BUZZER_PRESSED` will have their score increased.
 
+## External Sources
+
+### Sound Effects
+
+- buzz-in
+  - https://pixabay.com/sound-effects/ding-101492/
+- wrong-answer
+  - https://pixabay.com/sound-effects/buzzer-or-wrong-answer-20582/
+
+
 ## Change Log
 
 ### Version 1.0.0
