@@ -46,7 +46,6 @@ Redirects:
 - `http://localhost:3000/api/auth/callback/discord`
 - `http://{CODESPACE-SUBDOMAIN}.app.github.dev/api/auth/callback/discord`
 - `https://{CODESPACE-SUBDOMAIN}.app.github.dev/api/auth/callback/discord`
-- https://musical-space-engine-49grxqww6pfqvjq-3000.app.github.dev/api/auth/callback/discord
 
 #### Google
 
