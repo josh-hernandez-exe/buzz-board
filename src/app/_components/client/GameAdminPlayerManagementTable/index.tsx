@@ -29,7 +29,7 @@ export function GamePlayerManagementTable({
   gameState: PrivateGameState;
 }) {
   const allTeams = gameState.gameTeams;
-  const allPlayers = gameState.gameUsers;
+  const allPlayers = Object.values(gameState.gameUsers);
 
   const [sorting, setSorting] = useState<SortingState>([
     {

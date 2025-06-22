@@ -14,14 +14,19 @@ import {
 
 import { api } from "@/trpc/react";
 
-import type { GameTeamFromPrivateState } from "@/types";
+import type {
+  GameTeamFromPrivateState,
+  GameUserFromPrivateState,
+} from "@/types";
 
 import { cn } from "@/app/_lib/utils";
 
 export function GameScoreboardTeamCard({
   gameTeam: initialGameTeam,
+  gameUsers: initialGameUsers,
 }: {
   gameTeam: GameTeamFromPrivateState;
+  gameUsers: GameUserFromPrivateState[];
 }) {
   const { id: gameTeamId } = initialGameTeam;
   const gameState = api.gameGeneral.gameState.useSubscription();
@@ -30,6 +35,10 @@ export function GameScoreboardTeamCard({
     gameState?.data?.gameTeams.find((team) => team.id === gameTeamId);
 
   const gameTeam = gameTeamFromState ?? initialGameTeam;
+
+  const gameUsers =
+    gameTeam.gameUsers.map((userId) => gameState?.data?.gameUsers[userId]) ??
+    initialGameUsers;
 
   if (!gameTeam) {
     return <div>Loading...</div>;
@@ -64,7 +73,7 @@ export function GameScoreboardTeamCard({
           <div className="text-5xl font-bold">{gameTeam.score}</div>
         </div>
       </CardContent>
-      <CardFooter>Num Players: {gameTeam.gameUsers.length}</CardFooter>
+      <CardFooter>Num Players: {gameUsers.length}</CardFooter>
     </Card>
   );
 }

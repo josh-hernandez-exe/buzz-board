@@ -95,14 +95,6 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
           gameUsers: {
             select: {
               id: true,
-              name: true,
-              index: true,
-              user: {
-                select: {
-                  id: true,
-                  image: true,
-                },
-              },
             },
           },
         },
@@ -159,26 +151,36 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       name: gameTeam.name,
       index: gameTeam.index,
       buzzerState: gameTeam.buzzerState,
-      gameUsers: gameTeam.gameUsers.map((gameUser) => ({
-        id: gameUser.id,
-        name: gameUser.name,
-        index: gameUser.index,
-        image: gameUser.user?.image,
-      })),
+      gameUsers: gameTeam.gameUsers.map((gameUser) => gameUser.id),
       score: scoreboardState[gameTeam.id] ?? 0,
     })),
-    gameUsers: game.gameUsers.map((gameUser) => ({
-      id: gameUser.id,
-      name: gameUser.name,
-      index: gameUser.index,
-      gameTeamId: gameUser.gameTeamId,
-      image: gameUser.user?.image,
-    })),
+    gameUsers: game.gameUsers.reduce(
+      (acc, gameUser) => {
+        acc[gameUser.id] = {
+          id: gameUser.id,
+          name: gameUser.name,
+          index: gameUser.index,
+          gameTeamId: gameUser.gameTeamId,
+          image: gameUser.user?.image,
+        };
+        return acc;
+      },
+      {} as PrivateGameState["gameUsers"],
+    ),
   };
 
   data.gameTeams.sort((a, b) => a.index - b.index);
-  data.gameTeams.map((gameTeam) => {
-    gameTeam.gameUsers.sort((a, b) => a.name.localeCompare(b.name));
+  data.gameTeams.forEach((gameTeam) => {
+    gameTeam.gameUsers.sort((a, b) => {
+      const userA = data.gameUsers[a];
+      const userB = data.gameUsers[b];
+
+      if (!userA || !userB) {
+        return 0;
+      }
+
+      return userA.name.localeCompare(userB.name);
+    });
   });
 
   return ok(data);

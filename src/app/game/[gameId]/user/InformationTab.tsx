@@ -19,12 +19,21 @@ export function InformationTab({
     (team) => team.id === gameUser.gameTeamId,
   );
 
+  const gameUsersInTeam = initialGameTeam
+    ? initialGameTeam.gameUsers
+        .map((userId) => gameState.gameUsers[userId])
+        .filter((user): user is NonNullable<typeof user> => !!user)
+    : [];
+
   return (
     <div className="flex flex-col items-center justify-center">
       <GameBasicInfoCard game={gameState.game} />
       <GameUserInfoCard gameUser={gameUser} />
       {gameState.game.format === GameFormat.team && (
-        <GameUserTeamInfoCard gameTeam={initialGameTeam} />
+        <GameUserTeamInfoCard
+          gameTeam={initialGameTeam}
+          gameUsers={gameUsersInTeam}
+        />
       )}
     </div>
   );
