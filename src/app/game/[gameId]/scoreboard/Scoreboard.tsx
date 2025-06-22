@@ -62,12 +62,16 @@ export function Scoreboard({
         </CollapsibleContent>
       </Collapsible>
       <GameWhoBuzzedIn />
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {gameTeams.map((gameTeam) => {
-          return (
-            <GameScoreboardTeamCard key={gameTeam.id} gameTeam={gameTeam} />
-          );
-        })}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {gameTeams.map((gameTeam) => (
+          <GameScoreboardTeamCard
+            key={gameTeam.id}
+            gameTeam={gameTeam}
+            gameUsers={gameTeam.gameUsers.map(
+              (userId) => currentGameState.gameUsers[userId]!,
+            )}
+          />
+        ))}
       </div>
     </div>
   );

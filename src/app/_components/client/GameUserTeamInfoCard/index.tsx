@@ -12,24 +12,42 @@ import {
 import { GameUserEditSheet } from "@/app/_components/client/GameUserEditSheet";
 import { api } from "@/trpc/react";
 
-import type { GameTeamWithRelations, GameTeamFromPrivateState } from "@/types";
+import type {
+  GameUserFromPrivateState,
+  GameTeamFromPrivateState,
+  GameUserFromTeamWithRelations,
+} from "@/types";
 
 import { GameTeamUserTable } from "./GameTeamUserTable";
 
 export function GameUserTeamInfoCard({
   gameTeam: initialGameTeam,
+  gameUsers: initialGameUsers,
 }: {
-  gameTeam?: GameTeamFromPrivateState | undefined;
+  gameTeam?: GameTeamFromPrivateState;
+  gameUsers?: GameUserFromPrivateState[];
 }) {
   const gameTeamInfo = api.gameUser.getSelfTeamInfo.useQuery();
   const gameState = api.gameGeneral.gameState.useSubscription();
 
-  const gameTeamFromState = gameState?.data?.gameTeams.find(
+  const gameTeamFromState = gameState.data?.gameTeams.find(
     (team) => team.id === gameTeamInfo.data?.id,
   );
 
-  const gameTeam: GameTeamFromPrivateState | GameTeamWithRelations | undefined =
-    gameTeamFromState ?? gameTeamInfo.data ?? initialGameTeam;
+  const gameTeam = gameTeamFromState ?? initialGameTeam;
+
+  let gameUsers: (GameUserFromPrivateState | GameUserFromTeamWithRelations)[] =
+    [];
+
+  if (gameTeamFromState && gameState.data) {
+    gameUsers = gameTeamFromState.gameUsers
+      .map((userId) => gameState?.data?.gameUsers[userId])
+      .filter(Boolean) as GameUserFromPrivateState[];
+  } else if (gameTeamInfo.data) {
+    gameUsers = gameTeamInfo.data.gameUsers;
+  } else if (initialGameUsers) {
+    gameUsers = initialGameUsers;
+  }
 
   if (
     !gameTeam &&
@@ -54,7 +72,7 @@ export function GameUserTeamInfoCard({
     );
   }
 
-  gameTeam.gameUsers.sort((a, b) => a.index - b.index);
+  gameUsers.sort((a, b) => a.index - b.index);
 
   return (
     <Card>
@@ -67,21 +85,16 @@ export function GameUserTeamInfoCard({
         <p>Team Index Number: {gameTeam?.index}</p>
         <p>Team Id: {gameTeam?.id}</p>
         <GameUserEditSheet />
-        <p>Number of Players on Team: {gameTeam?.gameUsers.length}</p>
+        <p>Number of Players on Team: {gameUsers.length}</p>
         <GameTeamUserTable
-          data={gameTeam.gameUsers.map((gameUser) => {
-            const imageFromRelation = (
-              gameUser as GameTeamWithRelations["gameUsers"][number]
-            ).user?.image;
-            const imageFromGameState = (
-              gameUser as GameTeamFromPrivateState["gameUsers"][number]
-            ).image;
-            const image = imageFromRelation ?? imageFromGameState;
+          data={gameUsers.map((gameUser) => {
+            const image =
+              "user" in gameUser ? gameUser.user?.image : gameUser.image;
             return {
               id: gameUser.id,
               name: gameUser.name,
               index: gameUser.index,
-              image,
+              image: image ?? null,
             };
           })}
         />

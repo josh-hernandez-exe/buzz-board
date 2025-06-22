@@ -89,13 +89,16 @@ export function GameAdminInfo({
           ) : (
             <>
               <GameAdminTeamControl gameTeams={gameTeams} />
-              {gameTeams.map(({ gameUsers, score, ...gameTeam }) => {
+              {gameTeams.map((gameTeam) => {
+                const users = gameTeam.gameUsers.map(
+                  (userId) => currentGameState.gameUsers[userId]!,
+                );
                 return (
                   <GameTeamSummaryCard
                     key={gameTeam.id}
                     gameTeam={gameTeam}
-                    gameUsers={gameUsers}
-                    score={score}
+                    gameUsers={users}
+                    score={gameTeam.score}
                   />
                 );
               })}

@@ -92,6 +92,9 @@ export type GameTeamWithRelations = Prisma.GameTeamGetPayload<{
   };
 }>;
 
+export type GameUserFromTeamWithRelations =
+  GameTeamWithRelations["gameUsers"][number];
+
 export type PublicGameState = {
   game: {
     id: Game["id"];
@@ -110,6 +113,7 @@ export type PublicGameState = {
 };
 
 export type GameTeamFromPublicState = PublicGameState["gameTeams"][number];
+export type GameUserFromPrivateState = PrivateGameState["gameUsers"][string];
 
 export type PrivateGameState = {
   game: {
@@ -125,21 +129,19 @@ export type PrivateGameState = {
     name: GameTeam["name"];
     index: GameTeam["index"];
     buzzerState: GameTeam["buzzerState"];
-    gameUsers: Array<{
+    gameUsers: Array<GameUser["id"]>;
+    score: number;
+  }>;
+  gameUsers: Record<
+    GameUser["id"],
+    {
       id: GameUser["id"];
       name: GameUser["name"];
       index: GameUser["index"];
+      gameTeamId: GameUser["gameTeamId"];
       image: User["image"] | undefined;
-    }>;
-    score: number;
-  }>;
-  gameUsers: Array<{
-    id: GameUser["id"];
-    name: GameUser["name"];
-    index: GameUser["index"];
-    gameTeamId: GameUser["gameTeamId"];
-    image: User["image"] | undefined;
-  }>;
+    }
+  >;
 };
 
 export type GameTeamFromPrivateState = PrivateGameState["gameTeams"][number];
