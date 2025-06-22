@@ -1,9 +1,13 @@
 import { check, sleep } from "k6";
 import http from "k6/http";
 
-import type { GameUser, Game, GameTeam } from "@prisma/client";
+import type { GameUser, Game } from "@prisma/client";
 import { GameFormat } from "@prisma/client";
-import type { PrivateGameState } from "@/types";
+import type {
+  GameUserBasicInfo,
+  GameTeamBasicInfo,
+  PrivateGameState,
+} from "@/types";
 import { adjectives, nouns } from "./randomName";
 
 // k6 configuration
@@ -104,23 +108,22 @@ function changeName(
   trpcUrl: string,
   authedHeaders: Record<string, string>,
   newName: string,
-): GameUser | null {
+): GameUserBasicInfo | null {
   const changeNameUrl = `${trpcUrl}/gameUser.changeName`;
   const changeNamePayload = JSON.stringify({ json: { name: newName } });
   const changeNameRes = http.post(changeNameUrl, changeNamePayload, {
     headers: authedHeaders,
   });
+  let updatedUser: GameUserBasicInfo | null = null;
 
   check(changeNameRes, {
     "change name status is 200": (r) => r.status === 200,
-  });
-
-  const updatedUser = changeNameRes.json(
-    "result.data.json",
-  ) as unknown as GameUser | null;
-
-  check(updatedUser, {
-    "user name was updated": (user) => user?.name === newName,
+    "user name was updated": (r) => {
+      updatedUser = r.json(
+        "result.data.json",
+      ) as unknown as GameUserBasicInfo | null;
+      return updatedUser?.name === newName;
+    },
   });
 
   return updatedUser;
@@ -130,7 +133,7 @@ function changeTeamName(
   trpcUrl: string,
   authedHeaders: Record<string, string>,
   newName: string,
-): GameTeam | null {
+): GameTeamBasicInfo | null {
   const changeTeamNameUrl = `${trpcUrl}/gameUser.changeTeamName`;
   const changeTeamNamePayload = JSON.stringify({ json: { name: newName } });
   const changeTeamNameRes = http.post(
@@ -140,17 +143,16 @@ function changeTeamName(
       headers: authedHeaders,
     },
   );
+  let updatedTeam: GameTeamBasicInfo | null = null;
 
   check(changeTeamNameRes, {
     "change team name status is 200": (r) => r.status === 200,
-  });
-
-  const updatedTeam = changeTeamNameRes.json(
-    "result.data.json",
-  ) as unknown as GameTeam | null;
-
-  check(updatedTeam, {
-    "team name was updated": (team) => team?.name === newName,
+    "team name was updated": (r) => {
+      updatedTeam = r.json(
+        "result.data.json",
+      ) as unknown as GameTeamBasicInfo | null;
+      return updatedTeam?.name === newName;
+    },
   });
 
   return updatedTeam;
@@ -162,31 +164,30 @@ function changeTeam(
   gameState: PrivateGameState,
   currentGameUserInfo: GameUser,
 ) {
-  if (gameState.game.format === GameFormat.team) {
-    check(gameState.gameTeams?.length, {
-      "game has teams": (len) => (len ?? 0) > 0,
-    });
-    const randomIndex = Math.floor(Math.random() * gameState.gameTeams.length);
-    const teamId = gameState.gameTeams[randomIndex]?.id;
-    if (teamId) {
-      const changeTeamsUrl = `${trpcUrl}/gameUser.changeTeams`;
-      const changeTeamsPayload = JSON.stringify({
-        json: { gameTeamId: teamId },
-      });
-      const changeTeamResponse = http.post(changeTeamsUrl, changeTeamsPayload, {
-        headers: authedHeaders,
-      });
+  const randomIndex = Math.floor(Math.random() * gameState.gameTeams.length);
+  const teamId = gameState.gameTeams[randomIndex]?.id;
 
-      const changedUser = changeTeamResponse.json(
+  if (!teamId) {
+    throw new Error("Could not find a team to change to");
+  }
+
+  const changeTeamsUrl = `${trpcUrl}/gameUser.changeTeams`;
+  const changeTeamsPayload = JSON.stringify({
+    json: { gameTeamId: teamId },
+  });
+  const changeTeamResponse = http.post(changeTeamsUrl, changeTeamsPayload, {
+    headers: authedHeaders,
+  });
+
+  check(changeTeamResponse, {
+    "change team status is 200": (r) => r.status === 200,
+    "game user changed teams": (r) => {
+      const changedUser = r.json(
         "result.data.json",
       ) as unknown as GameUser | null;
-
-      check(changedUser, {
-        "game user changed teams": (user) =>
-          user?.gameTeamId !== currentGameUserInfo.gameTeamId,
-      });
-    }
-  }
+      return changedUser?.gameTeamId !== currentGameUserInfo.gameTeamId;
+    },
+  });
 }
 
 function buzzIn(trpcUrl: string, authedHeaders: Record<string, string>) {
@@ -269,17 +270,21 @@ export default function testWorker() {
 
   sleep(1);
 
-  // 4. Change teams
-  changeTeam(trpcUrl, authedHeaders, gameState, currentGameUserInfo);
-  sleep(1);
-
-  // 5. Change team name
   if (gameState.game.format === GameFormat.team) {
+    if (gameState.gameTeams?.length === 0) {
+      throw new Error("No teams available to change to");
+    }
+
+    // 4. Change teams
+    changeTeam(trpcUrl, authedHeaders, gameState, currentGameUserInfo);
+    sleep(1);
+
+    // 5. Change team name
     const randomTeamAdjective =
       adjectives[Math.floor(Math.random() * adjectives.length)];
-    const randomTeamNoun = nouns[Math.floor(Math.random() * nouns.length)];
-    const randomTeamName = `Team ${randomTeamAdjective} ${randomTeamNoun}`;
-    changeTeamName(trpcUrl, authedHeaders, randomTeamName);
+    const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+    const randomName = `Team ${randomTeamAdjective} ${randomNoun}`;
+    changeTeamName(trpcUrl, authedHeaders, randomName);
     sleep(1);
   }
 

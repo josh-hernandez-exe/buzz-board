@@ -14,6 +14,8 @@ import type {
   GameUserWithRelations,
   GameTeamWithRelations,
   GameSettings,
+  GameUserBasicInfo,
+  GameTeamBasicInfo,
 } from "@/types";
 
 export const gameUserRouter = createTRPCRouter({
@@ -118,10 +120,18 @@ export const gameUserRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { gameUser } = ctx.gameSession;
+      const result: GameUserBasicInfo = {
+        id: gameUser.id,
+        name: gameUser.name,
+        index: gameUser.index,
+        gameId: gameUser.gameId,
+        gameTeamId: gameUser.gameTeamId,
+        userId: gameUser.userId,
+      };
 
       if (gameUser.name === input.name) {
         // name is already the same and do not do anything
-        return;
+        return result;
       }
 
       const nameChangePromises: Prisma.PrismaPromise<unknown>[] = [
@@ -152,6 +162,11 @@ export const gameUserRouter = createTRPCRouter({
       }
 
       await ctx.db.$transaction(nameChangePromises);
+
+      return {
+        ...result,
+        name: input.name,
+      };
     }),
   changeTeamName: protectedGameUserProcedure
     .input(
@@ -175,12 +190,26 @@ export const gameUserRouter = createTRPCRouter({
         },
       });
 
-      if (gameUser.name === input.name) {
-        // name is already the same and do not do anything
-        return;
+      if (!gameTeam) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No team found.",
+        });
       }
 
-      const nameChangePromises: Promise<unknown>[] = [
+      const result: GameTeamBasicInfo = {
+        id: gameTeam.id,
+        name: gameTeam.name,
+        index: gameTeam.index,
+        gameId: gameTeam.gameId,
+      };
+
+      if (gameTeam.name === input.name) {
+        // name is already the same and do not do anything
+        return result;
+      }
+
+      const nameChangePromises: Prisma.PrismaPromise<unknown>[] = [
         ctx.db.gameTeam.update({
           where: {
             id: gameUser.gameTeamId,
@@ -204,13 +233,14 @@ export const gameUserRouter = createTRPCRouter({
         );
       }
 
-      await ctx.db.$transaction(
-        nameChangePromises as Prisma.PrismaPromise<unknown>[],
-      );
+      await ctx.db.$transaction(nameChangePromises);
 
       await emitUpdatedGameState({ gameId: ctx.gameSession.id });
 
-      return gameTeam;
+      return {
+        ...result,
+        name: input.name,
+      };
     }),
   changeTeams: protectedGameUserProcedure
     .input(
@@ -231,7 +261,14 @@ export const gameUserRouter = createTRPCRouter({
 
       if (gameUser.gameTeamId === input.gameTeamId) {
         // same team do nothing
-        return gameUser;
+        return {
+          id: gameUser.id,
+          name: gameUser.name,
+          index: gameUser.index,
+          gameId: gameUser.gameId,
+          gameTeamId: gameUser.gameTeamId,
+          userId: gameUser.userId,
+        } as GameUserBasicInfo;
       }
 
       if (settings?.freezeTeams) {
@@ -273,7 +310,14 @@ export const gameUserRouter = createTRPCRouter({
         gameId: gameUser.gameId,
       });
 
-      return gameUserUpdated;
+      return {
+        id: gameUserUpdated.id,
+        name: gameUserUpdated.name,
+        index: gameUserUpdated.index,
+        gameId: gameUserUpdated.gameId,
+        gameTeamId: gameUserUpdated.gameTeamId,
+        userId: gameUserUpdated.userId,
+      } as GameUserBasicInfo;
     }),
   buzzIn: protectedGameUserProcedure.mutation(async ({ ctx }) => {
     const { gameUser, isBuzzerListening } = ctx.gameSession;

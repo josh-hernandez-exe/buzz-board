@@ -24,6 +24,26 @@ export type GameWithRelations = Prisma.GameGetPayload<{
   };
 }>;
 
+export type GameUserBasicInfo = Prisma.GameUserGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    index: true;
+    gameId: true;
+    gameTeamId: true;
+    userId: true;
+  };
+}>;
+
+export type GameTeamBasicInfo = Prisma.GameTeamGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    index: true;
+    gameId: true;
+  };
+}>;
+
 export type GameUserWithRelations = Prisma.GameUserGetPayload<{
   select: {
     id: true;
