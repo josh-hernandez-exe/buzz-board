@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import { api } from "@/trpc/react";
 
 import { GameAdminTeamControl } from "@/app/_components/client/GameAdminTeamControl";
@@ -10,6 +11,7 @@ import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
 import { GamePlayerManagementTable } from "@/app/_components/client/GameAdminPlayerManagementTable";
 import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
+import { Skeleton } from "@/app/_components/ui/skeleton";
 
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 
@@ -28,6 +30,15 @@ export function GameAdminInfo({
   gameState: PrivateGameState;
 }) {
   useGameTokenData();
+  const [activeTab, setActiveTab] = useState("quick-controls");
+  const [isPending, startTransition] = useTransition();
+
+  const handleTabChange = (value: string) => {
+    startTransition(() => {
+      setActiveTab(value);
+    });
+  };
+
   const gameStateSub = api.gameGeneral.gameState.useSubscription();
 
   const currentGameState: PrivateGameState =
@@ -46,7 +57,11 @@ export function GameAdminInfo({
       {/* Game sound effects for all teams */}
       <GameSoundEffects />
 
-      <Tabs defaultValue="quick-controls" className="w-[700px]">
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="w-[700px]"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="quick-controls">Game Controls</TabsTrigger>
           <TabsTrigger value="team-management">Team Management</TabsTrigger>
@@ -54,32 +69,52 @@ export function GameAdminInfo({
           <TabsTrigger value="information">Information</TabsTrigger>
         </TabsList>
         <TabsContent value="quick-controls">
-          <GameWhoBuzzedIn />
-          <GameAdminBuzzerControl />
-          <GameAdminScoreboardAdvancedControl
-            gameTeams={gameTeams.map(
-              ({ gameUsers: _gameUsers, ...gameTeam }) => gameTeam,
-            )}
-          />
+          {isPending ? (
+            <Skeleton className="h-[400px] w-[700px]" />
+          ) : (
+            <>
+              <GameWhoBuzzedIn />
+              <GameAdminBuzzerControl />
+              <GameAdminScoreboardAdvancedControl
+                gameTeams={gameTeams.map(
+                  ({ gameUsers: _gameUsers, ...gameTeam }) => gameTeam,
+                )}
+              />
+            </>
+          )}
         </TabsContent>
         <TabsContent value="team-management">
-          <GameAdminTeamControl gameTeams={gameTeams} />
-          {gameTeams.map(({ gameUsers, score, ...gameTeam }) => {
-            return (
-              <GameTeamSummaryCard
-                key={gameTeam.id}
-                gameTeam={gameTeam}
-                gameUsers={gameUsers}
-                score={score}
-              />
-            );
-          })}
+          {isPending ? (
+            <Skeleton className="h-[400px] w-[700px]" />
+          ) : (
+            <>
+              <GameAdminTeamControl gameTeams={gameTeams} />
+              {gameTeams.map(({ gameUsers, score, ...gameTeam }) => {
+                return (
+                  <GameTeamSummaryCard
+                    key={gameTeam.id}
+                    gameTeam={gameTeam}
+                    gameUsers={gameUsers}
+                    score={score}
+                  />
+                );
+              })}
+            </>
+          )}
         </TabsContent>
         <TabsContent value="player-management">
-          <GamePlayerManagementTable gameState={currentGameState} />
+          {isPending ? (
+            <Skeleton className="h-[400px] w-[700px]" />
+          ) : (
+            <GamePlayerManagementTable gameState={currentGameState} />
+          )}
         </TabsContent>
         <TabsContent value="information">
-          <GameBasicInfoCard game={game} />
+          {isPending ? (
+            <Skeleton className="h-[400px] w-[700px]" />
+          ) : (
+            <GameBasicInfoCard game={game} />
+          )}
         </TabsContent>
       </Tabs>
     </div>
