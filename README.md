@@ -147,7 +147,8 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
 3. **Apply Database Migrations**:
    - Run Prisma migrations to set up the database schema:
      ```bash
-     bun db:push
+     bun --env-file=.env.production prisma migrate reset
+     bun --env-file=.env.production db:push
      ```
 
 4. **Verify Connections**:
