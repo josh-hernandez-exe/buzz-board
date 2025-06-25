@@ -159,15 +159,26 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
 
 ## TODO
 
-- Admin needs to be able to move players between teams.
-- Admin page should have a tab for game user management.
-  - This management should have a full user view and a by-team view.
+- refactor game state.
+  - make game state smaller by removing uses.
+    - bascially the public game state.
+  - create new team subscriptions for teams and the users names.
+    - replace usages of game state for displaying user names with this instead
+    - test to see if an admin endpoint can "union" these subscriptions into one.
+      - otherwise the web UI will dynamically need to "sub" to all of these
+- Maybe admin should be able to edit team names.
 - Admin must be able to turn off team switching
 - Update scoreboard visuals:
-  - Tile teams better.
-  - Team score cards updates:
-    - Score should be larger.
-    - Number of players should be displayed somewhere nicely.
+  - scoreboard game content is too narrow. It can take more width of the screen
+- admin should be able to kick a user
+- admin should be able to turn off users joining
+- Team swtiching toggle appears for individual games. It should not be there.
+- there should be admin settings for quick score buttons
+  - this requires a new UI to create these settings. Maybe as crude as json text block.
+  - should look into seeing a UI element that have dynamic user created list elements. kinda like a todo list.
+- game user buzzer should change color to green if they are they (or their team) have buzzed in.
+- game user buzzer should change color to red if their team is rejected from the buzzer
+- admin user needs to actually be able to delete games.
 - Split score control into a quick score control and an advanced score control:
   - Quick score control:
     - Team format:
@@ -181,18 +192,9 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
 - Add more login providers:
   - Ideally just: Apple / Google / Discord.
     - But will have to see how easy it is to switch over to JWT (or use multiple token types).
-  - For sure:
-    - GitHub.
-    - LinkedIn.
-  - More than likely:
-    - Apple.
-    - Facebook.
-    - Instagram.
-  - Less than likely:
-    - Slack.
-    - Battle.net.
 - Migrate from "(Classic) React Query Integration" to pure TanStack React Query
   - https://trpc.io/docs/client/tanstack-react-query/setup
+  - need to figure out how to replace subscriptions with the pure tanstack version.
 - Consider swtiching from prisma cloud to something else
   - prisma prices per request ask 100k
   - supabase free teir caps at 5 GB of bandwidth
