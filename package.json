@@ -22,10 +22,10 @@
     "lint": "next lint",
     "postinstall": "bun db:generate",
     "preview": "next build && next start",
-    "prod:db:migrate":"bun --env-file=.env.production run db:migrate",
+    "prod:db:migrate": "bun --env-file=.env.production run db:migrate",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "vercel:env:pull" : "bunx vercel env pull .env.production"
+    "vercel:env:pull": "bunx vercel env pull .env.production"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",
@@ -64,7 +64,7 @@
     "lucide-react": "^0.488.0",
     "luxon": "^3.6.1",
     "neverthrow": "^8.2.0",
-    "next": "^15.3.1",
+    "next": "15.3.8",
     "next-auth": "5.0.0-beta.25",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
