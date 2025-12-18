@@ -3,10 +3,12 @@
 import { api } from "@/trpc/react";
 import type { PrivateGameState } from "@/types";
 import { ChevronsUpDown } from "lucide-react";
+import { GameFormat } from "@prisma/client";
 
 import { env } from "@/env";
 
 import { GameScoreboardTeamCard } from "@/app/_components/client/GameScoreboardTeamCard";
+import { GameScoreboardIndividualCard } from "@/app/_components/client/GameScoreboardIndividualCard";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
@@ -29,6 +31,37 @@ export function Scoreboard({
   const currentGameState = gameStateSub.data ?? initialGameState;
 
   const { game, gameTeams } = currentGameState;
+
+  let gameCards;
+
+  if (game.format === GameFormat.individual) {
+    gameTeams.sort(
+      (
+        a: PrivateGameState["gameTeams"][number],
+        b: PrivateGameState["gameTeams"][number],
+      ) => {
+        // sort by highest score first.
+        return b.score - a.score;
+      },
+    );
+    gameCards = gameTeams.map((gameTeam) => (
+      <GameScoreboardIndividualCard
+        key={gameTeam.id}
+        gameTeam={gameTeam}
+        gameUser={currentGameState.gameUsers[gameTeam.gameUsers[0]!]!}
+      />
+    ));
+  } else if (game.format === GameFormat.team) {
+    gameCards = gameTeams.map((gameTeam) => (
+      <GameScoreboardTeamCard
+        key={gameTeam.id}
+        gameTeam={gameTeam}
+        gameUsers={gameTeam.gameUsers.map(
+          (userId) => currentGameState.gameUsers[userId]!,
+        )}
+      />
+    ));
+  }
 
   return (
     <div className="mx-auto w-full max-w-screen-2xl p-4">
@@ -63,15 +96,7 @@ export function Scoreboard({
       </Collapsible>
       <GameWhoBuzzedIn />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {gameTeams.map((gameTeam) => (
-          <GameScoreboardTeamCard
-            key={gameTeam.id}
-            gameTeam={gameTeam}
-            gameUsers={gameTeam.gameUsers.map(
-              (userId) => currentGameState.gameUsers[userId]!,
-            )}
-          />
-        ))}
+        {gameCards}
       </div>
     </div>
   );
