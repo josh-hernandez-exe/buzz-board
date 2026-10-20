@@ -49,11 +49,12 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  games     Game[]
-  accounts  Account[]
-  sessions  Session[]
-  gameUsers GameUser[]
-  gameAdmin GameAdmin[]
+  games          Game[]
+  accounts       Account[]
+  sessions       Session[]
+  gameUsers      GameUser[]
+  gameAdmin      GameAdmin[]
+  gameOperations GameOperation[]
 }
 
 model VerificationToken {
@@ -89,6 +90,8 @@ model Game {
   gameAdmins       GameAdmin[]
   scoreboard       Scoreboard?
   scoreboardStates ScoreboardState[]
+  operations       GameOperation[]
+  scoreEffects     ScoreEffect[]
 }
 
 model GameUser {
@@ -175,4 +178,53 @@ model Scoreboard {
   game         Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
   allStates    ScoreboardState[] @relation("AllScoreboardStates")
   currentState ScoreboardState?  @relation(fields: [currentStateId], references: [id])
+}
+
+/// Receipt for one committed game command. A retry with the same requestId by
+/// the same actor and payload returns `result` instead of applying it again.
+/// This is audit/idempotency storage, not an event log or a second score total.
+model GameOperation {
+  id          String   @id @default(cuid())
+  gameId      String
+  requestId   String   @db.VarChar(64)
+  action      String   @db.VarChar(64)
+  actorUserId String?
+  /// SHA-256 of the canonical command payload.
+  payloadHash String   @db.VarChar(64)
+  /// Small committed-result summary returned to retries; never bodies or tokens.
+  result      Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  game         Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  actorUser    User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  scoreEffects ScoreEffect[]
+
+  @@unique([gameId, requestId])
+  @@index([gameId, createdAt])
+}
+
+/// Immutable evidence of the score change an operation actually applied to one
+/// scoring unit. Current scores still come only from the Scoreboard's current
+/// state; these rows are never summed to produce a total.
+model ScoreEffect {
+  id                String   @id @default(cuid())
+  gameId            String
+  operationId       String
+  /// The scoring unit (team, or an individual's backing team). Intentionally
+  /// not a foreign key: evidence must survive the team being removed.
+  gameTeamId        String
+  /// Float (double precision) so legacy fractional balances are recorded
+  /// exactly; new inputs are bounded integers, which doubles represent exactly.
+  delta             Float
+  scoreBefore       Float
+  scoreAfter        Float
+  /// The scoreboard state that was current after the operation.
+  scoreboardStateId String
+  createdAt         DateTime @default(now())
+
+  game      Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  operation GameOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+
+  @@unique([operationId, gameTeamId])
+  @@index([gameId, gameTeamId, createdAt])
 }

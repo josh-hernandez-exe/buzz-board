@@ -1,11 +1,11 @@
-import type { Game, GameTeam } from "@prisma/client";
+import type { Game } from "@prisma/client";
 import { db } from "@/server/db";
 import type { Result } from "neverthrow";
+
+import { parseScoreMap } from "@/server/scores/scoreMath";
 import { err, ok } from "neverthrow";
 
 import type { PublicGameState, PrivateGameState, GameSettings } from "@/types";
-
-type ScoreMap = Record<GameTeam["id"], number>;
 
 export async function getPublicGameState({
   gameId,
@@ -50,10 +50,7 @@ export async function getPublicGameState({
     return err(new Error("Game not found"));
   }
 
-  const scoreboardState = game.scoreboard?.currentState?.state as Record<
-    GameTeam["id"],
-    number
-  >;
+  const scoreboardState = parseScoreMap(game.scoreboard?.currentState?.state);
 
   const data: PublicGameState = {
     game: {
@@ -132,10 +129,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
     return err(new Error("Game not found"));
   }
 
-  const scoreboardState = game.scoreboard?.currentState?.state as Record<
-    GameTeam["id"],
-    number
-  >;
+  const scoreboardState = parseScoreMap(game.scoreboard?.currentState?.state);
 
   const data: PrivateGameState = {
     game: {
@@ -184,50 +178,4 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
   });
 
   return ok(data);
-}
-
-export async function checkTeamsAndGetCurrentScores({
-  gameId,
-  gameTeamIds,
-}: {
-  gameId: Game["id"];
-  gameTeamIds: GameTeam["id"][];
-}) {
-  const gameTeams = await db.gameTeam.findMany({
-    where: {
-      gameId,
-      id: {
-        in: gameTeamIds,
-      },
-    },
-  });
-
-  if (gameTeams.length !== gameTeamIds.length) {
-    return err(new Error("Game teams not found"));
-  }
-
-  const scoreboard = await db.scoreboard.findUnique({
-    where: {
-      gameId,
-    },
-    include: {
-      currentState: true,
-    },
-  });
-
-  if (!scoreboard) {
-    return err(new Error("Scoreboard not found"));
-  }
-  if (!scoreboard.currentState) {
-    return err(new Error("Scoreboard does not have a current state"));
-  }
-
-  const oldScoreboardState = scoreboard?.currentState;
-
-  const currentScores: ScoreMap = (oldScoreboardState?.state as ScoreMap) ?? {};
-
-  return ok({
-    scoreboard,
-    currentScores,
-  });
 }

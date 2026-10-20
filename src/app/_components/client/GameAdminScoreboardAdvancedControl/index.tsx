@@ -9,6 +9,7 @@ import { GenericCard } from "@/app/_components/GenericCard";
 import { Input } from "@/app/_components/ui/input";
 import { Button } from "@/app/_components/ui/button";
 import { logger } from "@/logger";
+import { newRequestId } from "@/utils/requestId";
 
 import { DataTable } from "./GameTeamsTable";
 import { columns } from "./gameTeamTableColumns";
@@ -21,7 +22,8 @@ export function GameAdminScoreboardAdvancedControl({
   >;
 }) {
   logger.debug(`GameAdminScoreboardControl`);
-  const [score, setScore] = useState<number>(0);
+  // Kept as text so "0", an empty field and a lone "-" are distinguishable.
+  const [scoreText, setScoreText] = useState("0");
   const [selectedGameTeams, setSelectedGameTeams] = useState<
     Record<GameTeam["id"], boolean>
   >({});
@@ -30,26 +32,39 @@ export function GameAdminScoreboardAdvancedControl({
   const setScoreMutation = api.gameAdmin.setScore.useMutation();
   const undoScoreMutation = api.gameAdmin.undoScore.useMutation();
   const redoScoreMutation = api.gameAdmin.redoScore.useMutation();
+  const mutations = [
+    addScoreMutation,
+    setScoreMutation,
+    undoScoreMutation,
+    redoScoreMutation,
+  ];
+  const isSaving = mutations.some((m) => m.isPending);
+  const lastError = mutations.find((m) => m.isError)?.error?.message;
 
   if (!Array.isArray(gameTeams) || gameTeams.length === 0) {
     return undefined;
   }
 
-  const getScorePayload = (): Record<GameTeam["id"], number> => {
-    return Object.fromEntries(
-      Object.entries(selectedGameTeams)
-        .map(([gameTeamId, shouldAffect]) => [
-          gameTeamId,
-          shouldAffect ? score : undefined,
-        ])
-        .filter(([_, score]) => typeof score === "number"),
-    ) as Record<GameTeam["id"], number>;
-  };
+  const trimmed = scoreText.trim();
+  const score = /^-?\d+$/.test(trimmed) ? Number(trimmed) : undefined;
 
-  const numAffectedTeams = Object.entries(selectedGameTeams).filter(
-    ([, shouldAffect]) => shouldAffect,
-  ).length;
-  const isScoreReady = numAffectedTeams > 0 && score;
+  const changesFor = (amount: number): Record<GameTeam["id"], number> =>
+    Object.fromEntries(
+      Object.entries(selectedGameTeams)
+        .filter(([, shouldAffect]) => shouldAffect)
+        .map(([gameTeamId]) => [gameTeamId, amount]),
+    );
+
+  const numAffectedTeams = Object.keys(changesFor(0)).length;
+  const isScoreReady = numAffectedTeams > 0 && score !== undefined && !isSaving;
+  const disabledReason =
+    numAffectedTeams === 0
+      ? "Select at least one team."
+      : score === undefined
+        ? "Enter a whole number."
+        : undefined;
+
+  const reset = () => mutations.forEach((m) => m.reset());
 
   return (
     <GenericCard
@@ -71,16 +86,22 @@ export function GameAdminScoreboardAdvancedControl({
             onChange={setSelectedGameTeams}
           />
           <Input
-            type="number"
+            type="text"
+            inputMode="numeric"
             placeholder="Enter Score"
-            value={score}
-            onChange={(e) => setScore(Number(e.target.value))}
+            aria-label="Score"
+            value={scoreText}
+            onChange={(e) => setScoreText(e.target.value)}
             className="mb-4 rounded border border-gray-300 p-2"
           />
           <Button
             onClick={() => {
               if (isScoreReady) {
-                addScoreMutation.mutate(getScorePayload());
+                reset();
+                addScoreMutation.mutate({
+                  requestId: newRequestId(),
+                  changes: changesFor(score),
+                });
               }
             }}
             disabled={!isScoreReady}
@@ -91,12 +112,11 @@ export function GameAdminScoreboardAdvancedControl({
           <Button
             onClick={() => {
               if (isScoreReady) {
-                const payloadEntries = Object.entries(getScorePayload());
-                addScoreMutation.mutate(
-                  Object.fromEntries(
-                    payloadEntries.map(([teamId, score]) => [teamId, -score]),
-                  ),
-                );
+                reset();
+                addScoreMutation.mutate({
+                  requestId: newRequestId(),
+                  changes: changesFor(-score),
+                });
               }
             }}
             disabled={!isScoreReady}
@@ -107,7 +127,11 @@ export function GameAdminScoreboardAdvancedControl({
           <Button
             onClick={() => {
               if (isScoreReady) {
-                setScoreMutation.mutate(getScorePayload());
+                reset();
+                setScoreMutation.mutate({
+                  requestId: newRequestId(),
+                  changes: changesFor(score),
+                });
               }
             }}
             disabled={!isScoreReady}
@@ -116,17 +140,33 @@ export function GameAdminScoreboardAdvancedControl({
             Set
           </Button>
           <Button
-            onClick={() => undoScoreMutation.mutate()}
+            onClick={() => {
+              reset();
+              undoScoreMutation.mutate({ requestId: newRequestId() });
+            }}
+            disabled={isSaving}
             className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
           >
             Undo
           </Button>
           <Button
-            onClick={() => redoScoreMutation.mutate()}
+            onClick={() => {
+              reset();
+              redoScoreMutation.mutate({ requestId: newRequestId() });
+            }}
+            disabled={isSaving}
             className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
           >
             Redo
           </Button>
+          {disabledReason && (
+            <p className="mt-2 text-sm text-gray-600">{disabledReason}</p>
+          )}
+          {lastError && (
+            <p role="alert" className="mt-2 text-sm text-red-600">
+              {lastError}
+            </p>
+          )}
         </div>
       }
     />

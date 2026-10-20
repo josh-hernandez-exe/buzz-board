@@ -14,13 +14,22 @@ vi.mock("@/trpc/react", () => ({
     gameAdmin: Object.fromEntries(
       Object.entries(mutations).map(([name, mutate]) => [
         name,
-        { useMutation: () => ({ mutate }) },
+        {
+          useMutation: () => ({
+            mutate,
+            reset: vi.fn(),
+            isPending: false,
+            isError: false,
+          }),
+        },
       ]),
     ),
   },
 }));
 
 const { GameAdminScoreboardAdvancedControl } = await import("./index");
+
+const anyString: unknown = expect.any(String);
 
 const teams = [
   { id: "t1", name: "Team 1", index: 1, buzzerState: "available", score: 5 },
@@ -33,7 +42,7 @@ async function setup(score: string) {
   await userEvent.click(firstRow!);
   const input = screen.getByPlaceholderText("Enter Score");
   await userEvent.clear(input);
-  await userEvent.type(input, score);
+  if (score) await userEvent.type(input, score);
 }
 
 describe("GameAdminScoreboardAdvancedControl", () => {
@@ -48,21 +57,62 @@ describe("GameAdminScoreboardAdvancedControl", () => {
     await userEvent.click(screen.getByRole("button", { name: "Subtract" }));
     await userEvent.click(screen.getByRole("button", { name: "Set" }));
 
-    expect(mutations.addScore).toHaveBeenNthCalledWith(1, { t1: 10 });
-    expect(mutations.addScore).toHaveBeenNthCalledWith(2, { t1: -10 });
-    expect(mutations.setScore).toHaveBeenCalledWith({ t1: 10 });
+    const requestId: unknown = expect.stringMatching(/^[0-9a-f]{32}$/);
+    expect(mutations.addScore).toHaveBeenNthCalledWith(1, {
+      requestId,
+      changes: { t1: 10 },
+    });
+    expect(mutations.addScore).toHaveBeenNthCalledWith(2, {
+      requestId,
+      changes: { t1: -10 },
+    });
+    expect(mutations.setScore).toHaveBeenCalledWith({
+      requestId,
+      changes: { t1: 10 },
+    });
+    const ids = [
+      ...mutations.addScore.mock.calls,
+      ...mutations.setScore.mock.calls,
+    ].map(([arg]) => (arg as { requestId: string }).requestId);
+    expect(new Set(ids).size).toBe(3);
   });
 
-  it("disables score buttons until a team is selected", () => {
+  it("disables score buttons until a team is selected, and says why", () => {
     render(<GameAdminScoreboardAdvancedControl gameTeams={[...teams]} />);
 
     expect(screen.getByRole("button", { name: "Set" })).toBeDisabled();
+    expect(screen.getByText("Select at least one team.")).toBeInTheDocument();
   });
 
-  it.fails("KNOWN DEFECT: allows setting a selected team to zero", async () => {
+  it("allows setting a selected team to zero", async () => {
     await setup("0");
 
-    // `isScoreReady` is `numAffectedTeams > 0 && score`, so 0 is "not ready".
-    expect(screen.getByRole("button", { name: "Set" })).toBeEnabled();
+    await userEvent.click(screen.getByRole("button", { name: "Set" }));
+
+    expect(mutations.setScore).toHaveBeenCalledWith({
+      requestId: anyString,
+      changes: { t1: 0 },
+    });
+  });
+
+  it.each(["", "-", "1.5", "abc"])(
+    "rejects %j as a score with a reason",
+    async (text) => {
+      await setup(text);
+
+      expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+      expect(screen.getByText("Enter a whole number.")).toBeInTheDocument();
+    },
+  );
+
+  it("accepts negative whole numbers", async () => {
+    await setup("-4");
+
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(mutations.addScore).toHaveBeenCalledWith({
+      requestId: anyString,
+      changes: { t1: -4 },
+    });
   });
 });

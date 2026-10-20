@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { GameFormat, BuzzerState } from "@prisma/client";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -7,7 +9,13 @@ import {
   protectedGameAdminProcedure,
 } from "@/server/api/trpc";
 
-import { checkTeamsAndGetCurrentScores } from "@/server/db/common";
+import { gameTransactionErrorToTRPC } from "@/server/api/errors";
+import {
+  runScoreCommand,
+  type ScoreCommand,
+  type ScoreCommandError,
+} from "@/server/scores/scoreService";
+import { logger } from "@/logger";
 
 import {
   emitUpdatedGameState,
@@ -15,6 +23,127 @@ import {
 } from "@/server/utils/events";
 
 import type { GameSettings } from "@/types";
+
+const requestIdSchema = z
+  .string()
+  .min(8)
+  .max(64)
+  .regex(/^[A-Za-z0-9_-]+$/);
+
+const scoreChangesSchema = z
+  .record(z.string(), z.number())
+  .refine((changes) => Object.keys(changes).length > 0, {
+    message: "Choose at least one team",
+  });
+
+/**
+ * `{ requestId, changes }`, or the legacy bare `{ [teamId]: amount }` record
+ * that clients from before PR03 send (no retry deduplication).
+ */
+const scoreChangeInput = z.union([
+  z.object({ requestId: requestIdSchema, changes: scoreChangesSchema }),
+  scoreChangesSchema,
+]);
+const historyInput = z
+  .object({ requestId: requestIdSchema })
+  .optional()
+  .or(z.undefined());
+
+function normalizeScoreChange(input: z.infer<typeof scoreChangeInput>) {
+  if ("changes" in input && typeof input.requestId === "string") {
+    return {
+      requestId: input.requestId,
+      changes: input.changes as Record<string, number>,
+    };
+  }
+  return { requestId: undefined, changes: input as Record<string, number> };
+}
+
+function scoreErrorToTRPC(error: ScoreCommandError): TRPCError {
+  switch (error.kind) {
+    case "gameNotFound":
+    case "busy":
+      return gameTransactionErrorToTRPC(error);
+    case "scoreboardNotFound":
+      return new TRPCError({
+        code: "NOT_FOUND",
+        message: "Scoreboard not found",
+      });
+    case "unknownTeams":
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Game teams not found",
+      });
+    case "noChanges":
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Choose at least one team",
+      });
+    case "invalidAmount":
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Scores must be whole numbers between -1,000,000 and 1,000,000 per change (got ${error.value}).`,
+      });
+    case "scoreOutOfRange":
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message: "That change would put a score outside ±1,000,000,000.",
+      });
+    case "nothingToUndo":
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message: "No past states to undo",
+      });
+    case "nothingToRedo":
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message: "No past states to redo",
+      });
+    case "historyCorrupt":
+      return new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Score history is inconsistent; the change was not applied.",
+      });
+    case "requestIdReused":
+      return new TRPCError({
+        code: "CONFLICT",
+        message: "This request ID was already used for a different change.",
+      });
+  }
+}
+
+/** Publishes after commit; a failure is logged, never treated as unsaved. */
+async function publishAfterCommit(gameId: string) {
+  try {
+    const result = await emitUpdatedGameState({ gameId });
+    if (result.isErr()) {
+      logger.warn(`Saved, but could not publish game ${gameId}`, result.error);
+    }
+  } catch (error) {
+    logger.warn(`Saved, but could not publish game ${gameId}`, error);
+  }
+}
+
+async function scoreCommand(
+  ctx: {
+    gameSession: { id: string };
+    session: { user: { id: string } } | null;
+  },
+  requestId: string | undefined,
+  command: ScoreCommand,
+) {
+  const result = await runScoreCommand({
+    gameId: ctx.gameSession.id,
+    actorUserId: ctx.session?.user.id ?? null,
+    requestId: requestId ?? `server-${randomUUID()}`,
+    command,
+  });
+  if (result.isErr()) {
+    throw scoreErrorToTRPC(result.error);
+  }
+  await publishAfterCommit(ctx.gameSession.id);
+  return result.value;
+}
 
 export const gameAdminRouter = createTRPCRouter({
   addTeam: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
@@ -204,214 +333,27 @@ export const gameAdminRouter = createTRPCRouter({
     ]);
   }),
   addScore: protectedGameAdminProcedure
-    .input(z.record(z.string(), z.number()))
+    .input(scoreChangeInput)
     .mutation(async ({ ctx, input }) => {
-      const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
-
-      const result = await checkTeamsAndGetCurrentScores({
-        gameId: game.id,
-        gameTeamIds: Object.keys(input),
-      });
-
-      if (result.isErr()) {
-        throw result.error;
-      }
-
-      const { scoreboard, currentScores } = result.value;
-
-      Object.entries(input).forEach(([gameTeamId, score]) => {
-        currentScores[gameTeamId] ??= 0;
-        currentScores[gameTeamId] += score;
-      });
-
-      const scoreboardState = await ctx.db.$transaction(async (tx) => {
-        const newScoreboardState = await tx.scoreboardState.create({
-          data: {
-            gameId: game.id,
-            scoreboardId: scoreboard?.id,
-            state: currentScores,
-          },
-        });
-
-        const newPastStateIds = scoreboard?.pastStateIds as string[];
-        if (typeof scoreboard?.currentState?.id === "string") {
-          newPastStateIds.push(scoreboard?.currentState.id);
-        }
-
-        await tx.scoreboard.update({
-          where: {
-            id: scoreboard?.id,
-          },
-          data: {
-            pastStateIds: newPastStateIds,
-            currentStateId: newScoreboardState.id,
-            futureStateIds: [],
-          },
-        });
-
-        return newScoreboardState;
-      });
-
-      await emitUpdatedGameState({ gameId: game.id });
-
-      return scoreboardState;
+      const { requestId, changes } = normalizeScoreChange(input);
+      return scoreCommand(ctx, requestId, { kind: "add", changes });
     }),
   setScore: protectedGameAdminProcedure
-    .input(z.record(z.string(), z.number()))
+    .input(scoreChangeInput)
     .mutation(async ({ ctx, input }) => {
-      const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
-
-      const result = await checkTeamsAndGetCurrentScores({
-        gameId: game.id,
-        gameTeamIds: Object.keys(input),
-      });
-
-      if (result.isErr()) {
-        throw result.error;
-      }
-
-      const { scoreboard, currentScores } = result.value;
-
-      if (!scoreboard) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Scoreboard not found",
-        });
-      }
-
-      Object.entries(input).forEach(([gameTeamId, score]) => {
-        currentScores[gameTeamId] ??= 0;
-        currentScores[gameTeamId] = score;
-      });
-
-      const scoreboardState = await ctx.db.$transaction(async (tx) => {
-        const newScoreboardState = await tx.scoreboardState.create({
-          data: {
-            gameId: game.id,
-            scoreboardId: scoreboard?.id,
-            state: currentScores,
-          },
-        });
-
-        const newPastStateIds = scoreboard?.pastStateIds as string[];
-        if (typeof scoreboard?.currentState?.id === "string") {
-          newPastStateIds.push(scoreboard?.currentState.id);
-        }
-
-        await tx.scoreboard.update({
-          where: {
-            id: scoreboard?.id,
-          },
-          data: {
-            pastStateIds: newPastStateIds,
-            currentStateId: newScoreboardState.id,
-            futureStateIds: [],
-          },
-        });
-
-        return newScoreboardState;
-      });
-
-      await emitUpdatedGameState({ gameId: game.id });
-
-      return scoreboardState;
+      const { requestId, changes } = normalizeScoreChange(input);
+      return scoreCommand(ctx, requestId, { kind: "set", changes });
     }),
-  undoScore: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
-    const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
-
-    const scoreboard = await ctx.db.scoreboard.findUnique({
-      where: {
-        gameId: game.id,
-      },
-      include: {
-        currentState: true,
-      },
-    });
-
-    if (!scoreboard) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Scoreboard not found",
-      });
-    }
-
-    const oldPastStateIds = scoreboard?.pastStateIds as string[];
-    const oldFutureStateIds = scoreboard?.futureStateIds as string[];
-    if (oldPastStateIds.length === 0) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "No past states to undo",
-      });
-    }
-
-    const lastStateId = oldPastStateIds.at(-1);
-
-    let newFutureStateIds = [...oldFutureStateIds];
-    if (typeof scoreboard?.currentState?.id === "string") {
-      newFutureStateIds = [scoreboard?.currentState.id, ...oldFutureStateIds];
-    }
-
-    await ctx.db.scoreboard.update({
-      where: {
-        id: scoreboard.id,
-      },
-      data: {
-        pastStateIds: [...oldPastStateIds.slice(0, -1)],
-        currentStateId: lastStateId,
-        futureStateIds: newFutureStateIds,
-      },
-    });
-
-    await emitUpdatedGameState({ gameId: game.id });
-  }),
-  redoScore: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
-    const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
-
-    const scoreboard = await ctx.db.scoreboard.findUnique({
-      where: {
-        gameId: game.id,
-      },
-      include: {
-        currentState: true,
-      },
-    });
-
-    if (!scoreboard) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Scoreboard not found",
-      });
-    }
-
-    const oldPastStateIds = scoreboard?.pastStateIds as string[];
-    const oldFutureStateIds = scoreboard?.futureStateIds as string[];
-    if (oldFutureStateIds.length === 0) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "No past states to redo",
-      });
-    }
-
-    const lastStateId = oldFutureStateIds.at(-1);
-
-    const newPastStateIds = [...oldPastStateIds];
-    if (typeof scoreboard?.currentState?.id === "string") {
-      newPastStateIds.push(scoreboard?.currentState.id);
-    }
-
-    await ctx.db.scoreboard.update({
-      where: {
-        id: scoreboard.id,
-      },
-      data: {
-        pastStateIds: newPastStateIds,
-        currentStateId: lastStateId,
-        futureStateIds: [...oldFutureStateIds.slice(1)],
-      },
-    });
-
-    await emitUpdatedGameState({ gameId: game.id });
-  }),
+  undoScore: protectedGameAdminProcedure
+    .input(historyInput)
+    .mutation(async ({ ctx, input }) =>
+      scoreCommand(ctx, input?.requestId, { kind: "undo" }),
+    ),
+  redoScore: protectedGameAdminProcedure
+    .input(historyInput)
+    .mutation(async ({ ctx, input }) =>
+      scoreCommand(ctx, input?.requestId, { kind: "redo" }),
+    ),
   movePlayerToTeam: protectedGameAdminProcedure
     .input(
       z.object({

@@ -1,8 +1,8 @@
 /**
- * T05 characterization (PR01): manual score changes and history as they behave
- * today. `it.fails` marks a known defect, written with the *correct*
- * expectation; when a later PR fixes it, Vitest reports the unexpected pass and
- * the test must be promoted to a normal `it`.
+ * T05: manual score changes and history through the legacy request shape
+ * (`{ [teamId]: amount }`), which pre-PR03 clients still send. PR03 fixed the
+ * concurrency and redo defects this file originally pinned with `it.fails`.
+ * Receipts and effect evidence are in scoreEffects.test.ts.
  */
 import { describe, expect, it } from "vitest";
 
@@ -37,6 +37,34 @@ describe("manual scoring", () => {
     expect(await currentScores(game.id)).toEqual({ [a]: 0, [b]: -3 });
   });
 
+  it("rejects fractional, non-finite and oversized amounts without changing scores", async () => {
+    const { game, admin, gameTeams } = await createGame();
+    const a = gameTeams[0]!.id;
+
+    for (const amount of [1.5, 1_000_001, -1_000_001]) {
+      await expect(
+        admin.gameAdmin.addScore({ [a]: amount }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
+    await expect(admin.gameAdmin.setScore({})).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect((await currentScores(game.id))[a]).toBe(0);
+  });
+
+  it("does not add an undo step when nothing changes", async () => {
+    const { game, admin, gameTeams } = await createGame();
+    const a = gameTeams[0]!.id;
+
+    await admin.gameAdmin.addScore({ [a]: 0 });
+    await admin.gameAdmin.setScore({ [a]: 0 });
+
+    const scoreboard = await db.scoreboard.findUniqueOrThrow({
+      where: { gameId: game.id },
+    });
+    expect(scoreboard.pastStateIds).toEqual([]);
+  });
+
   it("rejects a team that is not in this game", async () => {
     const { admin, gameTeams } = await createGame();
     const other = await createGame();
@@ -64,24 +92,22 @@ describe("manual scoring", () => {
     expect(scoreboard.futureStateIds).toEqual([]);
   });
 
-  it.fails(
-    "KNOWN DEFECT: serializes concurrent score changes without losing updates",
-    async () => {
-      const { game, admin, gameTeams } = await createGame();
-      const a = gameTeams[0]!.id;
+  it("serializes concurrent score changes without losing updates", async () => {
+    const { game, admin, gameTeams } = await createGame();
+    const a = gameTeams[0]!.id;
 
-      // Today scores are read outside the write transaction, and each
-      // transaction inserts a ScoreboardState (FK key-share lock on the
-      // scoreboard row) before updating that row. Parallel changes deadlock
-      // (PostgreSQL 40P01) or time out, and survivors can overwrite each other.
-      const results = await Promise.allSettled(
-        Array.from({ length: 20 }, () => admin.gameAdmin.addScore({ [a]: 1 })),
-      );
+    // Before PR03 this deadlocked (PostgreSQL 40P01) or lost updates.
+    const results = await Promise.allSettled(
+      Array.from({ length: 20 }, () => admin.gameAdmin.addScore({ [a]: 1 })),
+    );
 
-      expect(results.filter((r) => r.status === "rejected")).toEqual([]);
-      expect((await currentScores(game.id))[a]).toBe(20);
-    },
-  );
+    expect(results.filter((r) => r.status === "rejected")).toEqual([]);
+    expect((await currentScores(game.id))[a]).toBe(20);
+    const scoreboard = await db.scoreboard.findUniqueOrThrow({
+      where: { gameId: game.id },
+    });
+    expect(scoreboard.pastStateIds).toHaveLength(20);
+  });
 });
 
 describe("undo / redo history", () => {
@@ -116,37 +142,39 @@ describe("undo / redo history", () => {
     expect(await score()).toBe(30);
   });
 
-  it.fails(
-    "KNOWN DEFECT: redoes multiple undos in order (0 -> 10 -> 30)",
-    async () => {
-      const { admin, score } = await scoreSequence();
-
-      await admin.gameAdmin.undoScore();
-      await admin.gameAdmin.undoScore();
-      expect(await score()).toBe(0);
-
-      // undo prepends to futureStateIds, but redo reads the *last* entry and
-      // drops the *first*, so the first redo jumps straight to 30.
-      await admin.gameAdmin.redoScore();
-      expect(await score()).toBe(10);
-      await admin.gameAdmin.redoScore();
-      expect(await score()).toBe(30);
-    },
-  );
-
-  it("documents today's redo order: two undos then redo jumps to the newest state", async () => {
+  it("redoes multiple undos in order (0 -> 10 -> 30)", async () => {
     const { game, admin, score } = await scoreSequence();
 
     await admin.gameAdmin.undoScore();
     await admin.gameAdmin.undoScore();
-    await admin.gameAdmin.redoScore();
+    expect(await score()).toBe(0);
 
+    // Before PR03 the first redo jumped straight to 30.
+    await admin.gameAdmin.redoScore();
+    expect(await score()).toBe(10);
+    await admin.gameAdmin.redoScore();
     expect(await score()).toBe(30);
+    await expect(admin.gameAdmin.redoScore()).rejects.toThrow(
+      "No past states to redo",
+    );
+
     const scoreboard = await db.scoreboard.findUniqueOrThrow({
       where: { gameId: game.id },
     });
-    // The remaining redo entry is the state that is already current.
-    expect(scoreboard.futureStateIds).toEqual([scoreboard.currentStateId]);
+    expect(scoreboard.pastStateIds).toHaveLength(2);
+    expect(scoreboard.futureStateIds).toEqual([]);
+  });
+
+  it("interleaves undo and redo without skipping states", async () => {
+    const { admin, score } = await scoreSequence();
+
+    await admin.gameAdmin.undoScore();
+    await admin.gameAdmin.redoScore();
+    await admin.gameAdmin.undoScore();
+    await admin.gameAdmin.undoScore();
+    await admin.gameAdmin.redoScore();
+
+    expect(await score()).toBe(10);
   });
 
   it("discards the redo branch when a new change is made", async () => {

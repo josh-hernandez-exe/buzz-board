@@ -54,6 +54,8 @@ The [CI workflow](../.github/workflows/ci.yml) runs the same commands against se
 
 Each test is written with the correct expectation. Each was run as a normal `it` to confirm it fails for the stated reason.
 
+Status after later PRs: the three PR03 rows are **fixed in PR03** ([PR03 baseline](./pr03-baseline.md)), and their tests are now normal tests.
+
 | Defect | Evidence | Test | Planned fix |
 |---|---|---|---|
 | Concurrent score changes deadlock or are lost | 20 parallel `addScore(+1)` calls: 1 succeeded, 19 failed with PostgreSQL `40P01 deadlock detected` or Prisma transaction timeouts, and the final score was 1. Scores are read outside the transaction, and each insert takes an FK share lock on the scoreboard row before updating it. Errors reach the client as raw `PrismaClientUnknownRequestError`. | [scoreboard.test.ts](../tests/integration/scoreboard.test.ts) | PR03 |
