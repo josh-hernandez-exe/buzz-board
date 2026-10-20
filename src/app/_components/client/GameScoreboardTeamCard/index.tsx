@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from "@/app/_components/ui/card";
 
-import { api } from "@/trpc/react";
 
 import type {
   GameTeamFromPrivateState,
@@ -20,6 +19,7 @@ import type {
 } from "@/types";
 
 import { cn } from "@/app/_lib/utils";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 
 export function GameScoreboardTeamCard({
   gameTeam: initialGameTeam,
@@ -29,7 +29,7 @@ export function GameScoreboardTeamCard({
   gameUsers: GameUserFromPrivateState[];
 }) {
   const { id: gameTeamId } = initialGameTeam;
-  const gameState = api.gameGeneral.gameState.useSubscription();
+  const gameState = useLiveGameState();
 
   const gameTeamFromState: GameTeamFromPrivateState | undefined =
     gameState?.data?.gameTeams.find((team) => team.id === gameTeamId);

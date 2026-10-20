@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { GameFormat, BuzzerState } from "@prisma/client";
+import { GameFormat } from "@prisma/client";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
@@ -17,10 +17,14 @@ import {
 } from "@/server/scores/scoreService";
 import { logger } from "@/logger";
 
+import { emitUpdatedGameState } from "@/server/utils/events";
 import {
-  emitUpdatedGameState,
-  updateBuzzerListeningState,
-} from "@/server/utils/events";
+  openBuzzer,
+  pauseBuzzer,
+  resetBuzzer,
+} from "@/server/buzzer/buzzerService";
+import { type GameTransactionError } from "@/server/db/gameTransaction";
+import { type Result } from "neverthrow";
 
 import type { GameSettings } from "@/types";
 
@@ -145,6 +149,21 @@ async function scoreCommand(
   return result.value;
 }
 
+async function buzzerControl(
+  gameId: string,
+  action: (
+    gameId: string,
+  ) => Promise<Result<{ changed: boolean }, GameTransactionError>>,
+) {
+  const result = await action(gameId);
+  if (result.isErr()) {
+    throw gameTransactionErrorToTRPC(result.error);
+  }
+  if (result.value.changed) {
+    await publishAfterCommit(gameId);
+  }
+}
+
 export const gameAdminRouter = createTRPCRouter({
   addTeam: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const {
@@ -250,88 +269,15 @@ export const gameAdminRouter = createTRPCRouter({
 
       await emitUpdatedGameState({ gameId });
     }),
-  startBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
-    const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
-
-    if (game.isBuzzerListening) {
-      // already listening
-      return;
-    }
-
-    await ctx.db.$transaction([
-      ctx.db.gameTeam.updateMany({
-        where: {
-          gameId: game.id,
-          buzzerState: BuzzerState.selected,
-        },
-        data: {
-          buzzerState: BuzzerState.rejected,
-        },
-      }),
-      ctx.db.game.update({
-        where: {
-          id: game.id,
-        },
-        data: {
-          isBuzzerListening: true,
-        },
-      }),
-    ]);
-
-    await Promise.all([
-      emitUpdatedGameState({ gameId: game.id }),
-      updateBuzzerListeningState({ gameId: game.id }),
-    ]);
-  }),
-  pauseBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
-    const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
-
-    if (!game.isBuzzerListening) {
-      // already not listening
-      return;
-    }
-
-    await ctx.db.game.update({
-      where: {
-        id: game.id,
-      },
-      data: {
-        isBuzzerListening: false,
-      },
-    });
-
-    await Promise.all([
-      emitUpdatedGameState({ gameId: game.id }),
-      updateBuzzerListeningState({ gameId: game.id }),
-    ]);
-  }),
-  resetBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
-    const { gameAdmin: _gameAdmin, ...game } = ctx.gameSession;
-
-    await ctx.db.$transaction([
-      ctx.db.gameTeam.updateMany({
-        where: {
-          gameId: game.id,
-        },
-        data: {
-          buzzerState: BuzzerState.available,
-        },
-      }),
-      ctx.db.game.update({
-        where: {
-          id: game.id,
-        },
-        data: {
-          isBuzzerListening: false,
-        },
-      }),
-    ]);
-
-    await Promise.all([
-      emitUpdatedGameState({ gameId: game.id }),
-      updateBuzzerListeningState({ gameId: game.id }),
-    ]);
-  }),
+  startBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) =>
+    buzzerControl(ctx.gameSession.id, openBuzzer),
+  ),
+  pauseBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) =>
+    buzzerControl(ctx.gameSession.id, pauseBuzzer),
+  ),
+  resetBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) =>
+    buzzerControl(ctx.gameSession.id, resetBuzzer),
+  ),
   addScore: protectedGameAdminProcedure
     .input(scoreChangeInput)
     .mutation(async ({ ctx, input }) => {

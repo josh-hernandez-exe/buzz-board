@@ -1,6 +1,5 @@
 "use client";
 
-import { api } from "@/trpc/react";
 import type { PrivateGameState } from "@/types";
 import { ChevronsUpDown } from "lucide-react";
 import { GameFormat } from "@prisma/client";
@@ -20,13 +19,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/app/_components/ui/collapsible";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 
 export function Scoreboard({
   gameState: initialGameState,
 }: {
   gameState: PrivateGameState;
 }) {
-  const gameStateSub = api.gameGeneral.gameState.useSubscription();
+  const gameStateSub = useLiveGameState();
 
   const currentGameState = gameStateSub.data ?? initialGameState;
 

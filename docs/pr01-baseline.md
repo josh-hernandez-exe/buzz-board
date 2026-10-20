@@ -54,7 +54,7 @@ The [CI workflow](../.github/workflows/ci.yml) runs the same commands against se
 
 Each test is written with the correct expectation. Each was run as a normal `it` to confirm it fails for the stated reason.
 
-Status after later PRs: the three PR03 rows are **fixed in PR03** ([PR03 baseline](./pr03-baseline.md)), and their tests are now normal tests.
+Status after later PRs: the three PR03 rows are **fixed in PR03** ([PR03 baseline](./pr03-baseline.md)), and the Redis leak is **fixed in PR04** ([PR04 baseline](./pr04-baseline.md)). Their tests are now normal tests.
 
 | Defect | Evidence | Test | Planned fix |
 |---|---|---|---|
@@ -66,14 +66,14 @@ Status after later PRs: the three PR03 rows are **fixed in PR03** ([PR03 baselin
 ## Characterized current behavior (may change on purpose later)
 
 - **Silent account linking:** a signed-in user who presents a guest token is linked to that participant with no prompt ([roster.test.ts](../tests/integration/roster.test.ts)). Plan invariant 5 and PR08 require explicit linking.
-- **Anonymous display has no sound cues:** the public scoreboard mounts `GameSoundEffects`, which subscribes to the member-only `gameGeneral.gameState` and is rejected (`UNAUTHORIZED`) for anonymous viewers. This is covered at the API level in liveState.test.ts. PR04.
+- **Anonymous display has no sound cues:** the public scoreboard mounts `GameSoundEffects`, which subscribes to the member-only `gameGeneral.gameState` and is rejected (`UNAUTHORIZED`) for anonymous viewers. This is covered at the API level in liveState.test.ts. Fixed in PR04 (`PublicGameSoundEffects`).
 - **Buzzer arbitration holds under a race:** six teams buzzing at once produce exactly one winner. Re-opening the buzzer rejects the previous winner, and reset clears everything. This is backed only by PostgreSQL, so there is no Redis dependency for the winner.
 - **Joining and scoping:** join codes are case-insensitive, and guests are numbered by join order. An individual game creates one backing team per player and keeps its name in sync on rename. Admin and participant credentials are scoped to their own game.
 - **Short codes allow one more repeat than configured:** the guard is `count > maxRepeat`, so `maxRepeat: 3` permits 4 ([codeGeneration.test.ts](../src/server/utils/codeGeneration.test.ts)).
 
 ## Static observations not yet covered by tests
 
-- **Pages block without Redis:** with Redis unavailable, every page render blocks (a `/join` request took 55 s in `next dev`), because [events.ts](../src/server/utils/events.ts) top-level-awaits `redisClient.connect()`, which retries forever. PR04 should bound this.
+- **Pages block without Redis:** with Redis unavailable, every page render blocks (a `/join` request took 55 s in `next dev`), because [events.ts](../src/server/utils/events.ts) top-level-awaits `redisClient.connect()`, which retries forever. Fixed in PR04: connections are no longer awaited at startup.
 - **Create-game format default mismatch:** `DropDownSelection` keeps the `defaultValue` (`team`) in internal state but never passes it to the Radix `Select`. `CreateGame` starts with `individual`, so submitting without choosing a format creates an **individual** game while the control shows the placeholder "Game Format". `checkIsReady` always ends with `setIsDataReady(false)`, so it does nothing. This belongs in the PR05 quick-create work.
 - **Dashboard game list will hide multi-admin games:** `user.game.getAll` uses `gameAdmins: { every: { userId } }`. Once co-hosts exist (PR07), a game with two admins would only appear for its creator, and `every` also matches games with no admins. Today every game gets exactly one admin, so the current UI is unaffected.
 - **README:** the production section told operators to run `prisma migrate reset`, which deletes all data. That instruction is replaced with a backup-then-`db push` warning. A reviewed migration baseline is PR02.

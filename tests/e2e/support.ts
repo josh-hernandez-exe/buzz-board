@@ -106,3 +106,22 @@ export async function selectGameFromDashboard(
     await page.waitForURL(`**/game/${gameId}/admin`, { timeout: 5_000 });
   }).toPass({ timeout: 45_000 });
 }
+
+/**
+ * Tracks the tRPC SSE subscriptions a page holds open. Requests that end are
+ * dropped: in development React mounts effects twice, so a duplicate stream is
+ * opened and aborted immediately.
+ */
+export function trackStreams(page: Page) {
+  const open = new Map<object, string>();
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (!url.pathname.startsWith("/api/trpc/")) return;
+    if (!(request.headers().accept ?? "").includes("text/event-stream")) return;
+    open.set(request, url.pathname.replace("/api/trpc/", ""));
+  });
+  const close = (request: object) => open.delete(request);
+  page.on("requestfinished", close);
+  page.on("requestfailed", close);
+  return { open: () => [...open.values()].sort() };
+}

@@ -4,7 +4,7 @@ import {
 } from "@/server/api/trpc";
 
 import { getPrivateGameState } from "@/server/db/common";
-import { gameEventEmitter, gameEventCache } from "@/server/utils/events";
+import { liveFeeds } from "@/server/utils/events";
 
 import type { BasicGameInfo } from "@/types";
 
@@ -37,41 +37,13 @@ export const gameGeneralRouter = createTRPCRouter({
     ctx,
     signal,
   }) {
-    const { id: gameId } = ctx.gameSession;
-
-    let gameState = await gameEventCache.privateGameStateUpdate.get(gameId);
-    if (!gameState) {
-      const result = await getPrivateGameState({ gameId });
-      if (result.isErr()) {
-        throw result.error;
-      }
-      gameState = result.value;
-    }
-
-    yield gameState;
-
-    for await (const gameState of gameEventEmitter.privateGameStateUpdate.subscribe(
-      { gameId, signal },
-    )) {
-      yield gameState;
-    }
+    yield* liveFeeds.privateGameState.subscribe(ctx.gameSession.id, signal);
   }),
+  /** Superseded by `buzzWinner` in the game state; kept for older open tabs. */
   whoBuzzedIn: protectedGameGeneralProcedure.subscription(async function* ({
     ctx,
     signal,
   }) {
-    const game = ctx.gameSession;
-
-    const whoBuzzedIn = await gameEventCache.whoBuzzedIn.get(game.id);
-    if (whoBuzzedIn) {
-      yield whoBuzzedIn;
-    }
-
-    for await (const whoBuzzedIn of gameEventEmitter.whoBuzzedIn.subscribe({
-      gameId: game.id,
-      signal,
-    })) {
-      yield whoBuzzedIn;
-    }
+    yield* liveFeeds.whoBuzzedIn.subscribe(ctx.gameSession.id, signal);
   }),
 });

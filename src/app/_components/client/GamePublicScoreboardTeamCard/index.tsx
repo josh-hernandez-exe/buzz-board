@@ -12,21 +12,20 @@ import {
   CardTitle,
 } from "@/app/_components/ui/card";
 
-import { api } from "@/trpc/react";
-
 import type { GameTeamFromPublicState } from "@/types";
 
 import { cn } from "@/app/_lib/utils";
+import { usePublicLiveGameState } from "@/app/_components/client/LiveGameState";
 
 export function GamePublicScoreboardTeamCard({
-  gameId,
+  gameId: _gameId,
   gameTeam: initialGameTeam,
 }: {
   gameId: string;
   gameTeam: GameTeamFromPublicState;
 }) {
   const { id: gameTeamId } = initialGameTeam;
-  const gameState = api.public.gameState.useSubscription({ gameId });
+  const gameState = usePublicLiveGameState();
 
   const gameTeamFromState: GameTeamFromPublicState | undefined =
     gameState?.data?.gameTeams.find((team) => team.id === gameTeamId);

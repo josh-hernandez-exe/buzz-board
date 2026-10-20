@@ -142,6 +142,15 @@ export type PrivateGameState = {
       image: User["image"] | undefined;
     }
   >;
+  /**
+   * The current buzzer window's winner, from the durable claim. The team is
+   * the one the claim was made for. `gameUserId` is null only for a team
+   * selected before claims were recorded.
+   */
+  buzzWinner: {
+    gameUserId: GameUser["id"] | null;
+    gameTeamId: GameTeam["id"];
+  } | null;
 };
 
 export type GameTeamFromPrivateState = PrivateGameState["gameTeams"][number];

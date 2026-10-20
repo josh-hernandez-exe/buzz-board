@@ -3,11 +3,10 @@
 import { GameFormat } from "@prisma/client";
 import type { Game, GameTeam } from "@prisma/client";
 
-import { api } from "@/trpc/react";
-
 import { GameTeamSelection } from "@/app/_components/client/GameTeamSelection";
 
 import type { GameSettings } from "@/types";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 
 export function TeamSwitcherTab({
   game,
@@ -18,11 +17,12 @@ export function TeamSwitcherTab({
   gameTeams: Pick<GameTeam, "id" | "name" | "index">[];
   initialGameTeamId: GameTeam["id"] | undefined | null;
 }) {
+  const currentGameState = useLiveGameState();
+
   // Only show team switcher for team format games
   if (game.format !== GameFormat.team) {
     return null;
   }
-  const currentGameState = api.gameGeneral.gameState.useSubscription();
 
   const initialGameSettings = game.settings as GameSettings;
   const currentGameSettings = currentGameState.data?.game

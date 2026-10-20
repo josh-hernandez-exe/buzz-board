@@ -3,15 +3,37 @@
 import { useEffect, useRef, useCallback } from "react";
 import { BuzzerState } from "@prisma/client";
 
-import { api } from "@/trpc/react";
+import {
+  useLiveGameState,
+  usePublicLiveGameState,
+} from "@/app/_components/client/LiveGameState";
 
 export interface GameSoundEffectsProps {
   gameTeamId?: string;
 }
 
+type TeamBuzzerStates = Array<{ id: string; buzzerState: BuzzerState }>;
+
+/** Sound cues for member pages (admin, player, member scoreboard). */
 export function GameSoundEffects({ gameTeamId }: GameSoundEffectsProps) {
-  const gameState = api.gameGeneral.gameState.useSubscription();
-  const previousGameStateRef = useRef<typeof gameState.data>(undefined);
+  const { data } = useLiveGameState();
+  return <BuzzerSounds gameTeams={data?.gameTeams} gameTeamId={gameTeamId} />;
+}
+
+/** Sound cues for the anonymous public scoreboard. */
+export function PublicGameSoundEffects() {
+  const { data } = usePublicLiveGameState();
+  return <BuzzerSounds gameTeams={data?.gameTeams} />;
+}
+
+function BuzzerSounds({
+  gameTeams,
+  gameTeamId,
+}: {
+  gameTeams: TeamBuzzerStates | undefined;
+  gameTeamId?: string;
+}) {
+  const previousGameTeamsRef = useRef<TeamBuzzerStates | undefined>(undefined);
 
   // Audio references
   const buzzInAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -56,20 +78,19 @@ export function GameSoundEffects({ gameTeamId }: GameSoundEffectsProps) {
   }, []);
 
   useEffect(() => {
-    if (!gameState.data) return;
+    if (!gameTeams) return;
 
-    const currentGameState = gameState.data;
-    const previousGameState = previousGameStateRef.current;
+    const previousGameTeams = previousGameTeamsRef.current;
 
     // Update the ref for next comparison
-    previousGameStateRef.current = currentGameState;
+    previousGameTeamsRef.current = gameTeams;
 
     // Skip the first render when there's no previous state
-    if (!previousGameState) return;
+    if (!previousGameTeams) return;
 
     // Check each team for state changes
-    currentGameState.gameTeams.forEach((currentTeam) => {
-      const previousTeam = previousGameState.gameTeams.find(
+    gameTeams.forEach((currentTeam) => {
+      const previousTeam = previousGameTeams.find(
         (team) => team.id === currentTeam.id,
       );
 
@@ -94,7 +115,7 @@ export function GameSoundEffects({ gameTeamId }: GameSoundEffectsProps) {
         playWrongAnswerSound();
       }
     });
-  }, [gameState.data, gameTeamId, playBuzzInSound, playWrongAnswerSound]);
+  }, [gameTeams, gameTeamId, playBuzzInSound, playWrongAnswerSound]);
 
   // This component doesn't render anything visible
   return null;

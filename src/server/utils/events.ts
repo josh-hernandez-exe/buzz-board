@@ -1,214 +1,84 @@
-import { type RedisClientType } from "redis";
-
-import type { Game, GameUser } from "@prisma/client";
-import { ok, err } from "neverthrow";
-import type { Result } from "neverthrow";
-import { createClient } from "redis";
+import type { Game } from "@prisma/client";
+import { err, ok, type Result } from "neverthrow";
 
 import { db } from "@/server/db";
 import { getPublicGameState, getPrivateGameState } from "@/server/db/common";
+import { getBuzzWinner } from "@/server/buzzer/buzzerService";
+import { gameChangeBus } from "@/server/live/gameChangeBus";
+import { GameFeed } from "@/server/live/gameFeed";
 import type { PublicGameState, PrivateGameState, WhoBuzzedIn } from "@/types";
-import { createRedisChannelAsyncIterator } from "@/server/utils/asyncGenerator";
 
-import { env } from "@/env";
-import { logger } from "@/logger";
-
-// Initialize KeyDB client
-const redisClient = createClient({
-  url: env.KV_URL,
-});
-
-redisClient.on("error", (err) => {
-  // You MUST listen to error events.
-  // If a client doesn't have at least one error listener registered and an error occurs,
-  // that error will be thrown and the Node.js process will exit.
-  logger.error("Redis Client Error", err);
-});
-
-await redisClient.connect();
-
-function cacheFactory<T>(prefix: string) {
-  return {
-    async set(gameId: Game["id"], data: T) {
-      const key = `${prefix}:${gameId}`;
-      await redisClient.set(key, JSON.stringify(data));
-    },
-    async get(gameId: Game["id"]): Promise<T | null> {
-      const key = `${prefix}:${gameId}`;
-      const data = await redisClient.get(key);
-      return data ? (JSON.parse(data) as T) : null;
-    },
-    async has(gameId: Game["id"]): Promise<boolean> {
-      const key = `${prefix}:${gameId}`;
-      return (await redisClient.exists(key)) > 0;
-    },
-  };
-}
-
-export const gameEventCache = {
-  publicGameStateUpdate: cacheFactory<PublicGameState>("publicGameStateUpdate"),
-  privateGameStateUpdate: cacheFactory<PrivateGameState>(
-    "privateGameStateUpdate",
+/**
+ * Live state streams. Each yields an initial snapshot from PostgreSQL and a
+ * fresh snapshot after every change; Redis only carries "game changed"
+ * notifications (see GameChangeBus).
+ */
+export const liveFeeds = {
+  publicGameState: new GameFeed<PublicGameState>(
+    "public game state",
+    gameChangeBus,
+    (gameId) => getPublicGameState({ gameId }),
   ),
-  whoBuzzedIn: cacheFactory<WhoBuzzedIn | null>("whoBuzzedIn"),
+  privateGameState: new GameFeed<PrivateGameState>(
+    "private game state",
+    gameChangeBus,
+    (gameId) => getPrivateGameState({ gameId }),
+  ),
+  /** Kept for tabs opened before PR04; current pages use `buzzWinner`. */
+  whoBuzzedIn: new GameFeed<WhoBuzzedIn>(
+    "who buzzed in",
+    gameChangeBus,
+    (gameId) => getWhoBuzzedIn(gameId),
+  ),
 };
 
-// NOTE: Important redis pub/sub docs
-//       https://redis.io/docs/manual/pubsub/
-
-function emitterFactory<T>(prefix: string) {
-  return {
-    async publish(gameId: Game["id"], state: T) {
-      const channel = `${prefix}:${gameId}`;
-
-      // NOTE: publishing does not take over the client
-      //       see subscription use
-      await redisClient.publish(channel, JSON.stringify(state));
-    },
-    subscribe({
-      gameId,
-      signal,
-    }: {
-      gameId: Game["id"];
-      signal?: AbortSignal;
-    }) {
-      const channel = `${prefix}:${gameId}`;
-
-      return createRedisChannelAsyncIterator<T>({
-        redisClient: redisClient as RedisClientType,
-        channel,
-        signal,
-      });
-    },
-  };
-}
-
-export const gameEventEmitter = {
-  publicGameStateUpdate: emitterFactory<PublicGameState>(
-    "publicGameStateUpdate",
-  ),
-  privateGameStateUpdate: emitterFactory<PrivateGameState>(
-    "privateGameStateUpdate",
-  ),
-  whoBuzzedIn: emitterFactory<WhoBuzzedIn | null>("whoBuzzedIn"),
-};
-
+/**
+ * Announces a committed change to every live stream for the game, on every
+ * instance. Call after the transaction commits; a publish failure is logged,
+ * never reported as a failed save.
+ */
 export async function emitUpdatedGameState({
   gameId,
 }: {
   gameId: Game["id"];
 }): Promise<Result<void, Error>> {
-  const [publicResult, privateResult] = await Promise.all([
-    getPublicGameState({ gameId }),
-    getPrivateGameState({ gameId }),
-  ]);
-
-  if (publicResult.isErr()) {
-    return err(publicResult.error);
-  }
-  if (privateResult.isErr()) {
-    return err(privateResult.error);
-  }
-
-  // Set cache BEFORE publishing new state
-
-  await Promise.all([
-    gameEventCache.publicGameStateUpdate.set(gameId, publicResult.value),
-    gameEventCache.privateGameStateUpdate.set(gameId, privateResult.value),
-  ]);
-
-  await Promise.all([
-    gameEventEmitter.publicGameStateUpdate.publish(gameId, publicResult.value),
-    gameEventEmitter.privateGameStateUpdate.publish(
-      gameId,
-      privateResult.value,
-    ),
-  ]);
-
+  await gameChangeBus().notify(gameId);
   return ok();
 }
 
-export async function updateBuzzerListeningState({
-  gameId,
-}: {
-  gameId: Game["id"];
-}) {
+async function getWhoBuzzedIn(
+  gameId: Game["id"],
+): Promise<Result<WhoBuzzedIn, Error>> {
   const game = await db.game.findUnique({
-    select: {
-      id: true,
-      format: true,
-      isBuzzerListening: true,
-    },
-    where: {
-      id: gameId,
-    },
+    where: { id: gameId },
+    select: { id: true, format: true, isBuzzerListening: true },
   });
+  if (!game) return err(new Error("Game not found"));
 
-  const data: WhoBuzzedIn = {
-    game: game!,
-    gameUser: undefined,
-  };
+  const winner = await getBuzzWinner(gameId);
+  if (!winner?.gameUserId) return ok({ game, gameUser: undefined });
 
-  await Promise.all([
-    gameEventCache.whoBuzzedIn.set(gameId, data),
-    gameEventEmitter.whoBuzzedIn.publish(gameId, data),
+  const [gameUser, gameTeam] = await Promise.all([
+    db.gameUser.findUnique({
+      where: { id: winner.gameUserId },
+      include: { user: { select: { image: true } } },
+    }),
+    db.gameTeam.findUnique({
+      where: { id: winner.gameTeamId },
+      select: { id: true, name: true },
+    }),
   ]);
+  if (!gameUser) return ok({ game, gameUser: undefined });
 
-  return ok();
-}
-
-export async function emitWhoBuzzedIn({
-  gameUserId,
-}: {
-  gameUserId?: GameUser["id"];
-}): Promise<Result<void, Error>> {
-  const result = await db.gameUser.findUnique({
-    where: {
-      id: gameUserId,
-    },
-    include: {
-      gameTeam: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-      game: {
-        select: {
-          id: true,
-          format: true,
-          isBuzzerListening: true,
-        },
-      },
-      user: {
-        select: {
-          image: true,
-        },
-      },
-    },
-  });
-
-  if (!result) {
-    return err(new Error("User not found"));
-  }
-
-  const { gameTeam, game, ...gameUser } = result;
-
-  const data: WhoBuzzedIn = {
+  return ok({
     game,
     gameUser: {
       id: gameUser.id,
       name: gameUser.name,
       index: gameUser.index,
-      gameTeam: gameTeam!,
+      // The team the claim was made for, even if the player moved since.
+      gameTeam: gameTeam ?? { id: winner.gameTeamId, name: "Removed team" },
       image: gameUser.user?.image,
     },
-  };
-
-  await Promise.all([
-    gameEventCache.whoBuzzedIn.set(game.id, data),
-    gameEventEmitter.whoBuzzedIn.publish(game.id, data),
-  ]);
-
-  return ok();
+  });
 }

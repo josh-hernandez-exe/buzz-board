@@ -7,6 +7,7 @@ import { Button } from "@/app/_components/ui/button";
 import { api } from "@/trpc/react";
 
 import { logger } from "@/logger";
+import { newRequestId } from "@/utils/requestId";
 
 export function GameBuzzerTab({
   game,
@@ -33,12 +34,17 @@ export function GameBuzzerTab({
     <div>
       {selectedGameTeam && (
         <Button
-          onClick={() => buzzInMutation.mutate()}
+          onClick={() => buzzInMutation.mutate({ requestId: newRequestId() })}
           disabled={buzzInMutation.isPending}
           className="h-40 w-full bg-blue-500 text-white hover:bg-blue-600"
         >
           Buzzer
         </Button>
+      )}
+      {selectedGameTeam && buzzInMutation.error && (
+        <p role="alert" className="mt-2 text-center text-sm text-red-600">
+          {buzzInMutation.error.message}
+        </p>
       )}
       {!selectedGameTeam && game.format === GameFormat.team && (
         <div className="flex flex-col items-center justify-center p-8">

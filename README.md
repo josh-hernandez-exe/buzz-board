@@ -245,8 +245,8 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
 
 ### Errors to Investigate
 
-- ❌ tRPC failed on gameGeneral.whoBuzzedIn: Aborted
 - ⨯ [Error [InvariantError]: Invariant: Cannot call waitUntil() on an AwaiterOnce that was already awaited. This is a bug in Next.js.]
+- (Resolved in PR04) `tRPC failed on gameGeneral.whoBuzzedIn: Aborted`: streams now end cleanly when a client disconnects.
 
 
 

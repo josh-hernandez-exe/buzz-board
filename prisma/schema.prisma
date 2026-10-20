@@ -75,6 +75,9 @@ model Game {
   name              String
   code              String     @unique @db.VarChar(6)
   isBuzzerListening Boolean    @default(false)
+  /// Incremented each time the buzzer opens or is reset; a BuzzClaim belongs
+  /// to one window, so each window has at most one winner.
+  buzzerWindow      Int        @default(0)
   data              Json       @default("{}")
   settings          Json       @default("{}")
   format            GameFormat @default(team)
@@ -92,6 +95,7 @@ model Game {
   scoreboardStates ScoreboardState[]
   operations       GameOperation[]
   scoreEffects     ScoreEffect[]
+  buzzClaims       BuzzClaim[]
 }
 
 model GameUser {
@@ -227,4 +231,23 @@ model ScoreEffect {
 
   @@unique([operationId, gameTeamId])
   @@index([gameId, gameTeamId, createdAt])
+}
+
+/// The durable record of who won a buzzer window. Written in the same
+/// transaction that closes listening; Redis is never the only winner record.
+/// Participant and team IDs are the ones at claim time and are not foreign
+/// keys, so the record survives later moves or removals.
+model BuzzClaim {
+  id         String   @id @default(cuid())
+  gameId     String
+  window     Int
+  gameUserId String
+  gameTeamId String
+  requestId  String?  @db.VarChar(64)
+  createdAt  DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, window])
+  @@unique([gameId, requestId])
 }

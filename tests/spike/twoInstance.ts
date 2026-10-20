@@ -213,19 +213,41 @@ async function main() {
 
     const rounds = 5;
     const latencies: Record<number, number[]> = { 3201: [], 3202: [] };
+    const perRound: Record<number, number[]> = { 3201: [], 3202: [] };
+    const initialSnapshots = Object.fromEntries(
+      PORTS.map((port) => [
+        port,
+        subscribers.filter((s) => s.port === port && s.scores.length > 0)
+          .length,
+      ]),
+    );
     for (let round = 1; round <= rounds; round++) {
       const sentAt = performance.now();
       await addScore(PORTS[0], game.id, teamId, sessionToken);
       await sleep(1_000);
+      for (const port of PORTS) perRound[port]!.push(0);
       for (const sub of subscribers) {
-        const hit = sub.scores.find((s) => s.score === round);
-        if (hit) latencies[sub.port]!.push(hit.at - sentAt);
+        // Snapshots may coalesce, so any later score also proves delivery.
+        const hit = sub.scores.find((s) => s.score >= round);
+        if (hit) {
+          latencies[sub.port]!.push(Math.max(0, hit.at - sentAt));
+          perRound[sub.port]![round - 1]! += 1;
+        }
       }
     }
 
     subscribers.forEach((s) => s.controller.abort());
     await sleep(3_000);
     const afterAbort = await redisClients();
+    const channelSubscriptions = Number(
+      (
+        await redis.sendCommand<[string, number]>([
+          "PUBSUB",
+          "NUMSUB",
+          `buzz-board:game-changed:${game.id}`,
+        ])
+      )[1],
+    );
 
     const expected = PER_INSTANCE * rounds;
     const report = {
@@ -233,6 +255,8 @@ async function main() {
       subscribersPerInstance: PER_INSTANCE,
       mutationsSentTo: PORTS[0],
       rounds,
+      initialSnapshots,
+      deliveredPerRound: perRound,
       delivery: Object.fromEntries(
         PORTS.map((port) => [
           port,
@@ -252,7 +276,8 @@ async function main() {
         afterAllAborted: afterAbort,
         perSubscriber:
           (withSubscribers - baselineRedis) / (PER_INSTANCE * PORTS.length),
-        leakedAfterAbort: afterAbort - baselineRedis,
+        changeAfterAbort: afterAbort - withSubscribers,
+        channelSubscriptionsAfterAbort: channelSubscriptions,
       },
     };
     mkdirSync("test-results", { recursive: true });

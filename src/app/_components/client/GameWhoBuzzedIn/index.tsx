@@ -6,8 +6,7 @@ import { api } from "@/trpc/react";
 import { GameFormat } from "@prisma/client";
 import { GameUserAvatar } from "@/app/_components/client/GameUserAvatar";
 import { GenericCard } from "@/app/_components/GenericCard";
-
-import { logger } from "@/logger";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 
 export function GameWhoBuzzedIn({
   gameUserId: initialSelfUserId,
@@ -17,51 +16,57 @@ export function GameWhoBuzzedIn({
   const gameSelfInfo = api.gameUser.getSelfInfo.useQuery(undefined, {
     enabled: !!initialSelfUserId,
   });
-  const whoBuzzedInResult = api.gameGeneral.whoBuzzedIn.useSubscription();
+  const { data: gameState } = useLiveGameState();
   const selfTeamId = gameSelfInfo.data?.gameTeamId;
   const selfGameUserId = gameSelfInfo.data?.id ?? initialSelfUserId;
 
+  const winner = gameState?.buzzWinner;
+  const winnerUser = winner?.gameUserId
+    ? gameState?.gameUsers[winner.gameUserId]
+    : undefined;
+  const winnerTeam = winner
+    ? gameState?.gameTeams.find((team) => team.id === winner.gameTeamId)
+    : undefined;
+
   let content: JSX.Element;
 
-  if (whoBuzzedInResult.data) {
-    const { game, gameUser } = whoBuzzedInResult.data;
-
-    if (gameUser && gameUser.id === selfGameUserId) {
-      content = <p>You have buzz in!</p>;
-    } else if (gameUser) {
-      logger.debug(`GameWhoBuzzedIn userImageUrl: ${gameUser.image}`);
-      let message;
-
-      if (
+  if (gameState) {
+    const { game } = gameState;
+    if (winner && winner.gameUserId === selfGameUserId) {
+      content = <p>You have buzzed in!</p>;
+    } else if (winner) {
+      const teamName = winnerTeam?.name ?? "a removed team";
+      const playerName = winnerUser?.name;
+      let message: string;
+      if (!playerName) {
+        message = `[${teamName}] has buzzed in.`;
+      } else if (
         game.format === GameFormat.team &&
-        gameUser.gameTeam.id === selfTeamId
+        winner.gameTeamId === selfTeamId
       ) {
-        message = `[${gameUser.name}] from your team has buzzed in.`;
+        message = `[${playerName}] from your team has buzzed in.`;
       } else if (game.format === GameFormat.team) {
-        message = `[${gameUser.name}] from [${gameUser.gameTeam?.name}] has buzzed in.`;
-      } else if (game.format === GameFormat.individual) {
-        message = `[${gameUser.name}] has buzzed in.`;
+        message = `[${playerName}] from [${teamName}] has buzzed in.`;
+      } else {
+        message = `[${playerName}] has buzzed in.`;
       }
-
       content = (
         <div className="flex items-center space-x-2">
-          <GameUserAvatar
-            image={gameUser.image ?? undefined}
-            index={gameUser.index}
-          />
+          {winnerUser && (
+            <GameUserAvatar
+              image={winnerUser.image ?? undefined}
+              index={winnerUser.index}
+            />
+          )}
           <p>{message}</p>
         </div>
       );
-    } else if (!gameUser && game.isBuzzerListening) {
+    } else if (game.isBuzzerListening) {
       content = <p>Buzzer is listening and no one has buzzed in yet.</p>;
-    } else if (!gameUser && !game.isBuzzerListening) {
-      content = <p>Buzzer is not listening.</p>;
     } else {
-      content = <p>Unknown state.</p>;
+      content = <p>Buzzer is not listening.</p>;
     }
   } else {
-    // No content if no current "who buzzed in" data
-    // This is the case when the game is not started yet
     content = <></>;
   }
 

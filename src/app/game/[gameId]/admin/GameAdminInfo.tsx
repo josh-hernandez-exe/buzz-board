@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { api } from "@/trpc/react";
 
 import { GameAdminTeamControl } from "@/app/_components/client/GameAdminTeamControl";
 import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
@@ -13,8 +12,6 @@ import { GamePlayerManagementTable } from "@/app/_components/client/GameAdminPla
 import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
 import { Skeleton } from "@/app/_components/ui/skeleton";
 
-import { useGameTokenData } from "@/app/_hooks/gameTokenData";
-
 import {
   Tabs,
   TabsContent,
@@ -23,13 +20,13 @@ import {
 } from "@/app/_components/ui/tabs";
 
 import type { PrivateGameState } from "@/types";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 
 export function GameAdminInfo({
   gameState: initialGameState,
 }: {
   gameState: PrivateGameState;
 }) {
-  useGameTokenData({ scopeGameId: initialGameState.game.id });
   const [activeTab, setActiveTab] = useState("quick-controls");
   const [isPending, startTransition] = useTransition();
 
@@ -39,7 +36,7 @@ export function GameAdminInfo({
     });
   };
 
-  const gameStateSub = api.gameGeneral.gameState.useSubscription();
+  const gameStateSub = useLiveGameState();
 
   const currentGameState: PrivateGameState =
     gameStateSub.data ?? initialGameState;

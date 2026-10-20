@@ -56,12 +56,13 @@ export default async function GamePage({
 
   return (
     <HydrateClient>
-      <GameScope gameId={gameId} />
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <Scoreboard gameState={currentGameState} />
-        </div>
-      </main>
+      <GameScope gameId={gameId} initialState={currentGameState}>
+        <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
+          <div className="flex min-h-screen flex-col items-center justify-center">
+            <Scoreboard gameState={currentGameState} />
+          </div>
+        </main>
+      </GameScope>
     </HydrateClient>
   );
 }

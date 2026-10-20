@@ -19,6 +19,7 @@ import type {
 } from "@/types";
 
 import { GameTeamUserTable } from "./GameTeamUserTable";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 
 export function GameUserTeamInfoCard({
   gameTeam: initialGameTeam,
@@ -28,7 +29,7 @@ export function GameUserTeamInfoCard({
   gameUsers?: GameUserFromPrivateState[];
 }) {
   const gameTeamInfo = api.gameUser.getSelfTeamInfo.useQuery();
-  const gameState = api.gameGeneral.gameState.useSubscription();
+  const gameState = useLiveGameState();
 
   const gameTeamFromState = gameState.data?.gameTeams.find(
     (team) => team.id === gameTeamInfo.data?.id,

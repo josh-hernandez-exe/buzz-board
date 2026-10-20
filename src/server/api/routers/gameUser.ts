@@ -1,4 +1,4 @@
-import { GameFormat, BuzzerState, type Prisma } from "@prisma/client";
+import { GameFormat, type Prisma } from "@prisma/client";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
@@ -9,7 +9,9 @@ import {
   protectedGameUserProcedure,
 } from "@/server/api/trpc";
 
-import { emitUpdatedGameState, emitWhoBuzzedIn } from "@/server/utils/events";
+import { emitUpdatedGameState } from "@/server/utils/events";
+import { buzzIn, type BuzzError } from "@/server/buzzer/buzzerService";
+import { gameTransactionErrorToTRPC } from "@/server/api/errors";
 import type {
   GameUserWithRelations,
   GameTeamWithRelations,
@@ -17,6 +19,39 @@ import type {
   GameUserBasicInfo,
   GameTeamBasicInfo,
 } from "@/types";
+
+function buzzErrorToTRPC(error: BuzzError): TRPCError {
+  switch (error.kind) {
+    case "gameNotFound":
+    case "busy":
+      return gameTransactionErrorToTRPC(error);
+    case "participantNotFound":
+      return new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Not a valid game user for this game.",
+      });
+    case "notOnTeam":
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Game user is not part of a team",
+      });
+    case "notListening":
+      return new TRPCError({
+        code: "CONFLICT",
+        message: "Game is not listening for buzzers",
+      });
+    case "teamRejected":
+      return new TRPCError({
+        code: "CONFLICT",
+        message: "Game team has already buzzed in.",
+      });
+    case "requestIdReused":
+      return new TRPCError({
+        code: "CONFLICT",
+        message: "This request ID was already used by someone else.",
+      });
+  }
+}
 
 export const gameUserRouter = createTRPCRouter({
   ping: protectedGameUserProcedure.query(({ ctx }) => {
@@ -319,93 +354,33 @@ export const gameUserRouter = createTRPCRouter({
         userId: gameUserUpdated.userId,
       };
     }),
-  buzzIn: protectedGameUserProcedure.mutation(async ({ ctx }) => {
-    const { gameUser, isBuzzerListening } = ctx.gameSession;
-    const { gameTeamId } = gameUser;
+  buzzIn: protectedGameUserProcedure
+    .input(
+      z
+        .object({
+          requestId: z
+            .string()
+            .min(8)
+            .max(64)
+            .regex(/^[A-Za-z0-9_-]+$/),
+        })
+        .optional(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { gameUser } = ctx.gameSession;
 
-    if (!gameTeamId) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Game user is not part of a team",
-      });
-    }
-
-    if (!isBuzzerListening) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "Game is not listening for buzzers",
-      });
-    }
-
-    const gameTeam = await ctx.db.gameTeam.findUnique({
-      select: {
-        id: true,
-        buzzerState: true,
-      },
-      where: {
-        id: gameTeamId,
-      },
-    });
-
-    if (gameTeam?.buzzerState === BuzzerState.rejected) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "Game team has already buzzed in.",
-      });
-    }
-
-    if (gameTeam?.buzzerState === BuzzerState.selected) {
-      return;
-    }
-
-    await ctx.db.$transaction(async (trx) => {
-      // Note1: to act as a psuedo mutex we only write with the expected buzzer state
-      //        only if both updates are successful will this take.
-      //        furthermore, if someone else made the query at the exact same time
-      //        the where clause will hopefully be enough to deal with that.
-      // Note2: This end point is likely getting hit with high bursts.
-      //        So we select to reduce the amount of data grabbed for it to be successful.
-      const [updatedTeam, updatedGame] = await Promise.all([
-        trx.gameTeam.update({
-          select: {
-            id: true,
-          },
-          where: {
-            id: gameTeamId,
-            buzzerState: BuzzerState.available,
-          },
-          data: {
-            buzzerState: BuzzerState.selected,
-          },
-        }),
-        trx.game.update({
-          select: {
-            id: true,
-          },
-          where: {
-            id: gameUser.gameId,
-            isBuzzerListening: true,
-          },
-          data: {
-            isBuzzerListening: false,
-          },
-        }),
-      ]);
-      if (!updatedTeam || !updatedGame) {
-        // throw and rollback
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "Invalid buzzer state.",
-        });
-      }
-    });
-
-    // only emit above query is successful.
-    await Promise.all([
-      emitWhoBuzzedIn({ gameUserId: gameUser.id }),
-      emitUpdatedGameState({
+      const result = await buzzIn({
         gameId: gameUser.gameId,
-      }),
-    ]);
-  }),
+        gameUserId: gameUser.id,
+        requestId: input?.requestId,
+      });
+      if (result.isErr()) {
+        throw buzzErrorToTRPC(result.error);
+      }
+
+      if (!result.value.replayed) {
+        await emitUpdatedGameState({ gameId: gameUser.gameId });
+      }
+      return result.value;
+    }),
 });

@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import type { Result } from "neverthrow";
 
 import { parseScoreMap } from "@/server/scores/scoreMath";
+import { getBuzzWinner } from "@/server/buzzer/buzzerService";
 import { err, ok } from "neverthrow";
 
 import type { PublicGameState, PrivateGameState, GameSettings } from "@/types";
@@ -131,7 +132,10 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
 
   const scoreboardState = parseScoreMap(game.scoreboard?.currentState?.state);
 
+  const buzzWinner = await getBuzzWinner(gameId);
+
   const data: PrivateGameState = {
+    buzzWinner,
     game: {
       id: game.id,
       name: game.name,

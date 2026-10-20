@@ -32,6 +32,7 @@ import { Switch } from "@/app/_components/ui/switch";
 import { GenericCard } from "@/app/_components/GenericCard";
 
 import type { GameSettings } from "@/types";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 
 type BasicGameTeamInfo = Pick<GameTeam, "id" | "name" | "index">;
 
@@ -46,7 +47,7 @@ export function GameAdminTeamControl({
   const removeTeamMutation = api.gameAdmin.removeTeam.useMutation();
   const toggleFreezeTeamsMutation =
     api.gameAdmin.toggleFreezeTeams.useMutation();
-  const gameStateSub = api.gameGeneral.gameState.useSubscription();
+  const gameStateSub = useLiveGameState();
 
   const gameTeamsFromState = gameStateSub.data?.gameTeams as
     | BasicGameTeamInfo[]

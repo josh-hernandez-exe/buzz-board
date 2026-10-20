@@ -23,6 +23,7 @@ import { RadioGroup, RadioGroupItem } from "@/app/_components/ui/radio-group";
 import { api } from "@/trpc/react";
 
 import { logger } from "@/logger";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 
 export function GameTeamSelection({
   initialGameTeamId,
@@ -36,7 +37,7 @@ export function GameTeamSelection({
   const utils = api.useUtils();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const gameTeamInfo = api.gameUser.getSelfTeamInfo.useQuery();
-  const gameState = api.gameGeneral.gameState.useSubscription();
+  const gameState = useLiveGameState();
   const gameTeams = gameState?.data?.gameTeams ?? initialGameteams;
 
   const curGameTeam =

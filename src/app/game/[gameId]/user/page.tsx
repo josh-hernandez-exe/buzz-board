@@ -77,49 +77,50 @@ export default async function GameUserPage({
 
   return (
     <HydrateClient>
-      <GameScope gameId={gameId} />
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        {/* Game sound effects for the user's team */}
-        <GameSoundEffects gameTeamId={gameUser.gameTeamId ?? undefined} />
+      <GameScope gameId={gameId} initialState={currentGameState}>
+        <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
+          {/* Game sound effects for the user's team */}
+          <GameSoundEffects gameTeamId={gameUser.gameTeamId ?? undefined} />
 
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <Tabs defaultValue={defaultTab} className="w-[400px]">
-            <TabsList
-              className={`grid w-full ${isTeamGame ? "grid-cols-3" : "grid-cols-2"}`}
-            >
-              <TabsTrigger value="buzzer">Buzzer</TabsTrigger>
-              {isTeamGame && (
-                <TabsTrigger value="team-switcher">Team Switcher</TabsTrigger>
-              )}
-              <TabsTrigger value="information">Information</TabsTrigger>
-            </TabsList>
-            <TabsContent value="buzzer">
-              <GameWhoBuzzedIn gameUserId={gameUser.id} />
-              <GameBuzzerTab
-                game={game}
-                gameTeam={gameTeams.find(
-                  (gameTeam) => gameTeam.id === gameUser.gameTeamId,
+          <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
+            <Tabs defaultValue={defaultTab} className="w-[400px]">
+              <TabsList
+                className={`grid w-full ${isTeamGame ? "grid-cols-3" : "grid-cols-2"}`}
+              >
+                <TabsTrigger value="buzzer">Buzzer</TabsTrigger>
+                {isTeamGame && (
+                  <TabsTrigger value="team-switcher">Team Switcher</TabsTrigger>
                 )}
-              />
-            </TabsContent>
-            {isTeamGame && (
-              <TabsContent value="team-switcher">
-                <TeamSwitcherTab
+                <TabsTrigger value="information">Information</TabsTrigger>
+              </TabsList>
+              <TabsContent value="buzzer">
+                <GameWhoBuzzedIn gameUserId={gameUser.id} />
+                <GameBuzzerTab
                   game={game}
-                  gameTeams={gameTeams}
-                  initialGameTeamId={gameUser.gameTeamId}
+                  gameTeam={gameTeams.find(
+                    (gameTeam) => gameTeam.id === gameUser.gameTeamId,
+                  )}
                 />
               </TabsContent>
-            )}
-            <TabsContent value="information">
-              <InformationTab
-                gameState={currentGameState}
-                gameUser={gameUser}
-              />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
+              {isTeamGame && (
+                <TabsContent value="team-switcher">
+                  <TeamSwitcherTab
+                    game={game}
+                    gameTeams={gameTeams}
+                    initialGameTeamId={gameUser.gameTeamId}
+                  />
+                </TabsContent>
+              )}
+              <TabsContent value="information">
+                <InformationTab
+                  gameState={currentGameState}
+                  gameUser={gameUser}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </main>
+      </GameScope>
     </HydrateClient>
   );
 }
