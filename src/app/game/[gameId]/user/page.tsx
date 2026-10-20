@@ -20,6 +20,7 @@ import {
 import { logger } from "@/logger";
 import { InformationTab } from "./InformationTab";
 import { GameScope } from "@/app/_components/client/GameScope";
+import { PlayerHeader } from "@/app/_components/client/PlayerStatus";
 
 export default async function GameUserPage({
   params,
@@ -78,29 +79,24 @@ export default async function GameUserPage({
   return (
     <HydrateClient>
       <GameScope gameId={gameId} initialState={currentGameState}>
-        <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
+        <main className="flex min-h-screen flex-col items-center bg-gradient-to-b from-[#2e026d] to-[#15162c] px-4 py-6 text-white">
           {/* Game sound effects for the user's team */}
           <GameSoundEffects gameTeamId={gameUser.gameTeamId ?? undefined} />
-
-          <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-            <Tabs defaultValue={defaultTab} className="w-[400px]">
+          <div className="flex w-full max-w-md flex-col items-center gap-6">
+            <PlayerHeader gameUserId={gameUser.id} />
+            <Tabs defaultValue={defaultTab} className="w-full">
               <TabsList
                 className={`grid w-full ${isTeamGame ? "grid-cols-3" : "grid-cols-2"}`}
               >
                 <TabsTrigger value="buzzer">Buzzer</TabsTrigger>
                 {isTeamGame && (
-                  <TabsTrigger value="team-switcher">Team Switcher</TabsTrigger>
+                  <TabsTrigger value="team-switcher">Team</TabsTrigger>
                 )}
-                <TabsTrigger value="information">Information</TabsTrigger>
+                <TabsTrigger value="information">Info</TabsTrigger>
               </TabsList>
-              <TabsContent value="buzzer">
+              <TabsContent value="buzzer" className="flex flex-col gap-4">
+                <GameBuzzerTab gameUserId={gameUser.id} />
                 <GameWhoBuzzedIn gameUserId={gameUser.id} />
-                <GameBuzzerTab
-                  game={game}
-                  gameTeam={gameTeams.find(
-                    (gameTeam) => gameTeam.id === gameUser.gameTeamId,
-                  )}
-                />
               </TabsContent>
               {isTeamGame && (
                 <TabsContent value="team-switcher">

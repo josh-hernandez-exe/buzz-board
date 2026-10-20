@@ -4,7 +4,7 @@
  */
 import { expect, test } from "@playwright/test";
 
-import { db, selectGameFromDashboard, signInAsNewHost } from "./support";
+import { db, joinFromLink, signInAsNewHost } from "./support";
 
 test.afterAll(async () => {
   await db.$disconnect();
@@ -20,19 +20,15 @@ test("host creates a game, a guest buzzes in and the display updates", async ({
   await signInAsNewHost(hostContext, baseURL!);
   const host = await hostContext.newPage();
 
-  // Create an individual game from the dashboard.
+  // Create an individual game from the dashboard; it opens the host desk.
   await host.goto("/dashboard");
-  await host.getByRole("combobox").click();
-  await host.getByRole("option", { name: "individual" }).click();
-  await host.getByPlaceholder("Game Name").fill(gameName);
-  await host.getByRole("button", { name: "Submit" }).click();
-
-  const row = host.getByRole("row").filter({ hasText: gameName });
-  await expect(row).toBeVisible();
+  await host.getByLabel("Individually").check();
+  await host.getByLabel("Game name").fill(gameName);
+  await host.getByRole("button", { name: "Create game" }).click();
+  await host.waitForURL("**/admin");
   const game = await db.game.findFirstOrThrow({ where: { name: gameName } });
   expect(game.format).toBe("individual");
-
-  await selectGameFromDashboard(host, { gameName, gameId: game.id });
+  await expect(host.getByTestId("join-code")).toHaveText(game.code);
   await expect(
     host.getByRole("button", { name: "Start Buzzer" }),
   ).toBeVisible();
@@ -40,9 +36,12 @@ test("host creates a game, a guest buzzes in and the display updates", async ({
   // A guest joins from a shared link without an account.
   const playerContext = await browser.newContext();
   const player = await playerContext.newPage();
-  await player.goto(`/join?code=${game.code}`);
-  await player.waitForURL(`**/game/${game.id}/user`);
-  const buzzer = player.getByRole("button", { name: "Buzzer", exact: true });
+  await joinFromLink(player, {
+    code: game.code,
+    gameId: game.id,
+    nickname: "Ada",
+  });
+  const buzzer = player.getByRole("button", { name: "Buzz", exact: true });
   await expect(buzzer).toBeVisible();
 
   // An anonymous display shows the public scoreboard.
@@ -51,7 +50,7 @@ test("host creates a game, a guest buzzes in and the display updates", async ({
   await display.goto(`/game/${game.id}/scoreboard/public`);
   const card = display
     .locator("div")
-    .filter({ has: display.getByText("Team 1: Player 1", { exact: true }) })
+    .filter({ has: display.getByText("Team 1: Ada", { exact: true }) })
     .filter({ hasText: "Score:" })
     .last();
   await expect(card).toContainText("Score: 0");
@@ -65,8 +64,10 @@ test("host creates a game, a guest buzzes in and the display updates", async ({
           .isBuzzerListening,
     )
     .toBe(true);
+  await expect(player.getByText("Buzzer open: press now!")).toBeVisible();
   await buzzer.click();
   await expect(card).toHaveClass(/bg-green-500/);
+  await expect(player.getByText("You buzzed in first!")).toBeVisible();
 
   // Host awards points to the selected player; the display updates live.
   await host.getByRole("button", { name: "Buzzer Selected" }).click();

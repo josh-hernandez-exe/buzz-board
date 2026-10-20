@@ -19,6 +19,7 @@ export async function getPublicGameState({
       name: true,
       format: true,
       isBuzzerListening: true,
+      status: true,
       gameTeams: {
         select: {
           id: true,
@@ -59,6 +60,7 @@ export async function getPublicGameState({
       name: game.name,
       format: game.format,
       isBuzzerListening: game.isBuzzerListening,
+      status: game.status,
     },
     gameTeams: game.gameTeams.map((gameTeam) => ({
       id: gameTeam.id,
@@ -84,6 +86,10 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       code: true,
       isBuzzerListening: true,
       settings: true,
+      status: true,
+      finishedAt: true,
+      joiningOpen: true,
+      teamAssignment: true,
       gameTeams: {
         select: {
           id: true,
@@ -143,6 +149,10 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       format: game.format,
       isBuzzerListening: game.isBuzzerListening,
       settings: game.settings as GameSettings,
+      status: game.status,
+      finishedAt: game.finishedAt,
+      joiningOpen: game.joiningOpen,
+      teamAssignment: game.teamAssignment,
     },
     gameTeams: game.gameTeams.map((gameTeam) => ({
       id: gameTeam.id,

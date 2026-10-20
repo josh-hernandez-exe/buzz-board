@@ -2,26 +2,39 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+type Preview = { gameName: string; nickname: string; teamName: string | null };
+
 const mutate = vi.fn();
-let mutationOptions: { onError?: (err: { message: string }) => void } = {};
+const reset = vi.fn();
+const push = vi.fn();
+let joinError: { message: string } | null = null;
+let preview: Preview | null = null;
+let tokenStorage: Record<string, string> = {};
+let previewInput: unknown;
 
 vi.mock("@/trpc/react", () => ({
   api: {
     public: {
       joinGame: {
-        useMutation: (options: typeof mutationOptions) => {
-          mutationOptions = options;
-          return { mutate };
+        useMutation: () => ({
+          mutate,
+          reset,
+          isPending: false,
+          error: joinError,
+        }),
+      },
+      resumePreview: {
+        useQuery: (input: unknown, options: { enabled: boolean }) => {
+          previewInput = options.enabled ? input : undefined;
+          return { data: options.enabled ? preview : undefined };
         },
       },
     },
   },
 }));
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
-}));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("@/app/_hooks/gameTokenData", () => ({
-  useGameTokenData: () => [{ tokenStorage: {} }, vi.fn()],
+  useGameTokenData: () => [{ tokenStorage }, vi.fn(), vi.fn()],
 }));
 
 const { JoinGameComponent } = await import("./index");
@@ -29,44 +42,106 @@ const { JoinGameComponent } = await import("./index");
 describe("JoinGameComponent", () => {
   beforeEach(() => {
     mutate.mockReset();
-    mutationOptions = {};
+    reset.mockReset();
+    joinError = null;
+    preview = null;
+    tokenStorage = {};
+    previewInput = undefined;
   });
 
-  it("auto-joins once from a code in the link", () => {
+  it("pre-fills the code from a link but never joins automatically", () => {
+    render(<JoinGameComponent code="abc123" />);
+
+    expect(mutate).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Join game" })).toBeVisible();
+  });
+
+  it("joins with the code and chosen nickname", async () => {
     render(<JoinGameComponent code="ABC123" />);
 
-    expect(mutate).toHaveBeenCalledTimes(1);
+    await userEvent.type(screen.getByLabelText("Nickname"), "  Ada ");
+    await userEvent.click(screen.getByRole("button", { name: "Join game" }));
+
     expect(mutate).toHaveBeenCalledWith({
       gameCode: "ABC123",
-      token: undefined,
+      nickname: "Ada",
     });
   });
 
-  it("does not retry a failed auto-join in a loop", async () => {
-    const { rerender } = render(<JoinGameComponent code="BAD999" />);
+  it("asks for a nickname before joining", async () => {
+    render(<JoinGameComponent code="ABC123" />);
 
-    mutationOptions.onError?.({ message: "Game not found" });
-    rerender(<JoinGameComponent code="BAD999" />);
+    await userEvent.click(screen.getByRole("button", { name: "Join game" }));
 
-    expect(await screen.findByText("Game not found")).toBeInTheDocument();
-    expect(mutate).toHaveBeenCalledTimes(1);
-  });
-
-  it("lets the user retry with the Join button", async () => {
-    render(<JoinGameComponent code="BAD999" />);
-    mutationOptions.onError?.({ message: "Game not found" });
-
-    await userEvent.click(screen.getByRole("button", { name: "Join Game" }));
-
-    expect(mutate).toHaveBeenCalledTimes(2);
-  });
-
-  it("requires a code before joining", async () => {
-    render(<JoinGameComponent />);
-
-    await userEvent.click(screen.getByRole("button", { name: "Join Game" }));
-
+    expect(screen.getByRole("alert")).toHaveTextContent("Choose a nickname.");
     expect(mutate).not.toHaveBeenCalled();
-    expect(screen.getByText("Game code is required")).toBeInTheDocument();
+  });
+
+  it("asks for the complete code before joining", async () => {
+    render(<JoinGameComponent code="ABC" />);
+
+    await userEvent.type(screen.getByLabelText("Nickname"), "Ada");
+    await userEvent.click(screen.getByRole("button", { name: "Join game" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Enter the 6-character game code.",
+    );
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it("explains an invalid nickname before sending it", async () => {
+    render(<JoinGameComponent code="ABC123" />);
+
+    await userEvent.type(screen.getByLabelText("Nickname"), "a".repeat(41));
+    await userEvent.click(screen.getByRole("button", { name: "Join game" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Nickname can be at most 40 characters.",
+    );
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it("shows a server error and does not retry by itself", () => {
+    joinError = { message: "Joining is closed for this game." };
+
+    render(<JoinGameComponent code="ABC123" />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Joining is closed for this game.",
+    );
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it("offers to resume a stored player, then joins with that credential", async () => {
+    tokenStorage = { ABC123: "stored-token" };
+    preview = { gameName: "Quiz", nickname: "Ada", teamName: "Owls" };
+
+    render(<JoinGameComponent code="ABC123" />);
+
+    expect(previewInput).toEqual({ gameCode: "ABC123", token: "stored-token" });
+    expect(screen.getByText(/You played as/)).toHaveTextContent(
+      "You played as Ada on Owls.",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Resume as Ada" }),
+    );
+    expect(mutate).toHaveBeenCalledWith({
+      gameCode: "ABC123",
+      token: "stored-token",
+    });
+  });
+
+  it("lets a person on a shared device join as someone new", async () => {
+    tokenStorage = { ABC123: "stored-token" };
+    preview = { gameName: "Quiz", nickname: "Ada", teamName: null };
+    render(<JoinGameComponent code="ABC123" />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Join as someone new" }),
+    );
+    await userEvent.type(screen.getByLabelText("Nickname"), "Bo");
+    await userEvent.click(screen.getByRole("button", { name: "Join game" }));
+
+    expect(mutate).toHaveBeenCalledWith({ gameCode: "ABC123", nickname: "Bo" });
   });
 });

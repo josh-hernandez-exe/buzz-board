@@ -7,6 +7,7 @@ import { expect, test } from "@playwright/test";
 import {
   createGameForHost,
   db,
+  joinFromLink,
   selectGameFromDashboard,
   signInAsNewHost,
   trackStreams,
@@ -40,8 +41,11 @@ test("each page opens exactly one live stream", async ({
   const playerContext = await browser.newContext();
   const player = await playerContext.newPage();
   const playerStreams = trackStreams(player);
-  await player.goto(`/join?code=${game.code}`);
-  await player.waitForURL(`**/game/${game.id}/user`);
+  await joinFromLink(player, {
+    code: game.code,
+    gameId: game.id,
+    nickname: "Ada",
+  });
 
   const displayContext = await browser.newContext();
   const display = await displayContext.newPage();

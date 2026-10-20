@@ -274,6 +274,26 @@ describe("game scoping", () => {
     expect(await serverRender.gameUser.ping()).toBe("pong");
   });
 
+  it("finds this game's player from its own cookie after the browser joined another game", async () => {
+    const first = await createGame();
+    const second = await createGame();
+    const inFirst = await joinAsGuest(first.game.code);
+    const inSecond = await joinAsGuest(second.game.code);
+
+    // Server render of game 1's page: shared cookies now belong to game 2.
+    const serverRender = requestCaller({
+      gameId: first.game.id,
+      cookies: {
+        "buzz-board-game-id": second.game.id,
+        "buzz-board-game-user-token": inSecond.token,
+        [`buzz-board-game-user-token.${first.game.id}`]: inFirst.token,
+      },
+    });
+
+    const self = await serverRender.gameUser.getSelfInfo();
+    expect(self.id).toBe(inFirst.gameUser.id);
+  });
+
   it("returns no game session for an unknown game id", async () => {
     const { host } = await createGame();
 

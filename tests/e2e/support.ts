@@ -125,3 +125,18 @@ export function trackStreams(page: Page) {
   page.on("requestfailed", close);
   return { open: () => [...open.values()].sort() };
 }
+
+/** Joins from a shared link the way a guest does: code pre-filled, nickname typed. */
+export async function joinFromLink(
+  page: Page,
+  {
+    code,
+    gameId,
+    nickname,
+  }: { code: string; gameId: string; nickname: string },
+) {
+  await page.goto(`/join?code=${code}`);
+  await page.getByLabel("Nickname").fill(nickname);
+  await page.getByRole("button", { name: "Join game" }).click();
+  await page.waitForURL(`**/game/${gameId}/user`);
+}

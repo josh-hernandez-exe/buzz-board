@@ -180,6 +180,11 @@ export const protectedGameUserProcedure = t.procedure
           data: ctx.gameSession.data,
           settings: ctx.gameSession.settings,
           format: ctx.gameSession.format,
+          status: ctx.gameSession.status,
+          finishedAt: ctx.gameSession.finishedAt,
+          joiningOpen: ctx.gameSession.joiningOpen,
+          teamAssignment: ctx.gameSession.teamAssignment,
+          createdById: ctx.gameSession.createdById,
           gameUser: ctx.gameSession.gameUser,
         },
       },
@@ -208,6 +213,7 @@ export const protectedGameAdminProcedure = t.procedure
     return next({
       ctx: {
         ...ctx,
+        session: { ...ctx.session, user: ctx.session.user },
         gameSession: {
           ...ctx.gameSession,
           // infers the properties of game and gameUser as non-nullable
@@ -218,6 +224,11 @@ export const protectedGameAdminProcedure = t.procedure
           data: ctx.gameSession.data,
           settings: ctx.gameSession.settings,
           format: ctx.gameSession.format,
+          status: ctx.gameSession.status,
+          finishedAt: ctx.gameSession.finishedAt,
+          joiningOpen: ctx.gameSession.joiningOpen,
+          teamAssignment: ctx.gameSession.teamAssignment,
+          createdById: ctx.gameSession.createdById,
           gameAdmin: ctx.gameSession.gameAdmin,
         },
       },
@@ -247,6 +258,11 @@ export const protectedGameGeneralProcedure = t.procedure
           data: ctx.gameSession.data,
           settings: ctx.gameSession.settings,
           format: ctx.gameSession.format,
+          status: ctx.gameSession.status,
+          finishedAt: ctx.gameSession.finishedAt,
+          joiningOpen: ctx.gameSession.joiningOpen,
+          teamAssignment: ctx.gameSession.teamAssignment,
+          createdById: ctx.gameSession.createdById,
         },
       },
     });

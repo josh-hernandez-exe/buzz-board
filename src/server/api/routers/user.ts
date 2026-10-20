@@ -1,114 +1,55 @@
 import { GameFormat } from "@prisma/client";
 import { z } from "zod";
 
+import { toTRPCError } from "@/server/api/errors";
 import { createTRPCRouter, protectedUserProcedure } from "@/server/api/trpc";
-import { generateShortCode } from "@/server/utils/codeGeneration";
+import { createGame, GAME_LIMITS } from "@/server/games/gameService";
 
 import type { GameWithRelations } from "@/types";
 
 export const userRouter = createTRPCRouter({
   game: {
+    /**
+     * Creates a game with its initial teams. A retried `requestId` returns the
+     * game it already created instead of creating a second room.
+     */
     create: protectedUserProcedure
       .input(
         z.object({
-          name: z.string().min(1),
+          name: z.string().max(400),
           format: z.enum([GameFormat.individual, GameFormat.team]),
+          teamCount: z
+            .number()
+            .int()
+            .min(GAME_LIMITS.minTeams)
+            .max(GAME_LIMITS.maxTeams)
+            .optional(),
+          requestId: z
+            .string()
+            .min(8)
+            .max(64)
+            .regex(/^[A-Za-z0-9_-]+$/)
+            .optional(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        let shortcode: string | undefined;
-
-        // Generate a unique shortcode
-        while (shortcode === undefined) {
-          shortcode = generateShortCode(6);
-          const g = await ctx.db.game.findUnique({
-            select: {
-              id: true,
-              code: true,
-            },
-            where: {
-              code: shortcode,
-            },
-          });
-          if (g?.code === shortcode) {
-            // short code exists, generate a new one
-            shortcode = undefined;
-          }
-        }
-
-        const game = await ctx.db.$transaction(async (tx) => {
-          const g = await tx.game.create({
-            data: {
-              name: input.name,
-              code: shortcode,
-              format: input.format,
-              createdBy: {
-                connect: {
-                  id: ctx.session.user.id,
-                },
-              },
-              gameAdmins: {
-                create: {
-                  user: {
-                    connect: {
-                      id: ctx.session.user.id,
-                    },
-                  },
-                },
-              },
-              scoreboard: {
-                create: {},
-              },
-            },
-            include: {
-              scoreboard: true,
-            },
-          });
-
-          const { scoreboard, ...game } = g;
-
-          const scoreboardState = await tx.scoreboardState.create({
-            data: {
-              game: {
-                connect: {
-                  id: game.id,
-                },
-              },
-              scoreboard: {
-                connect: {
-                  id: scoreboard?.id,
-                },
-              },
-            },
-          });
-
-          await tx.scoreboard.update({
-            where: {
-              id: scoreboard?.id,
-            },
-            data: {
-              currentStateId: scoreboardState.id,
-            },
-          });
-          return game;
+        const result = await createGame({
+          ownerId: ctx.session.user.id,
+          name: input.name,
+          format: input.format,
+          teamCount: input.teamCount,
+          requestId: input.requestId,
         });
-
-        return game;
+        if (result.isErr()) throw toTRPCError(result.error);
+        return result.value.game;
       }),
+    /** Games the user created or helps run. */
     getAll: protectedUserProcedure.query(async ({ ctx }) => {
+      const userId = ctx.session.user.id;
       const games: GameWithRelations[] = await ctx.db.game.findMany({
         orderBy: { createdAt: "asc" },
         where: {
-          OR: [
-            { createdBy: { id: ctx.session.user.id } },
-            {
-              gameAdmins: {
-                every: {
-                  userId: ctx.session?.user.id,
-                },
-              },
-            },
-          ],
+          OR: [{ createdById: userId }, { gameAdmins: { some: { userId } } }],
         },
         include: {
           gameUsers: true,
@@ -117,7 +58,7 @@ export const userRouter = createTRPCRouter({
         },
       });
 
-      return games ?? null;
+      return games;
     }),
   },
 });

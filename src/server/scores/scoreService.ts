@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { type Prisma } from "@prisma/client";
+import { GameStatus, type Prisma } from "@prisma/client";
 import { err, ok, type Result } from "neverthrow";
 
 import {
@@ -41,6 +41,8 @@ export type ScoreCommandError =
   | { kind: "nothingToUndo" }
   | { kind: "nothingToRedo" }
   | { kind: "historyCorrupt"; stateId: string }
+  /** Scores are read-only after finish; reopen the game to correct them. */
+  | { kind: "gameFinished" }
   /** The request ID was already used for a different command or actor. */
   | { kind: "requestIdReused"; requestId: string };
 
@@ -216,6 +218,14 @@ async function planCommand(
   gameId: string,
   command: ScoreCommand,
 ): Promise<Result<Plan, ScoreCommandError>> {
+  const game = await tx.game.findUniqueOrThrow({
+    where: { id: gameId },
+    select: { status: true },
+  });
+  if (game.status === GameStatus.finished) {
+    return err({ kind: "gameFinished" });
+  }
+
   const scoreboard = await tx.scoreboard.findUnique({
     where: { gameId },
     include: { currentState: true },

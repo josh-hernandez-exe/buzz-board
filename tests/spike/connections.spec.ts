@@ -9,6 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   createGameForHost,
   db,
+  joinFromLink,
   selectGameFromDashboard,
   signInAsNewHost,
 } from "../e2e/support";
@@ -81,8 +82,11 @@ test("count subscription streams per page", async ({ browser, baseURL }) => {
   const player = await browser.newContext();
   const playerPage = await player.newPage();
   const tracked = trackSubscriptions(playerPage);
-  await playerPage.goto(`/join?code=${game.code}`);
-  await playerPage.waitForURL(`**/game/${game.id}/user`);
+  await joinFromLink(playerPage, {
+    code: game.code,
+    gameId: game.id,
+    nickname: "Ada",
+  });
   await playerPage.waitForTimeout(8_000);
   report["player (after join)"] = tracked.summary();
 

@@ -101,6 +101,7 @@ export type PublicGameState = {
     name: Game["name"];
     format: Game["format"];
     isBuzzerListening: Game["isBuzzerListening"];
+    status: Game["status"];
   };
   gameTeams: Array<{
     id: GameTeam["id"];
@@ -123,6 +124,10 @@ export type PrivateGameState = {
     format: Game["format"];
     isBuzzerListening: Game["isBuzzerListening"];
     settings: Game["settings"] & GameSettings;
+    status: Game["status"];
+    finishedAt: Game["finishedAt"];
+    joiningOpen: Game["joiningOpen"];
+    teamAssignment: Game["teamAssignment"];
   };
   gameTeams: Array<{
     id: GameTeam["id"];

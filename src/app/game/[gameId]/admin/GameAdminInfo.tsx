@@ -21,11 +21,14 @@ import {
 
 import type { PrivateGameState } from "@/types";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
+import { HostRoomPanel } from "@/app/_components/client/HostRoomPanel";
 
 export function GameAdminInfo({
   gameState: initialGameState,
+  isOwner,
 }: {
   gameState: PrivateGameState;
+  isOwner: boolean;
 }) {
   const [activeTab, setActiveTab] = useState("quick-controls");
   const [isPending, startTransition] = useTransition();
@@ -54,10 +57,13 @@ export function GameAdminInfo({
       {/* Game sound effects for all teams */}
       <GameSoundEffects />
 
+      <div className="w-full max-w-[700px]">
+        <HostRoomPanel isOwner={isOwner} />
+      </div>
       <Tabs
         value={activeTab}
         onValueChange={handleTabChange}
-        className="w-[700px]"
+        className="w-full max-w-[700px]"
       >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="quick-controls">Game Controls</TabsTrigger>
@@ -67,7 +73,7 @@ export function GameAdminInfo({
         </TabsList>
         <TabsContent value="quick-controls">
           {isPending ? (
-            <Skeleton className="h-[400px] w-[700px]" />
+            <Skeleton className="h-[400px] w-full" />
           ) : (
             <>
               <GameWhoBuzzedIn />
@@ -82,7 +88,7 @@ export function GameAdminInfo({
         </TabsContent>
         <TabsContent value="team-management">
           {isPending ? (
-            <Skeleton className="h-[400px] w-[700px]" />
+            <Skeleton className="h-[400px] w-full" />
           ) : (
             <>
               <GameAdminTeamControl gameTeams={gameTeams} />
@@ -104,14 +110,14 @@ export function GameAdminInfo({
         </TabsContent>
         <TabsContent value="player-management">
           {isPending ? (
-            <Skeleton className="h-[400px] w-[700px]" />
+            <Skeleton className="h-[400px] w-full" />
           ) : (
             <GamePlayerManagementTable gameState={currentGameState} />
           )}
         </TabsContent>
         <TabsContent value="information">
           {isPending ? (
-            <Skeleton className="h-[400px] w-[700px]" />
+            <Skeleton className="h-[400px] w-full" />
           ) : (
             <GameBasicInfoCard game={game} />
           )}

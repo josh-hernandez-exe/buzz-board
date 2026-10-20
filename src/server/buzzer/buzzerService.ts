@@ -1,4 +1,4 @@
-import { BuzzerState, type PrismaClient } from "@prisma/client";
+import { BuzzerState, GameStatus, type PrismaClient } from "@prisma/client";
 import { err, ok, type Result } from "neverthrow";
 
 import { db as defaultDb } from "@/server/db";
@@ -20,6 +20,7 @@ export type BuzzError =
   | { kind: "participantNotFound" }
   | { kind: "notOnTeam" }
   | { kind: "notListening" }
+  | { kind: "gameFinished" }
   | { kind: "teamRejected" }
   | { kind: "requestIdReused" };
 
@@ -29,22 +30,42 @@ export type BuzzWinner = {
   gameTeamId: string;
 };
 
-/** Opens the buzzer: the previous winner becomes rejected and a new window starts. */
-export function openBuzzer(gameId: string) {
-  return withGameLock(gameId, async (tx) => {
-    const game = await tx.game.findUniqueOrThrow({ where: { id: gameId } });
-    if (game.isBuzzerListening) return { changed: false };
+export type BuzzerControlError =
+  | GameTransactionError
+  | { kind: "gameFinished" };
 
-    await tx.gameTeam.updateMany({
-      where: { gameId, buzzerState: BuzzerState.selected },
-      data: { buzzerState: BuzzerState.rejected },
-    });
-    await tx.game.update({
-      where: { id: gameId },
-      data: { isBuzzerListening: true, buzzerWindow: { increment: 1 } },
-    });
-    return { changed: true };
-  });
+/**
+ * Opens the buzzer: the previous winner becomes rejected and a new window
+ * starts. Opening the buzzer in the lobby starts the game.
+ */
+export async function openBuzzer(
+  gameId: string,
+): Promise<Result<{ changed: boolean }, BuzzerControlError>> {
+  const outcome = await withGameLock(
+    gameId,
+    async (tx): Promise<Result<{ changed: boolean }, BuzzerControlError>> => {
+      const game = await tx.game.findUniqueOrThrow({ where: { id: gameId } });
+      if (game.status === GameStatus.finished) {
+        return err({ kind: "gameFinished" });
+      }
+      if (game.isBuzzerListening) return ok({ changed: false });
+
+      await tx.gameTeam.updateMany({
+        where: { gameId, buzzerState: BuzzerState.selected },
+        data: { buzzerState: BuzzerState.rejected },
+      });
+      await tx.game.update({
+        where: { id: gameId },
+        data: {
+          isBuzzerListening: true,
+          buzzerWindow: { increment: 1 },
+          status: GameStatus.running,
+        },
+      });
+      return ok({ changed: true });
+    },
+  );
+  return outcome.isErr() ? err(outcome.error) : outcome.value;
 }
 
 export function pauseBuzzer(gameId: string) {
@@ -120,6 +141,9 @@ export async function buzzIn({
       if (team.buzzerState === BuzzerState.selected) {
         // A teammate (or this player) already holds the buzz.
         return ok({ accepted: true, replayed: true });
+      }
+      if (game.status === GameStatus.finished) {
+        return err({ kind: "gameFinished" });
       }
       if (!game.isBuzzerListening) return err({ kind: "notListening" });
 

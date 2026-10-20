@@ -152,8 +152,11 @@ export async function gameAuth({
     explicitGameId ??
     headers.get("x-buzz-board-game-id") ??
     cookieStore.get("buzz-board-game-id")?.value;
+  // A per-game cookie lets a server-rendered page find this game's player
+  // credential even after the browser joined another game in another tab.
   const gameUserToken =
     headers.get("x-buzz-board-game-user-token") ??
+    cookieStore.get(`buzz-board-game-user-token.${gameId}`)?.value ??
     cookieStore.get("buzz-board-game-user-token")?.value;
 
   if (!gameId) {

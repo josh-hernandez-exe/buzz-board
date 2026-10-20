@@ -36,6 +36,10 @@ function gameState(
       format,
       isBuzzerListening,
       settings: {},
+      status: "running",
+      finishedAt: null,
+      joiningOpen: true,
+      teamAssignment: "auto",
     },
     gameTeams: [
       {

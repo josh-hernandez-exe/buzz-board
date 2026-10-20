@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { GameFormat } from "@prisma/client";
+import { GameFormat, TeamAssignment } from "@prisma/client";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
@@ -9,13 +9,20 @@ import {
   protectedGameAdminProcedure,
 } from "@/server/api/trpc";
 
-import { gameTransactionErrorToTRPC } from "@/server/api/errors";
+import { toTRPCError, type ServiceError } from "@/server/api/errors";
 import {
   runScoreCommand,
   type ScoreCommand,
-  type ScoreCommandError,
 } from "@/server/scores/scoreService";
 import { logger } from "@/logger";
+import {
+  deleteGame,
+  duplicateGame,
+  finishGame,
+  reopenGame,
+  setJoiningOpen,
+  setTeamAssignment,
+} from "@/server/games/gameService";
 
 import { emitUpdatedGameState } from "@/server/utils/events";
 import {
@@ -23,7 +30,6 @@ import {
   pauseBuzzer,
   resetBuzzer,
 } from "@/server/buzzer/buzzerService";
-import { type GameTransactionError } from "@/server/db/gameTransaction";
 import { type Result } from "neverthrow";
 
 import type { GameSettings } from "@/types";
@@ -63,59 +69,6 @@ function normalizeScoreChange(input: z.infer<typeof scoreChangeInput>) {
   return { requestId: undefined, changes: input as Record<string, number> };
 }
 
-function scoreErrorToTRPC(error: ScoreCommandError): TRPCError {
-  switch (error.kind) {
-    case "gameNotFound":
-    case "busy":
-      return gameTransactionErrorToTRPC(error);
-    case "scoreboardNotFound":
-      return new TRPCError({
-        code: "NOT_FOUND",
-        message: "Scoreboard not found",
-      });
-    case "unknownTeams":
-      return new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Game teams not found",
-      });
-    case "noChanges":
-      return new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Choose at least one team",
-      });
-    case "invalidAmount":
-      return new TRPCError({
-        code: "BAD_REQUEST",
-        message: `Scores must be whole numbers between -1,000,000 and 1,000,000 per change (got ${error.value}).`,
-      });
-    case "scoreOutOfRange":
-      return new TRPCError({
-        code: "BAD_REQUEST",
-        message: "That change would put a score outside ±1,000,000,000.",
-      });
-    case "nothingToUndo":
-      return new TRPCError({
-        code: "BAD_REQUEST",
-        message: "No past states to undo",
-      });
-    case "nothingToRedo":
-      return new TRPCError({
-        code: "BAD_REQUEST",
-        message: "No past states to redo",
-      });
-    case "historyCorrupt":
-      return new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Score history is inconsistent; the change was not applied.",
-      });
-    case "requestIdReused":
-      return new TRPCError({
-        code: "CONFLICT",
-        message: "This request ID was already used for a different change.",
-      });
-  }
-}
-
 /** Publishes after commit; a failure is logged, never treated as unsaved. */
 async function publishAfterCommit(gameId: string) {
   try {
@@ -143,21 +96,22 @@ async function scoreCommand(
     command,
   });
   if (result.isErr()) {
-    throw scoreErrorToTRPC(result.error);
+    throw toTRPCError(result.error);
   }
   await publishAfterCommit(ctx.gameSession.id);
   return result.value;
 }
 
-async function buzzerControl(
+/** Runs a state change, maps its error, and publishes if anything changed. */
+async function gameControl(
   gameId: string,
   action: (
     gameId: string,
-  ) => Promise<Result<{ changed: boolean }, GameTransactionError>>,
+  ) => Promise<Result<{ changed: boolean }, ServiceError>>,
 ) {
   const result = await action(gameId);
   if (result.isErr()) {
-    throw gameTransactionErrorToTRPC(result.error);
+    throw toTRPCError(result.error);
   }
   if (result.value.changed) {
     await publishAfterCommit(gameId);
@@ -270,13 +224,13 @@ export const gameAdminRouter = createTRPCRouter({
       await emitUpdatedGameState({ gameId });
     }),
   startBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) =>
-    buzzerControl(ctx.gameSession.id, openBuzzer),
+    gameControl(ctx.gameSession.id, openBuzzer),
   ),
   pauseBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) =>
-    buzzerControl(ctx.gameSession.id, pauseBuzzer),
+    gameControl(ctx.gameSession.id, pauseBuzzer),
   ),
   resetBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) =>
-    buzzerControl(ctx.gameSession.id, resetBuzzer),
+    gameControl(ctx.gameSession.id, resetBuzzer),
   ),
   addScore: protectedGameAdminProcedure
     .input(scoreChangeInput)
@@ -383,5 +337,48 @@ export const gameAdminRouter = createTRPCRouter({
       await emitUpdatedGameState({ gameId: game.id });
 
       return;
+    }),
+  finishGame: protectedGameAdminProcedure.mutation(async ({ ctx }) =>
+    gameControl(ctx.gameSession.id, finishGame),
+  ),
+  reopenGame: protectedGameAdminProcedure.mutation(async ({ ctx }) =>
+    gameControl(ctx.gameSession.id, (gameId) => reopenGame(gameId)),
+  ),
+  setJoiningOpen: protectedGameAdminProcedure
+    .input(z.object({ open: z.boolean() }))
+    .mutation(async ({ ctx, input }) =>
+      gameControl(ctx.gameSession.id, (gameId) =>
+        setJoiningOpen(gameId, input.open),
+      ),
+    ),
+  setTeamAssignment: protectedGameAdminProcedure
+    .input(z.object({ teamAssignment: z.nativeEnum(TeamAssignment) }))
+    .mutation(async ({ ctx, input }) =>
+      gameControl(ctx.gameSession.id, (gameId) =>
+        setTeamAssignment(gameId, input.teamAssignment),
+      ),
+    ),
+  duplicateGame: protectedGameAdminProcedure
+    .input(z.object({ requestId: requestIdSchema }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const result = await duplicateGame({
+        gameId: ctx.gameSession.id,
+        ownerId: ctx.session.user.id,
+        requestId: input?.requestId,
+      });
+      if (result.isErr()) throw toTRPCError(result.error);
+      return { gameId: result.value.game.id, replayed: result.value.replayed };
+    }),
+  deleteGame: protectedGameAdminProcedure
+    .input(z.object({ confirmName: z.string().max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await deleteGame({
+        gameId: ctx.gameSession.id,
+        actorUserId: ctx.session.user.id,
+        confirmName: input.confirmName,
+      });
+      if (result.isErr()) throw toTRPCError(result.error);
+      await publishAfterCommit(ctx.gameSession.id);
+      return result.value;
     }),
 });

@@ -70,17 +70,41 @@ enum GameFormat {
   team
 }
 
+enum GameStatus {
+  /// Created, not yet played. Opening the buzzer starts the game.
+  lobby
+  running
+  /// Joining and play are closed; can be reopened for 24 hours.
+  finished
+}
+
+/// How a new player in a team game gets a team.
+enum TeamAssignment {
+  /// Placed on the team with the fewest players.
+  auto
+  /// The player picks a team.
+  choose
+  /// Staff assign players to teams.
+  staff
+}
+
 model Game {
-  id                String     @id @default(cuid())
+  id                String         @id @default(cuid())
   name              String
-  code              String     @unique @db.VarChar(6)
-  isBuzzerListening Boolean    @default(false)
+  code              String         @unique @db.VarChar(6)
+  isBuzzerListening Boolean        @default(false)
   /// Incremented each time the buzzer opens or is reset; a BuzzClaim belongs
   /// to one window, so each window has at most one winner.
-  buzzerWindow      Int        @default(0)
-  data              Json       @default("{}")
-  settings          Json       @default("{}")
-  format            GameFormat @default(team)
+  buzzerWindow      Int            @default(0)
+  data              Json           @default("{}")
+  settings          Json           @default("{}")
+  format            GameFormat     @default(team)
+  status            GameStatus     @default(lobby)
+  finishedAt        DateTime?
+  joiningOpen       Boolean        @default(true)
+  teamAssignment    TeamAssignment @default(auto)
+  /// Client-supplied ID that makes a retried "create game" return the same game.
+  creationRequestId String?        @db.VarChar(64)
 
   createdBy   User   @relation(fields: [createdById], references: [id])
   createdById String
@@ -96,6 +120,8 @@ model Game {
   operations       GameOperation[]
   scoreEffects     ScoreEffect[]
   buzzClaims       BuzzClaim[]
+
+  @@unique([createdById, creationRequestId])
 }
 
 model GameUser {

@@ -83,8 +83,11 @@ type Caller = Awaited<ReturnType<typeof callerFor>>;
 export function requestCaller(options: CallerOptions): Caller {
   const proxyFor = (path: string[]): unknown =>
     new Proxy(() => undefined, {
+      // "then" must be undefined, or `await` would treat the proxy as a promise.
       get: (_target, key) =>
-        typeof key === "string" ? proxyFor([...path, key]) : undefined,
+        typeof key === "string" && key !== "then"
+          ? proxyFor([...path, key])
+          : undefined,
       apply: async (_target, _thisArg, args: unknown[]) => {
         let node: unknown = await callerFor(options);
         for (const key of path) {
@@ -103,21 +106,37 @@ export async function createUser(name = "Test Host") {
 }
 
 /** Creates a game through the real `user.game.create` procedure. */
+/**
+ * Creates a game through the real `user.game.create` procedure.
+ *
+ * `teamAssignment` defaults to `choose` (players start without a team, as in
+ * games created before PR05) so tests control placement explicitly; pass
+ * `auto` to test automatic assignment.
+ */
 export async function createGame({
   format = "team",
   teams = format === "team" ? 2 : 0,
-}: { format?: GameFormat; teams?: number } = {}) {
+  teamAssignment = "choose",
+}: {
+  format?: GameFormat;
+  teams?: number;
+  teamAssignment?: "auto" | "choose" | "staff";
+} = {}) {
   const host = await createUser();
   const game = await (
     await callerFor({ user: host })
   ).user.game.create({
     name: "Characterization Game",
     format,
+    teamCount: format === "team" ? Math.max(1, teams) : undefined,
   });
 
   const admin = requestCaller({ gameId: game.id, user: host });
-  for (let i = 0; i < teams; i++) {
-    await admin.gameAdmin.addTeam();
+  if (format === "team" && teams === 0) {
+    await db.gameTeam.deleteMany({ where: { gameId: game.id } });
+  }
+  if (format === "team") {
+    await admin.gameAdmin.setTeamAssignment({ teamAssignment });
   }
 
   const gameTeams = await db.gameTeam.findMany({
@@ -129,8 +148,11 @@ export async function createGame({
 }
 
 /** Joins as a guest through the real `public.joinGame` procedure. */
-export async function joinAsGuest(code: string) {
-  const joined = await requestCaller({}).public.joinGame({ gameCode: code });
+export async function joinAsGuest(code: string, nickname?: string) {
+  const joined = await requestCaller({}).public.joinGame({
+    gameCode: code,
+    nickname,
+  });
   const { token } = joined;
   if (!token) throw new Error("joinGame returned no participant token");
   const player = requestCaller({

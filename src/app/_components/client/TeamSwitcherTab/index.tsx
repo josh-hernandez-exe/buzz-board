@@ -32,6 +32,23 @@ export function TeamSwitcherTab({
   const gameTeams = currentGameState.data?.gameTeams ?? initialGameTeams;
   const isTeamsFrozen = !!settings?.freezeTeams;
 
+  const currentAssignment =
+    currentGameState.data?.game.teamAssignment ?? undefined;
+  if (currentAssignment === "staff") {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <div className="rounded-lg border border-yellow-500 bg-yellow-50 p-6 text-center">
+          <h3 className="mb-2 text-lg font-medium text-yellow-800">
+            Your host assigns teams
+          </h3>
+          <p className="text-yellow-700">
+            Ask your host if you need to be on a different team.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (isTeamsFrozen) {
     return (
       <div className="flex flex-col items-center justify-center p-8">

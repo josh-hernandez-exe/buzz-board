@@ -1,90 +1,135 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
-import { type Game, GameFormat } from "@prisma/client";
+import { GameFormat } from "@prisma/client";
 import { useRouter } from "next/navigation";
 
-import { DropDownSelection } from "@/app/_components/client/DropDownSelection";
-
+import { Button } from "@/app/_components/ui/button";
 import { api } from "@/trpc/react";
-import { logger } from "@/logger";
+import { NAME_LIMITS } from "@/utils/displayName";
+import { newRequestId } from "@/utils/requestId";
 
+const MIN_TEAMS = 1;
+const MAX_TEAMS = 8;
+
+/**
+ * One short form: name, format and (for team games) team count. Chat, modes
+ * and content are not part of creating a basic game.
+ */
 export function CreateGame() {
   const router = useRouter();
-  const [gameFormat, setGameFormat] = useState<Game["format"]>(
-    GameFormat.individual,
-  );
-  const [gameName, setGameName] = useState<Game["name"]>("");
-  const [isDataReady, setIsDataReady] = useState<boolean>(false);
+  const [name, setName] = useState("Trivia night");
+  const [format, setFormat] = useState<GameFormat>(GameFormat.team);
+  const [teamCount, setTeamCount] = useState(2);
+  // One ID per attempt: a double-click or a retried request after a slow
+  // response returns the same game instead of creating a second room.
+  const requestId = useRef(newRequestId());
 
-  const utils = api.useUtils();
-  const createGameMutation = api.user.game.create.useMutation({
-    onSuccess: async () => {
-      await utils.user.game.getAll.invalidate();
-      // reload the server side components that list game data
-      router.refresh();
+  const createGame = api.user.game.create.useMutation({
+    onSuccess: (game) => {
+      requestId.current = newRequestId();
+      router.push(`/game/${game.id}/admin`);
     },
   });
 
-  const checkIsReady = () => {
-    if (
-      [
-        gameName && gameName.length > 0,
-        gameFormat && gameFormat.length > 0,
-      ].every((x) => x)
-    ) {
-      setIsDataReady(true);
-    }
-    setIsDataReady(false);
-  };
+  const trimmed = name.trim();
+  const canSubmit = trimmed.length > 0 && !createGame.isPending;
 
   return (
-    <div className="w-full max-w-xs">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          createGameMutation.mutate({
-            name: gameName,
-            format: gameFormat,
-          });
-        }}
-        className="flex flex-col gap-2"
-      >
-        <DropDownSelection<Game["format"]>
-          title="Game Format"
-          options={[GameFormat.individual, GameFormat.team].map((val) => {
-            logger.debug(`Game Format: ${val}`);
-            return {
-              id: val,
-              name: val,
-              data: val,
-            };
-          })}
-          defaultValue={GameFormat.team}
-          onChange={(val) => {
-            setGameFormat(val);
-            checkIsReady();
-          }}
-        />
+    <form
+      className="flex w-full max-w-sm flex-col gap-4 rounded-xl bg-white/10 p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!canSubmit) return;
+        createGame.mutate({
+          name: trimmed,
+          format,
+          teamCount: format === GameFormat.team ? teamCount : undefined,
+          requestId: requestId.current,
+        });
+      }}
+    >
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        Game name
         <input
           type="text"
-          placeholder="Game Name"
-          value={gameName}
-          onChange={(e) => {
-            setGameName(e.target.value);
-            checkIsReady();
-          }}
-          className="w-full rounded-full bg-white/10 px-4 py-2 text-white"
+          value={name}
+          maxLength={NAME_LIMITS.maxGameName}
+          onChange={(e) => setName(e.target.value)}
+          className="rounded-lg bg-white/10 px-3 py-2 text-base text-white"
         />
-        <button
-          type="submit"
-          className="rounded-full bg-white/10 px-10 py-3 font-semibold transition hover:bg-white/20"
-          disabled={createGameMutation.isPending || isDataReady}
-        >
-          {createGameMutation.isPending ? "Submitting..." : "Submit"}
-        </button>
-      </form>
-    </div>
+      </label>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium">Players compete</legend>
+        {(
+          [
+            [GameFormat.team, "As teams"],
+            [GameFormat.individual, "Individually"],
+          ] as const
+        ).map(([value, label]) => (
+          <label key={value} className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="format"
+              value={value}
+              checked={format === value}
+              onChange={() => setFormat(value)}
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
+
+      {format === GameFormat.team && (
+        <div className="flex flex-col gap-1">
+          <span id="team-count-label" className="text-sm font-medium">
+            Number of teams
+          </span>
+          <div
+            className="flex items-center gap-3"
+            role="group"
+            aria-labelledby="team-count-label"
+          >
+            <Button
+              type="button"
+              variant="secondary"
+              aria-label="Fewer teams"
+              disabled={teamCount <= MIN_TEAMS}
+              onClick={() => setTeamCount((n) => Math.max(MIN_TEAMS, n - 1))}
+            >
+              −
+            </Button>
+            <output aria-live="polite" className="w-6 text-center text-lg">
+              {teamCount}
+            </output>
+            <Button
+              type="button"
+              variant="secondary"
+              aria-label="More teams"
+              disabled={teamCount >= MAX_TEAMS}
+              onClick={() => setTeamCount((n) => Math.min(MAX_TEAMS, n + 1))}
+            >
+              +
+            </Button>
+          </div>
+          <p className="text-xs text-white/70">
+            New players are placed on the team with the fewest players. You can
+            change this, and rename or add teams, from the host desk.
+          </p>
+        </div>
+      )}
+
+      {createGame.error && (
+        <p role="alert" className="text-sm text-red-300">
+          {createGame.error.message}
+        </p>
+      )}
+
+      <Button type="submit" disabled={!canSubmit}>
+        {createGame.isPending ? "Creating…" : "Create game"}
+      </Button>
+    </form>
   );
 }

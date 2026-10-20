@@ -1,13 +1,10 @@
-import { GameFormat } from "@prisma/client";
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
-
-import { logger } from "@/logger";
 
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 
 import { getPublicGameState } from "@/server/db/common";
-import { generateToken } from "@/server/utils/codeGeneration";
+import { joinGame, resumePreview } from "@/server/games/gameService";
+import { toTRPCError } from "@/server/api/errors";
 
 import { emitUpdatedGameState, liveFeeds } from "@/server/utils/events";
 
@@ -15,80 +12,38 @@ export const publicRouter = createTRPCRouter({
   joinGame: publicProcedure
     .input(
       z.object({
-        gameCode: z.string().toUpperCase(),
-        token: z.string().optional(),
+        gameCode: z.string().trim().toUpperCase().max(6),
+        token: z.string().max(200).optional(),
+        /** Omitted by pre-PR05 clients; those players get "Player N". */
+        nickname: z.string().max(400).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const user = ctx?.session?.user;
-
-      const game = await ctx.db.game.findUnique({
-        where: { code: input.gameCode },
-        include: { gameTeams: true },
+      const result = await joinGame({
+        gameCode: input.gameCode,
+        token: input.token,
+        nickname: input.nickname,
+        userId: ctx.session?.user?.id,
       });
+      if (result.isErr()) throw toTRPCError(result.error);
 
-      if (!game) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Game not found",
-        });
+      if (!result.value.resumed) {
+        await emitUpdatedGameState({ gameId: result.value.gameId });
       }
-      if (
-        ctx.gameSession.gameUser?.token === input.token &&
-        ctx.gameSession.gameUser?.gameId === game.id
-      ) {
-        logger.info("Game User already authenticated");
-        return {
-          gameUser: ctx.gameSession.gameUser,
-          token: input.token,
-          gameId: ctx.gameSession.id,
-        };
-      }
-
-      const curMaxPlayerIndex = await ctx.db.gameUser.aggregate({
-        _max: {
-          index: true,
-        },
-        where: { gameId: game.id },
-      });
-      const curIndex = (curMaxPlayerIndex._max.index ?? 0) + 1;
-
-      const gameUser = await ctx.db.$transaction(async (tx) => {
-        const gUser = await tx.gameUser.create({
-          data: {
-            gameId: game.id,
-            name: user?.name ?? `Player ${curIndex}`,
-            index: curIndex,
-            token: generateToken(),
-            // if a user is authed, then link
-            userId: user?.id,
-          },
-        });
-
-        if (game.format === GameFormat.individual) {
-          await tx.gameTeam.create({
-            data: {
-              gameId: game.id,
-              name: gUser.name,
-              index: curIndex,
-              gameUsers: {
-                connect: {
-                  id: gUser.id,
-                },
-              },
-            },
-          });
-        }
-        return gUser;
-      });
-
-      if (game.format === GameFormat.individual) {
-        // only emit event when a new team is made
-        await emitUpdatedGameState({ gameId: game.id });
-      }
-
-      return { gameUser, token: gameUser.token, gameId: game.id };
+      return result.value;
     }),
+  /**
+   * Who a stored credential would resume as, so the join screen can offer
+   * "Resume as …" explicitly. Only the credential's holder can ask.
+   */
+  resumePreview: publicProcedure
+    .input(
+      z.object({
+        gameCode: z.string().trim().toUpperCase().max(6),
+        token: z.string().max(200),
+      }),
+    )
+    .query(async ({ input }) => resumePreview(input)),
   currentGameState: publicProcedure
     .input(z.object({ gameId: z.string() }))
     .query(async ({ ctx: _, input }) => {

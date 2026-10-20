@@ -35,7 +35,7 @@ export default async function GameAdminPage({
     <HydrateClient>
       <GameScope gameId={gameId} initialState={currentGameState}>
         <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-          <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
+          <div className="container flex flex-col items-center justify-center gap-6 px-4 py-6">
             <p className="text-center text-2xl text-white">
               {session && <span>Logged in as {session.user?.name}</span>}
             </p>
@@ -47,14 +47,17 @@ export default async function GameAdminPage({
             </Link>
           </div>
 
-          <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
+          <div className="container flex flex-col items-center justify-center gap-6 px-4 py-6">
             <Link
               href={`/game/${gameId}/scoreboard`}
               className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
             >
               Scoreboard
             </Link>
-            <GameAdminInfo gameState={currentGameState} />
+            <GameAdminInfo
+              gameState={currentGameState}
+              isOwner={gameSession.createdById === session?.user?.id}
+            />
           </div>
         </main>
       </GameScope>

@@ -1,4 +1,9 @@
-import { GameFormat, type Prisma } from "@prisma/client";
+import {
+  GameFormat,
+  GameStatus,
+  TeamAssignment,
+  type Prisma,
+} from "@prisma/client";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
@@ -10,8 +15,9 @@ import {
 } from "@/server/api/trpc";
 
 import { emitUpdatedGameState } from "@/server/utils/events";
-import { buzzIn, type BuzzError } from "@/server/buzzer/buzzerService";
-import { gameTransactionErrorToTRPC } from "@/server/api/errors";
+import { buzzIn } from "@/server/buzzer/buzzerService";
+import { toTRPCError } from "@/server/api/errors";
+import { nameErrorMessage, normalizeName } from "@/utils/displayName";
 import type {
   GameUserWithRelations,
   GameTeamWithRelations,
@@ -20,37 +26,24 @@ import type {
   GameTeamBasicInfo,
 } from "@/types";
 
-function buzzErrorToTRPC(error: BuzzError): TRPCError {
-  switch (error.kind) {
-    case "gameNotFound":
-    case "busy":
-      return gameTransactionErrorToTRPC(error);
-    case "participantNotFound":
-      return new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "Not a valid game user for this game.",
-      });
-    case "notOnTeam":
-      return new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Game user is not part of a team",
-      });
-    case "notListening":
-      return new TRPCError({
-        code: "CONFLICT",
-        message: "Game is not listening for buzzers",
-      });
-    case "teamRejected":
-      return new TRPCError({
-        code: "CONFLICT",
-        message: "Game team has already buzzed in.",
-      });
-    case "requestIdReused":
-      return new TRPCError({
-        code: "CONFLICT",
-        message: "This request ID was already used by someone else.",
-      });
+function assertNotFinished(status: GameStatus) {
+  if (status === GameStatus.finished) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "This game has finished, so names and teams can't be changed.",
+    });
   }
+}
+
+function parseName(raw: string, what: string): string {
+  const result = normalizeName(raw);
+  if (result.isErr()) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: nameErrorMessage(result.error, what),
+    });
+  }
+  return result.value;
 }
 
 export const gameUserRouter = createTRPCRouter({
@@ -150,11 +143,13 @@ export const gameUserRouter = createTRPCRouter({
   changeName: protectedGameUserProcedure
     .input(
       z.object({
-        name: z.string().min(1).max(32),
+        name: z.string().max(400),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input: rawInput }) => {
       const { gameUser } = ctx.gameSession;
+      assertNotFinished(ctx.gameSession.status);
+      const input = { name: parseName(rawInput.name, "Nickname") };
       const result: GameUserBasicInfo = {
         id: gameUser.id,
         name: gameUser.name,
@@ -198,6 +193,8 @@ export const gameUserRouter = createTRPCRouter({
 
       await ctx.db.$transaction(nameChangePromises);
 
+      await emitUpdatedGameState({ gameId: ctx.gameSession.id });
+
       return {
         ...result,
         name: input.name,
@@ -206,11 +203,13 @@ export const gameUserRouter = createTRPCRouter({
   changeTeamName: protectedGameUserProcedure
     .input(
       z.object({
-        name: z.string().min(1).max(32),
+        name: z.string().max(400),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input: rawInput }) => {
       const { gameUser } = ctx.gameSession;
+      assertNotFinished(ctx.gameSession.status);
+      const input = { name: parseName(rawInput.name, "Team name") };
 
       if (!gameUser.gameTeamId) {
         throw new TRPCError({
@@ -306,6 +305,14 @@ export const gameUserRouter = createTRPCRouter({
         };
       }
 
+      assertNotFinished(ctx.gameSession.status);
+      if (ctx.gameSession.teamAssignment === TeamAssignment.staff) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Your host assigns teams in this game.",
+        });
+      }
+
       if (settings?.freezeTeams) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -375,7 +382,7 @@ export const gameUserRouter = createTRPCRouter({
         requestId: input?.requestId,
       });
       if (result.isErr()) {
-        throw buzzErrorToTRPC(result.error);
+        throw toTRPCError(result.error);
       }
 
       if (!result.value.replayed) {
