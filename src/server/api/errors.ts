@@ -7,6 +7,7 @@ import {
 import { type GameTransactionError } from "@/server/db/gameTransaction";
 import { type GameServiceError } from "@/server/games/gameService";
 import { type ScoreCommandError } from "@/server/scores/scoreService";
+import { type StaffError } from "@/server/staff/staffService";
 import { nameErrorMessage } from "@/utils/displayName";
 import { SCORE_LIMITS } from "@/server/scores/scoreMath";
 import { helpHref } from "@/help/manifest";
@@ -16,7 +17,8 @@ export type ServiceError =
   | GameServiceError
   | BuzzError
   | BuzzerControlError
-  | ScoreCommandError;
+  | ScoreCommandError
+  | StaffError;
 
 const number = (n: number) => n.toLocaleString("en-US");
 
@@ -51,6 +53,23 @@ const ERROR_HELP: Partial<Record<ServiceError["kind"], string>> = {
   ),
   reopenExpired: helpHref("host-quickstart", "can-i-run-the-same-game-again"),
   cannotDeleteActiveGame: helpHref("host-quickstart", "how-do-i-delete-a-game"),
+  inviteNotFound: helpHref(
+    "helpers-and-roles",
+    "why-does-my-invitation-say-it-cant-be-used",
+  ),
+  inviteUsed: helpHref(
+    "helpers-and-roles",
+    "why-does-my-invitation-say-it-cant-be-used",
+  ),
+  inviteRevoked: helpHref(
+    "helpers-and-roles",
+    "why-does-my-invitation-say-it-cant-be-used",
+  ),
+  inviteExpired: helpHref(
+    "helpers-and-roles",
+    "why-does-my-invitation-say-it-cant-be-used",
+  ),
+  cannotChangeOwner: helpHref("helpers-and-roles", "who-can-help-run-a-game"),
 };
 
 /**
@@ -197,6 +216,37 @@ function baseError(error: ServiceError): TRPCError {
       return new TRPCError({
         code: "BAD_REQUEST",
         message: "No past states to redo",
+      });
+    case "inviteNotFound":
+      return new TRPCError({
+        code: "NOT_FOUND",
+        message: "This invitation link isn't valid. Ask for a new one.",
+      });
+    case "inviteUsed":
+      return new TRPCError({
+        code: "CONFLICT",
+        message:
+          "This invitation has already been used. Ask the host for a new link.",
+      });
+    case "inviteRevoked":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "This invitation was cancelled. Ask the host for a new link.",
+      });
+    case "inviteExpired":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "This invitation has expired. Ask the host for a new link.",
+      });
+    case "cannotChangeOwner":
+      return new TRPCError({
+        code: "FORBIDDEN",
+        message: "The game's owner can't be changed or removed.",
+      });
+    case "staffNotFound":
+      return new TRPCError({
+        code: "NOT_FOUND",
+        message: "That helper is no longer part of this game.",
       });
     case "historyCorrupt":
       return new TRPCError({

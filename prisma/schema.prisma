@@ -55,6 +55,8 @@ model User {
   gameUsers      GameUser[]
   gameAdmin      GameAdmin[]
   gameOperations GameOperation[]
+  issuedInvites  GameInvite[]    @relation("IssuedInvites")
+  usedInvites    GameInvite[]    @relation("UsedInvites")
 }
 
 model VerificationToken {
@@ -120,6 +122,7 @@ model Game {
   operations       GameOperation[]
   scoreEffects     ScoreEffect[]
   buzzClaims       BuzzClaim[]
+  invites          GameInvite[]
 
   @@unique([createdById, creationRequestId])
 }
@@ -165,11 +168,21 @@ model GameTeam {
   @@unique([gameId, index])
 }
 
+/// A helper's role in one game. The owner is the game's creator
+/// (`Game.createdById`), never a stored role.
+enum StaffRole {
+  /// Shown as "Co-host": runs the game like the owner.
+  admin
+  /// Moves players and (later) moderates names and chat; no gameplay controls.
+  moderator
+}
+
 model GameAdmin {
-  id       String @id @default(cuid())
+  id       String    @id @default(cuid())
   userId   String
   gameId   String
-  settings Json   @default("{}")
+  role     StaffRole @default(admin)
+  settings Json      @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -276,4 +289,35 @@ model BuzzClaim {
 
   @@unique([gameId, window])
   @@unique([gameId, requestId])
+}
+
+enum InvitePurpose {
+  /// Grants a staff role to the signed-in account that accepts it.
+  staff
+  /// Reissues a lost guest's access (organizer-assisted recovery).
+  guestRecovery
+}
+
+/// A single-use bearer link. Only a SHA-256 hash of the token is stored.
+model GameInvite {
+  id               String        @id @default(cuid())
+  gameId           String
+  tokenHash        String        @unique @db.VarChar(64)
+  purpose          InvitePurpose
+  /// The role a staff invitation grants.
+  role             StaffRole?
+  /// The participant a recovery link restores.
+  targetGameUserId String?
+  issuedById       String?
+  createdAt        DateTime      @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  usedAt           DateTime?
+  usedById         String?
+
+  game     Game  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  issuedBy User? @relation("IssuedInvites", fields: [issuedById], references: [id], onDelete: SetNull)
+  usedBy   User? @relation("UsedInvites", fields: [usedById], references: [id], onDelete: SetNull)
+
+  @@index([gameId, purpose])
 }

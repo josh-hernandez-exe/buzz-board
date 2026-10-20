@@ -1,5 +1,12 @@
 import { type HelpFactPanel } from "@/help/manifest";
 import {
+  CAPABILITIES,
+  INVITE_LIFETIME_HOURS,
+  ROLE_LABEL,
+  STAFF_ROLES,
+  capabilitiesOf,
+} from "@/utils/capabilities";
+import {
   ASSIGNMENT_DESCRIPTION,
   ASSIGNMENT_LABEL,
   GAME_LIMITS,
@@ -70,6 +77,21 @@ export const FACTS: Record<HelpFactPanel, { title: string; facts: Fact[] }> = {
       {
         label: STATUS_LABEL.finished,
         value: "Closed to joining and play. Scores stay visible.",
+      },
+    ],
+  },
+  staffRoles: {
+    title: "What each role can do",
+    facts: [
+      ...STAFF_ROLES.map((role) => ({
+        label: ROLE_LABEL[role],
+        value: capabilitiesOf(role)
+          .map((capability) => CAPABILITIES[capability])
+          .join("; "),
+      })),
+      {
+        label: "Invitation links",
+        value: `Work once and expire after ${INVITE_LIFETIME_HOURS} hours`,
       },
     ],
   },

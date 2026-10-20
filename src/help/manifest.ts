@@ -19,7 +19,8 @@ export type HelpFactPanel =
   | "nameLimits"
   | "teamAssignment"
   | "gameStatus"
-  | "scoreLimits";
+  | "scoreLimits"
+  | "staffRoles";
 
 export type HelpArticle = {
   id: string;
@@ -45,6 +46,14 @@ export const HELP_ARTICLES = [
       "Create a game, share the code, run the buzzer and scores, then finish, reopen, duplicate or delete it.",
     audiences: ["host"],
     facts: ["gameLimits", "gameStatus"],
+  },
+  {
+    id: "helpers-and-roles",
+    title: "Helpers: co-hosts and moderators",
+    summary:
+      "Invite co-hosts and moderators with a private link, what each role can do, and changing or removing helpers.",
+    audiences: ["host"],
+    facts: ["staffRoles"],
   },
   {
     id: "teams-and-names",

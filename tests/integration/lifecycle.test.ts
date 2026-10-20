@@ -447,7 +447,7 @@ describe("delete", () => {
       coHost.gameAdmin.deleteGame({ confirmName: game.name }),
     ).rejects.toMatchObject({
       code: "FORBIDDEN",
-      message: "Only the game's creator can do that.",
+      message: "Your role (Co-host) can't do that.",
     });
   });
 });

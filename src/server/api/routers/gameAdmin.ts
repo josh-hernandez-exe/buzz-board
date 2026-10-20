@@ -7,7 +7,17 @@ import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
   protectedGameAdminProcedure,
+  protectedGameStaffProcedure,
+  staffProcedure,
 } from "@/server/api/trpc";
+import {
+  createStaffInvite,
+  listStaff,
+  removeStaff,
+  revokeInvite,
+  setStaffRole,
+} from "@/server/staff/staffService";
+import { INVITABLE_ROLES } from "@/utils/capabilities";
 
 import { toTRPCError, type ServiceError } from "@/server/api/errors";
 import {
@@ -254,7 +264,7 @@ export const gameAdminRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) =>
       scoreCommand(ctx, input?.requestId, { kind: "redo" }),
     ),
-  movePlayerToTeam: protectedGameAdminProcedure
+  movePlayerToTeam: staffProcedure("moveRoster")
     .input(
       z.object({
         gameUserId: z.string(),
@@ -358,7 +368,7 @@ export const gameAdminRouter = createTRPCRouter({
         setTeamAssignment(gameId, input.teamAssignment),
       ),
     ),
-  duplicateGame: protectedGameAdminProcedure
+  duplicateGame: staffProcedure("duplicateGame")
     .input(z.object({ requestId: requestIdSchema }).optional())
     .mutation(async ({ ctx, input }) => {
       const result = await duplicateGame({
@@ -369,7 +379,7 @@ export const gameAdminRouter = createTRPCRouter({
       if (result.isErr()) throw toTRPCError(result.error);
       return { gameId: result.value.game.id, replayed: result.value.replayed };
     }),
-  deleteGame: protectedGameAdminProcedure
+  deleteGame: staffProcedure("deleteGame")
     .input(z.object({ confirmName: z.string().max(200) }))
     .mutation(async ({ ctx, input }) => {
       const result = await deleteGame({
@@ -381,4 +391,54 @@ export const gameAdminRouter = createTRPCRouter({
       await publishAfterCommit(ctx.gameSession.id);
       return result.value;
     }),
+  /** Helpers: co-hosts and moderators. The owner can never be changed here. */
+  staff: createTRPCRouter({
+    list: protectedGameStaffProcedure.query(async ({ ctx }) => {
+      const staff = await listStaff(ctx.gameSession.id);
+      return {
+        ...staff,
+        myRole: ctx.staffRole,
+        myUserId: ctx.session.user.id,
+      };
+    }),
+    createInvite: staffProcedure("manageHelpers")
+      .input(z.object({ role: z.enum(INVITABLE_ROLES) }))
+      .mutation(async ({ ctx, input }) => {
+        const { token, invite } = await createStaffInvite({
+          gameId: ctx.gameSession.id,
+          issuedById: ctx.session.user.id,
+          role: input.role,
+        });
+        await publishAfterCommit(ctx.gameSession.id);
+        // The token is only returned here, once; only its hash is stored.
+        return {
+          path: `/invite/${token}`,
+          inviteId: invite.id,
+          expiresAt: invite.expiresAt,
+        };
+      }),
+    revokeInvite: staffProcedure("manageHelpers")
+      .input(z.object({ inviteId: z.string() }))
+      .mutation(async ({ ctx, input }) =>
+        gameControl(ctx.gameSession.id, (gameId) =>
+          revokeInvite({ gameId, inviteId: input.inviteId }),
+        ),
+      ),
+    setRole: staffProcedure("manageHelpers")
+      .input(
+        z.object({ gameAdminId: z.string(), role: z.enum(INVITABLE_ROLES) }),
+      )
+      .mutation(async ({ ctx, input }) =>
+        gameControl(ctx.gameSession.id, (gameId) =>
+          setStaffRole({ gameId, ...input }),
+        ),
+      ),
+    remove: staffProcedure("manageHelpers")
+      .input(z.object({ gameAdminId: z.string() }))
+      .mutation(async ({ ctx, input }) =>
+        gameControl(ctx.gameSession.id, (gameId) =>
+          removeStaff({ gameId, gameAdminId: input.gameAdminId }),
+        ),
+      ),
+  }),
 });

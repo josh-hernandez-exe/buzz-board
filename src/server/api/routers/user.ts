@@ -2,7 +2,16 @@ import { GameFormat } from "@prisma/client";
 import { z } from "zod";
 
 import { toTRPCError } from "@/server/api/errors";
-import { createTRPCRouter, protectedUserProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedUserProcedure,
+  publicProcedure,
+} from "@/server/api/trpc";
+import {
+  acceptStaffInvite,
+  previewStaffInvite,
+} from "@/server/staff/staffService";
+import { emitUpdatedGameState } from "@/server/utils/events";
 import { createGame, GAME_LIMITS } from "@/server/games/gameService";
 
 import type { GameWithRelations } from "@/types";
@@ -60,5 +69,30 @@ export const userRouter = createTRPCRouter({
 
       return games;
     }),
+  },
+  invite: {
+    /** Shows a staff invitation without using it (safe for link previews). */
+    preview: publicProcedure
+      .input(z.object({ token: z.string().min(16).max(200) }))
+      .query(async ({ ctx, input }) =>
+        previewStaffInvite({
+          token: input.token,
+          userId: ctx.session?.user?.id,
+        }),
+      ),
+    /** Accepts a staff invitation for the signed-in account. */
+    accept: protectedUserProcedure
+      .input(z.object({ token: z.string().min(16).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await acceptStaffInvite({
+          token: input.token,
+          userId: ctx.session.user.id,
+        });
+        if (result.isErr()) throw toTRPCError(result.error);
+        if (result.value.changed) {
+          await emitUpdatedGameState({ gameId: result.value.gameId });
+        }
+        return result.value;
+      }),
   },
 });

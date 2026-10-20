@@ -22,15 +22,20 @@ import {
 import type { PrivateGameState } from "@/types";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { HostRoomPanel } from "@/app/_components/client/HostRoomPanel";
+import { HelpersPanel } from "@/app/_components/client/HelpersPanel";
+import { ROLE_LABEL, can, type StaffRoleName } from "@/utils/capabilities";
 
 export function GameAdminInfo({
   gameState: initialGameState,
-  isOwner,
+  staffRole,
 }: {
   gameState: PrivateGameState;
-  isOwner: boolean;
+  staffRole: StaffRoleName;
 }) {
-  const [activeTab, setActiveTab] = useState("quick-controls");
+  const runsGame = can(staffRole, "runGame");
+  const [activeTab, setActiveTab] = useState(
+    runsGame ? "quick-controls" : "player-management",
+  );
   const [isPending, startTransition] = useTransition();
 
   const handleTabChange = (value: string) => {
@@ -57,18 +62,28 @@ export function GameAdminInfo({
       {/* Game sound effects for all teams */}
       <GameSoundEffects />
 
-      <div className="w-full max-w-[700px]">
-        <HostRoomPanel isOwner={isOwner} />
+      <div className="flex w-full max-w-[700px] flex-col gap-4">
+        <p className="text-center" data-testid="my-role">
+          You&apos;re the <strong>{ROLE_LABEL[staffRole]}</strong> of this game.
+          {!runsGame &&
+            " You can move players between teams. The owner and co-hosts run the buzzer and scores."}
+        </p>
+        <HostRoomPanel staffRole={staffRole} />
       </div>
       <Tabs
         value={activeTab}
         onValueChange={handleTabChange}
         className="w-full max-w-[700px]"
       >
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="quick-controls">Game Controls</TabsTrigger>
-          <TabsTrigger value="team-management">Team Management</TabsTrigger>
+        <TabsList className="flex h-auto w-full flex-wrap">
+          {runsGame && (
+            <TabsTrigger value="quick-controls">Game Controls</TabsTrigger>
+          )}
+          {runsGame && (
+            <TabsTrigger value="team-management">Team Management</TabsTrigger>
+          )}
           <TabsTrigger value="player-management">Player Management</TabsTrigger>
+          <TabsTrigger value="helpers">Helpers</TabsTrigger>
           <TabsTrigger value="information">Information</TabsTrigger>
         </TabsList>
         <TabsContent value="quick-controls">
@@ -113,6 +128,13 @@ export function GameAdminInfo({
             <Skeleton className="h-[400px] w-full" />
           ) : (
             <GamePlayerManagementTable gameState={currentGameState} />
+          )}
+        </TabsContent>
+        <TabsContent value="helpers">
+          {isPending ? (
+            <Skeleton className="h-[400px] w-full" />
+          ) : (
+            <HelpersPanel />
           )}
         </TabsContent>
         <TabsContent value="information">

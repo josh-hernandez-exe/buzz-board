@@ -67,7 +67,7 @@ describe("HostRoomPanel", () => {
   });
 
   it("shows the join code, status and audience display link", () => {
-    render(<HostRoomPanel isOwner />);
+    render(<HostRoomPanel staffRole="owner" />);
 
     expect(screen.getByTestId("join-code")).toHaveTextContent("ABC123");
     expect(screen.getByTestId("game-status")).toHaveTextContent("Lobby");
@@ -77,16 +77,16 @@ describe("HostRoomPanel", () => {
   });
 
   it("only offers delete to the owner", () => {
-    const { rerender } = render(<HostRoomPanel isOwner={false} />);
+    const { rerender } = render(<HostRoomPanel staffRole="cohost" />);
     expect(screen.queryByRole("button", { name: "Delete…" })).toBeNull();
 
-    rerender(<HostRoomPanel isOwner />);
+    rerender(<HostRoomPanel staffRole="owner" />);
     expect(screen.getByRole("button", { name: "Delete…" })).toBeVisible();
   });
 
   it("requires the exact game name before deleting", async () => {
     gameState({ status: "finished", finishedAt: new Date() }, 3);
-    render(<HostRoomPanel isOwner />);
+    render(<HostRoomPanel staffRole="owner" />);
 
     await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
     const confirm = screen.getByRole("button", { name: "Delete forever" });
@@ -104,7 +104,7 @@ describe("HostRoomPanel", () => {
 
   it("explains why a game in play cannot be deleted", async () => {
     gameState({ status: "running" }, 2);
-    render(<HostRoomPanel isOwner />);
+    render(<HostRoomPanel staffRole="owner" />);
 
     await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
 
@@ -119,7 +119,7 @@ describe("HostRoomPanel", () => {
       status: "finished",
       finishedAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
     });
-    render(<HostRoomPanel isOwner />);
+    render(<HostRoomPanel staffRole="owner" />);
 
     expect(
       screen.getByRole("button", { name: "Reopen to correct results" }),
@@ -128,7 +128,7 @@ describe("HostRoomPanel", () => {
   });
 
   it("changes the team policy", async () => {
-    render(<HostRoomPanel isOwner />);
+    render(<HostRoomPanel staffRole="owner" />);
 
     await userEvent.selectOptions(
       screen.getByLabelText("Team assignment for new players"),
@@ -138,5 +138,15 @@ describe("HostRoomPanel", () => {
     expect(calls.setTeamAssignment).toHaveBeenCalledWith({
       teamAssignment: "staff",
     });
+  });
+
+  it("shows moderators how to share, but no game or player controls", () => {
+    render(<HostRoomPanel staffRole="moderator" />);
+
+    expect(screen.getByTestId("join-code")).toHaveTextContent("ABC123");
+    for (const name of ["Finish game…", "Duplicate", "Delete…"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
+    expect(screen.queryByLabelText("Allow new players to join")).toBeNull();
   });
 });

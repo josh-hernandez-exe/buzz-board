@@ -9,6 +9,7 @@ import { GameAdminInfo } from "./GameAdminInfo";
 
 import { logger } from "@/logger";
 import { GameScope } from "@/app/_components/client/GameScope";
+import { staffRoleFor } from "@/server/staff/staffService";
 
 export default async function GameAdminPage({
   params,
@@ -23,7 +24,18 @@ export default async function GameAdminPage({
     gameId,
   });
 
-  if (gameSession?.gameAdmin?.gameId !== gameId) {
+  const staffRole =
+    gameSession && "createdById" in gameSession
+      ? staffRoleFor({
+          createdById: gameSession.createdById,
+          gameAdmin:
+            gameSession.gameAdmin?.gameId === gameId
+              ? gameSession.gameAdmin
+              : null,
+          userId: session?.user?.id,
+        })
+      : null;
+  if (!staffRole) {
     logger.error("Game admin not found for this game.");
     redirect("/dashboard");
   }
@@ -54,10 +66,7 @@ export default async function GameAdminPage({
             >
               Scoreboard
             </Link>
-            <GameAdminInfo
-              gameState={currentGameState}
-              isOwner={gameSession.createdById === session?.user?.id}
-            />
+            <GameAdminInfo gameState={currentGameState} staffRole={staffRole} />
           </div>
         </main>
       </GameScope>

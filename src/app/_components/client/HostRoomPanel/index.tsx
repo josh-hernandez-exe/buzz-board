@@ -24,6 +24,7 @@ import { Switch } from "@/app/_components/ui/switch";
 import { api } from "@/trpc/react";
 import { newRequestId } from "@/utils/requestId";
 import { ASSIGNMENT_LABEL, GAME_LIMITS, STATUS_LABEL } from "@/utils/gameRules";
+import { can, type StaffRoleName } from "@/utils/capabilities";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { helpHref } from "@/help/manifest";
 
@@ -53,7 +54,9 @@ function CopyButton({ text, label }: { text: string; label: string }) {
  * The host desk's room overview: how to share it, who may join, and the
  * game's lifecycle. Shown to every host/co-host; delete is owner-only.
  */
-export function HostRoomPanel({ isOwner }: { isOwner: boolean }) {
+export function HostRoomPanel({ staffRole }: { staffRole: StaffRoleName }) {
+  const isOwner = can(staffRole, "deleteGame");
+  const runsGame = can(staffRole, "runGame");
   const router = useRouter();
   const { data } = useLiveGameState();
   const [confirmName, setConfirmName] = useState("");
@@ -164,181 +167,186 @@ export function HostRoomPanel({ isOwner }: { isOwner: boolean }) {
             </div>
           </section>
 
-          <section
-            aria-labelledby="joining-heading"
-            className="flex flex-col gap-3"
-          >
-            <h3 id="joining-heading" className="font-semibold">
-              Players ({playerCount})
-            </h3>
-            <div className="flex items-center justify-between gap-4">
-              <label htmlFor="joining-open" className="text-sm">
-                {game.joiningOpen
-                  ? "New players can join"
-                  : "Joining is closed; players already in can still return"}
-              </label>
-              <Switch
-                id="joining-open"
-                aria-label="Allow new players to join"
-                checked={game.joiningOpen}
-                disabled={finished || setJoiningOpen.isPending}
-                onCheckedChange={(open: boolean) =>
-                  setJoiningOpen.mutate({ open })
-                }
+          {runsGame && (
+            <section
+              aria-labelledby="joining-heading"
+              className="flex flex-col gap-3"
+            >
+              <h3 id="joining-heading" className="font-semibold">
+                Players ({playerCount})
+              </h3>
+              <div className="flex items-center justify-between gap-4">
+                <label htmlFor="joining-open" className="text-sm">
+                  {game.joiningOpen
+                    ? "New players can join"
+                    : "Joining is closed; players already in can still return"}
+                </label>
+                <Switch
+                  id="joining-open"
+                  aria-label="Allow new players to join"
+                  checked={game.joiningOpen}
+                  disabled={finished || setJoiningOpen.isPending}
+                  onCheckedChange={(open: boolean) =>
+                    setJoiningOpen.mutate({ open })
+                  }
+                />
+              </div>
+              {game.format === GameFormat.team && (
+                <label className="flex flex-col gap-1 text-sm">
+                  Team assignment for new players
+                  <select
+                    className="rounded-md border px-2 py-1"
+                    value={game.teamAssignment}
+                    disabled={finished || setTeamAssignment.isPending}
+                    onChange={(e) =>
+                      setTeamAssignment.mutate({
+                        teamAssignment: e.target.value as TeamAssignment,
+                      })
+                    }
+                  >
+                    {Object.values(TeamAssignment).map((value) => (
+                      <option key={value} value={value}>
+                        {ASSIGNMENT_LABEL[value]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <ErrorNotice
+                error={setJoiningOpen.error ?? setTeamAssignment.error}
               />
-            </div>
-            {game.format === GameFormat.team && (
-              <label className="flex flex-col gap-1 text-sm">
-                Team assignment for new players
-                <select
-                  className="rounded-md border px-2 py-1"
-                  value={game.teamAssignment}
-                  disabled={finished || setTeamAssignment.isPending}
-                  onChange={(e) =>
-                    setTeamAssignment.mutate({
-                      teamAssignment: e.target.value as TeamAssignment,
+            </section>
+          )}
+
+          {runsGame && (
+            <section
+              aria-labelledby="game-heading"
+              className="flex flex-col gap-3"
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <h3 id="game-heading" className="font-semibold">
+                  Game
+                </h3>
+                <a
+                  href={helpHref("host-quickstart")}
+                  target="_blank"
+                  rel="noopener"
+                  className="text-sm underline"
+                >
+                  Host guide
+                </a>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {!finished && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline">Finish game…</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Finish this game?</DialogTitle>
+                        <DialogDescription>
+                          The buzzer closes, nobody new can join, and players
+                          can no longer change names or teams. Scores stay
+                          visible. You can reopen within 24 hours to correct
+                          results.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <DialogClose asChild>
+                          <Button variant="secondary">Keep playing</Button>
+                        </DialogClose>
+                        <DialogClose asChild>
+                          <Button onClick={() => finishGame.mutate()}>
+                            Finish game
+                          </Button>
+                        </DialogClose>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+                {finished && (
+                  <Button
+                    variant="outline"
+                    disabled={!canReopen || reopenGame.isPending}
+                    title={
+                      canReopen
+                        ? undefined
+                        : "Games can only be reopened within 24 hours of finishing."
+                    }
+                    onClick={() => reopenGame.mutate()}
+                  >
+                    Reopen to correct results
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  disabled={duplicateGame.isPending}
+                  onClick={() =>
+                    duplicateGame.mutate({
+                      requestId: duplicateRequestId.current,
                     })
                   }
                 >
-                  {Object.values(TeamAssignment).map((value) => (
-                    <option key={value} value={value}>
-                      {ASSIGNMENT_LABEL[value]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <ErrorNotice
-              error={setJoiningOpen.error ?? setTeamAssignment.error}
-            />
-          </section>
-
-          <section
-            aria-labelledby="game-heading"
-            className="flex flex-col gap-3"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <h3 id="game-heading" className="font-semibold">
-                Game
-              </h3>
-              <a
-                href={helpHref("host-quickstart")}
-                target="_blank"
-                rel="noopener"
-                className="text-sm underline"
-              >
-                Host guide
-              </a>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {!finished && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">Finish game…</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Finish this game?</DialogTitle>
-                      <DialogDescription>
-                        The buzzer closes, nobody new can join, and players can
-                        no longer change names or teams. Scores stay visible.
-                        You can reopen within 24 hours to correct results.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button variant="secondary">Keep playing</Button>
-                      </DialogClose>
-                      <DialogClose asChild>
-                        <Button onClick={() => finishGame.mutate()}>
-                          Finish game
-                        </Button>
-                      </DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              )}
-              {finished && (
-                <Button
-                  variant="outline"
-                  disabled={!canReopen || reopenGame.isPending}
-                  title={
-                    canReopen
-                      ? undefined
-                      : "Games can only be reopened within 24 hours of finishing."
-                  }
-                  onClick={() => reopenGame.mutate()}
-                >
-                  Reopen to correct results
+                  {duplicateGame.isPending ? "Duplicating…" : "Duplicate"}
                 </Button>
-              )}
-              <Button
-                variant="outline"
-                disabled={duplicateGame.isPending}
-                onClick={() =>
-                  duplicateGame.mutate({
-                    requestId: duplicateRequestId.current,
-                  })
+                {isOwner && (
+                  <Dialog onOpenChange={() => setConfirmName("")}>
+                    <DialogTrigger asChild>
+                      <Button variant="destructive">Delete…</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Delete this game permanently?</DialogTitle>
+                        <DialogDescription>
+                          This removes the game, its players, scores and history
+                          for everyone. It cannot be undone.
+                        </DialogDescription>
+                      </DialogHeader>
+                      {deleteBlockedReason ? (
+                        <p className="text-sm">{deleteBlockedReason}</p>
+                      ) : (
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span>
+                            Type the game name, <strong>{game.name}</strong>, to
+                            confirm
+                          </span>
+                          <input
+                            aria-label="Game name to confirm deletion"
+                            className="rounded-md border px-2 py-1"
+                            value={confirmName}
+                            onChange={(e) => setConfirmName(e.target.value)}
+                          />
+                        </label>
+                      )}
+                      <ErrorNotice error={deleteGame.error} />
+                      <DialogFooter>
+                        <DialogClose asChild>
+                          <Button variant="secondary">Cancel</Button>
+                        </DialogClose>
+                        <Button
+                          variant="destructive"
+                          disabled={
+                            !!deleteBlockedReason ||
+                            confirmName.trim() !== game.name ||
+                            deleteGame.isPending
+                          }
+                          onClick={() => deleteGame.mutate({ confirmName })}
+                        >
+                          Delete forever
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+              <ErrorNotice
+                error={
+                  finishGame.error ?? reopenGame.error ?? duplicateGame.error
                 }
-              >
-                {duplicateGame.isPending ? "Duplicating…" : "Duplicate"}
-              </Button>
-              {isOwner && (
-                <Dialog onOpenChange={() => setConfirmName("")}>
-                  <DialogTrigger asChild>
-                    <Button variant="destructive">Delete…</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Delete this game permanently?</DialogTitle>
-                      <DialogDescription>
-                        This removes the game, its players, scores and history
-                        for everyone. It cannot be undone.
-                      </DialogDescription>
-                    </DialogHeader>
-                    {deleteBlockedReason ? (
-                      <p className="text-sm">{deleteBlockedReason}</p>
-                    ) : (
-                      <label className="flex flex-col gap-1 text-sm">
-                        <span>
-                          Type the game name, <strong>{game.name}</strong>, to
-                          confirm
-                        </span>
-                        <input
-                          aria-label="Game name to confirm deletion"
-                          className="rounded-md border px-2 py-1"
-                          value={confirmName}
-                          onChange={(e) => setConfirmName(e.target.value)}
-                        />
-                      </label>
-                    )}
-                    <ErrorNotice error={deleteGame.error} />
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button variant="secondary">Cancel</Button>
-                      </DialogClose>
-                      <Button
-                        variant="destructive"
-                        disabled={
-                          !!deleteBlockedReason ||
-                          confirmName.trim() !== game.name ||
-                          deleteGame.isPending
-                        }
-                        onClick={() => deleteGame.mutate({ confirmName })}
-                      >
-                        Delete forever
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </div>
-            <ErrorNotice
-              error={
-                finishGame.error ?? reopenGame.error ?? duplicateGame.error
-              }
-            />
-          </section>
+              />
+            </section>
+          )}
         </div>
       }
     />

@@ -12,6 +12,8 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 
 import { HelpfulTRPCError } from "@/server/api/errors";
+import { staffRoleFor } from "@/server/staff/staffService";
+import { can, ROLE_LABEL, type Capability } from "@/utils/capabilities";
 
 import { auth, gameAuth } from "@/server/auth";
 import { db } from "@/server/db";
@@ -195,20 +197,30 @@ export const protectedGameUserProcedure = t.procedure
     });
   });
 
-export const protectedGameAdminProcedure = t.procedure
+/**
+ * Any staff member of the game in scope: its owner, a co-host or a moderator.
+ * The role is re-derived on every request from current membership, so a
+ * removed or demoted helper loses access immediately. `ctx.staffRole` tells
+ * procedures which role it is; use `staffProcedure(capability)` to require a
+ * capability.
+ */
+export const protectedGameStaffProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
-    if (
-      !(
-        typeof ctx?.gameSession?.id === "string" &&
-        typeof ctx?.gameSession?.gameAdmin?.gameId === "string" &&
-        typeof ctx.session?.user?.id === "string" &&
-        // does the game id match game of the gameAdmin
-        ctx.gameSession.id === ctx.gameSession.gameAdmin.gameId &&
-        // does the gameAdmin associated with the authed in user
-        ctx.gameSession.gameAdmin.userId === ctx.session.user.id
-      )
-    ) {
+    const userId = ctx.session?.user?.id;
+    const gameId = ctx.gameSession?.id;
+    const staffRole =
+      typeof gameId === "string" && typeof userId === "string"
+        ? staffRoleFor({
+            createdById: ctx.gameSession.createdById,
+            gameAdmin:
+              ctx.gameSession.gameAdmin?.gameId === gameId
+                ? ctx.gameSession.gameAdmin
+                : null,
+            userId,
+          })
+        : null;
+    if (!staffRole || !ctx.session?.user || typeof gameId !== "string") {
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Not a valid game admin user for this game.",
@@ -217,11 +229,12 @@ export const protectedGameAdminProcedure = t.procedure
     return next({
       ctx: {
         ...ctx,
+        staffRole,
         session: { ...ctx.session, user: ctx.session.user },
         gameSession: {
           ...ctx.gameSession,
           // infers the properties of game and gameUser as non-nullable
-          id: ctx.gameSession.id,
+          id: gameId,
           name: ctx.gameSession.name,
           code: ctx.gameSession.code,
           isBuzzerListening: ctx.gameSession.isBuzzerListening,
@@ -238,6 +251,22 @@ export const protectedGameAdminProcedure = t.procedure
       },
     });
   });
+
+/** Staff with a specific capability from the fixed capability table. */
+export function staffProcedure(capability: Capability) {
+  return protectedGameStaffProcedure.use(({ ctx, next }) => {
+    if (!can(ctx.staffRole, capability)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Your role (${ROLE_LABEL[ctx.staffRole]}) can't do that.`,
+      });
+    }
+    return next();
+  });
+}
+
+/** Owner or co-host: everything needed to run the game. */
+export const protectedGameAdminProcedure = staffProcedure("runGame");
 
 export const protectedGameGeneralProcedure = t.procedure
   .use(timingMiddleware)

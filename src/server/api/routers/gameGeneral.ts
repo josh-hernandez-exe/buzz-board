@@ -5,6 +5,8 @@ import {
 
 import { getPrivateGameState } from "@/server/db/common";
 import { liveFeeds } from "@/server/utils/events";
+import { isStillStaff } from "@/server/staff/staffService";
+import { TRPCError } from "@trpc/server";
 
 import type { BasicGameInfo } from "@/types";
 
@@ -37,7 +39,24 @@ export const gameGeneralRouter = createTRPCRouter({
     ctx,
     signal,
   }) {
-    yield* liveFeeds.privateGameState.subscribe(ctx.gameSession.id, signal);
+    const gameId = ctx.gameSession.id;
+    const userId = ctx.session?.user?.id;
+    // Players are checked when they are removed (later PRs). A helper whose
+    // role was removed stops receiving private state at the next change.
+    const staffOnly =
+      !("gameUser" in ctx.gameSession && ctx.gameSession.gameUser) && !!userId;
+    for await (const state of liveFeeds.privateGameState.subscribe(
+      gameId,
+      signal,
+    )) {
+      if (staffOnly && !(await isStillStaff(gameId, userId))) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Your role in this game was removed.",
+        });
+      }
+      yield state;
+    }
   }),
   /** Superseded by `buzzWinner` in the game state; kept for older open tabs. */
   whoBuzzedIn: protectedGameGeneralProcedure.subscription(async function* ({
