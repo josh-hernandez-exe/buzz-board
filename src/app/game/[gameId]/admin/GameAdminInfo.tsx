@@ -8,7 +8,7 @@ import { GameAdminBuzzerControl } from "@/app/_components/client/GameAdminBuzzer
 import { GameAdminScoreboardAdvancedControl } from "@/app/_components/client/GameAdminScoreboardAdvancedControl";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
-import { GamePlayerManagementTable } from "@/app/_components/client/GameAdminPlayerManagementTable";
+import { RosterPanel } from "@/app/_components/client/RosterPanel";
 import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
 import { Skeleton } from "@/app/_components/ui/skeleton";
 
@@ -66,7 +66,7 @@ export function GameAdminInfo({
         <p className="text-center" data-testid="my-role">
           You&apos;re the <strong>{ROLE_LABEL[staffRole]}</strong> of this game.
           {!runsGame &&
-            " You can move players between teams. The owner and co-hosts run the buzzer and scores."}
+            " You can rename, move and remove players. The owner and co-hosts run the buzzer and scores."}
         </p>
         <HostRoomPanel staffRole={staffRole} />
       </div>
@@ -127,7 +127,7 @@ export function GameAdminInfo({
           {isPending ? (
             <Skeleton className="h-[400px] w-full" />
           ) : (
-            <GamePlayerManagementTable gameState={currentGameState} />
+            <RosterPanel staffRole={staffRole} />
           )}
         </TabsContent>
         <TabsContent value="helpers">

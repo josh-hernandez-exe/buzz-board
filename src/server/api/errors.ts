@@ -8,6 +8,8 @@ import { type GameTransactionError } from "@/server/db/gameTransaction";
 import { type GameServiceError } from "@/server/games/gameService";
 import { type ScoreCommandError } from "@/server/scores/scoreService";
 import { type StaffError } from "@/server/staff/staffService";
+import { type RosterError } from "@/server/roster/rosterService";
+import { type IdentityError } from "@/server/identity/identityService";
 import { nameErrorMessage } from "@/utils/displayName";
 import { SCORE_LIMITS } from "@/server/scores/scoreMath";
 import { helpHref } from "@/help/manifest";
@@ -18,7 +20,9 @@ export type ServiceError =
   | BuzzError
   | BuzzerControlError
   | ScoreCommandError
-  | StaffError;
+  | StaffError
+  | RosterError
+  | IdentityError;
 
 const number = (n: number) => n.toLocaleString("en-US");
 
@@ -44,6 +48,25 @@ const ERROR_HELP: Partial<Record<ServiceError["kind"], string>> = {
     "how-do-i-change-my-name-or-my-teams-name",
   ),
   notListening: helpHref("troubleshooting", "why-cant-i-buzz"),
+  renameLocked: helpHref(
+    "teams-and-names",
+    "how-do-i-change-my-name-or-my-teams-name",
+  ),
+  nameChanged: helpHref(
+    "teams-and-names",
+    "how-do-i-change-my-name-or-my-teams-name",
+  ),
+  buzzerOpen: helpHref("teams-and-names", "can-i-switch-teams"),
+  teamSwitchingOff: helpHref("teams-and-names", "can-i-switch-teams"),
+  hostAssignsTeams: helpHref("teams-and-names", "can-i-switch-teams"),
+  playerLinked: helpHref(
+    "join-and-resume",
+    "i-lost-my-device-or-cleared-my-browser-can-i-get-my-player-back",
+  ),
+  accountHasOtherPlayer: helpHref(
+    "join-and-resume",
+    "can-i-save-my-player-to-an-account",
+  ),
   teamRejected: helpHref("troubleshooting", "why-cant-i-buzz"),
   notOnTeam: helpHref("teams-and-names", "how-do-players-get-a-team"),
   invalidAmount: helpHref("scoreboards-and-display", "how-do-i-change-scores"),
@@ -117,7 +140,11 @@ function baseError(error: ServiceError): TRPCError {
         code: "BAD_REQUEST",
         message: nameErrorMessage(
           error.error,
-          error.field === "game" ? "Game name" : "Nickname",
+          error.field === "game"
+            ? "Game name"
+            : error.field === "team"
+              ? "Team name"
+              : "Nickname",
         ),
       });
     case "invalidTeamCount":
@@ -247,6 +274,67 @@ function baseError(error: ServiceError): TRPCError {
       return new TRPCError({
         code: "NOT_FOUND",
         message: "That helper is no longer part of this game.",
+      });
+    case "playerNotFound":
+      return new TRPCError({
+        code: "NOT_FOUND",
+        message: "That player is no longer in this game.",
+      });
+    case "teamNotFound":
+      return new TRPCError({
+        code: "NOT_FOUND",
+        message: "That team is no longer in this game.",
+      });
+    case "renameLocked":
+      return new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          error.target === "player"
+            ? "Your host has locked name changes for you. Ask them if it needs changing."
+            : "Your host has locked this team's name. Ask them if it needs changing.",
+      });
+    case "nameChanged":
+      return new TRPCError({
+        code: "CONFLICT",
+        message:
+          "This name was changed by someone else while you were editing. Your text is kept; check it and save again.",
+      });
+    case "notTeamMember":
+      return new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only players on this team can rename it.",
+      });
+    case "buzzerOpen":
+      return new TRPCError({
+        code: "CONFLICT",
+        message:
+          "Players can't change teams while the buzzer is open. Pause it first, then try again.",
+      });
+    case "teamSwitchingOff":
+      return new TRPCError({
+        code: "FORBIDDEN",
+        message: "Team switching is currently disabled",
+      });
+    case "hostAssignsTeams":
+      return new TRPCError({
+        code: "FORBIDDEN",
+        message: "Your host assigns teams in this game.",
+      });
+    case "playerLinked":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "This player is saved to an account. They can get back in by signing in to that account.",
+      });
+    case "linkedToOtherAccount":
+      return new TRPCError({
+        code: "CONFLICT",
+        message: "This player is already saved to a different account.",
+      });
+    case "accountHasOtherPlayer":
+      return new TRPCError({
+        code: "CONFLICT",
+        message: `Your account already has a player in this game (${error.playerName}). Join as that player instead, or keep playing as a guest.`,
       });
     case "historyCorrupt":
       return new TRPCError({

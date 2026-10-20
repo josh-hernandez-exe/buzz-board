@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { Button } from "@/app/_components/ui/button";
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
+import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
+import { api } from "@/trpc/react";
 import { helpHref } from "@/help/manifest";
 
 /**
@@ -13,11 +15,23 @@ import { helpHref } from "@/help/manifest";
  * leaving the room on this device, which only forgets this browser's
  * credential; the player's name, team and scores stay in the game.
  */
-export function PlayerHeader({ gameUserId }: { gameUserId: string }) {
+export function PlayerHeader({
+  gameUserId,
+  signedIn = false,
+  linked = false,
+}: {
+  gameUserId: string;
+  /** Whether this browser is signed in to an account. */
+  signedIn?: boolean;
+  /** Whether this player is already saved to an account. */
+  linked?: boolean;
+}) {
   const router = useRouter();
   const { data } = useLiveGameState();
   const [, , leaveGame] = useGameTokenData();
+  const linkAccount = api.gameUser.linkAccount.useMutation();
   if (!data) return null;
+  const isLinked = linked || linkAccount.isSuccess;
 
   const { game } = data;
   const self = data.gameUsers[gameUserId];
@@ -58,6 +72,33 @@ export function PlayerHeader({ gameUserId }: { gameUserId: string }) {
       >
         Help: what do the buzzer messages mean?
       </a>
+      {isLinked ? (
+        <p className="text-sm text-white/80">
+          Saved to your account: sign in on another device to get back in as
+          yourself.
+        </p>
+      ) : (
+        signedIn && (
+          <div className="flex flex-col gap-1 text-sm">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="self-start"
+              disabled={linkAccount.isPending}
+              onClick={() => linkAccount.mutate()}
+            >
+              Save this player to my account
+            </Button>
+            <span className="text-white/70">
+              Lets you get back in on another device by signing in.
+            </span>
+            <ErrorNotice
+              error={linkAccount.error}
+              className="text-sm text-red-300"
+            />
+          </div>
+        )
+      )}
       <details className="text-sm">
         <summary className="cursor-pointer text-white/80">
           Leave this room on this device
@@ -65,8 +106,8 @@ export function PlayerHeader({ gameUserId }: { gameUserId: string }) {
         <div className="mt-2 flex flex-col gap-2">
           <p className="text-white/80">
             This browser forgets you in this game. Your name, team and points
-            stay in the game, but you can only return here as yourself if you
-            signed in, or if your host helps you.
+            stay in the game. To return as yourself later, sign in (if you saved
+            this player to your account) or ask your host for a recovery link.
           </p>
           <Button
             variant="secondary"

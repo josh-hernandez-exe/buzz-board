@@ -18,6 +18,13 @@ import {
   setStaffRole,
 } from "@/server/staff/staffService";
 import { INVITABLE_ROLES } from "@/utils/capabilities";
+import {
+  movePlayer,
+  removePlayer,
+  renamePlayer,
+  renameTeam,
+} from "@/server/roster/rosterService";
+import { createRecoveryLink } from "@/server/identity/identityService";
 
 import { toTRPCError, type ServiceError } from "@/server/api/errors";
 import {
@@ -268,50 +275,15 @@ export const gameAdminRouter = createTRPCRouter({
     .input(
       z.object({
         gameUserId: z.string(),
-        targetGameTeamId: z.string(),
+        /** `null` leaves the player without a team. */
+        targetGameTeamId: z.string().nullable(),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      const { id: gameId } = ctx.gameSession;
-      const { gameUserId, targetGameTeamId } = input;
-
-      const gameUser = await ctx.db.gameUser.findUnique({
-        where: { id: gameUserId, gameId },
-      });
-
-      if (!gameUser) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Player not found in this game.",
-        });
-      }
-
-      // If the player is already in the target team (or both are null), no action needed
-      if (gameUser.gameTeamId === targetGameTeamId) {
-        return gameUser; // Or some other indication of no change
-      }
-
-      if (targetGameTeamId) {
-        const targetTeam = await ctx.db.gameTeam.findUnique({
-          where: { id: targetGameTeamId, gameId },
-        });
-        if (!targetTeam) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Target team not found in this game.",
-          });
-        }
-      }
-
-      const updatedGameUser = await ctx.db.gameUser.update({
-        where: { id: gameUserId },
-        data: { gameTeamId: targetGameTeamId },
-      });
-
-      await emitUpdatedGameState({ gameId });
-
-      return updatedGameUser;
-    }),
+    .mutation(async ({ ctx, input }) =>
+      gameControl(ctx.gameSession.id, (gameId) =>
+        movePlayer({ gameId, ...input, actor: { kind: "staff" } }),
+      ),
+    ),
   toggleFreezeTeams: protectedGameAdminProcedure
     .input(z.object({ freeze: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
@@ -440,5 +412,85 @@ export const gameAdminRouter = createTRPCRouter({
           removeStaff({ gameId, gameAdminId: input.gameAdminId }),
         ),
       ),
+  }),
+  /** Players: names, rename locks, removal and guest recovery. */
+  roster: createTRPCRouter({
+    list: protectedGameStaffProcedure.query(async ({ ctx }) => {
+      const players = await ctx.db.gameUser.findMany({
+        where: { gameId: ctx.gameSession.id, removedAt: null },
+        orderBy: { index: "asc" },
+        select: {
+          id: true,
+          name: true,
+          index: true,
+          gameTeamId: true,
+          allowSelfRename: true,
+          nameVersion: true,
+          userId: true,
+        },
+      });
+      const removedCount = await ctx.db.gameUser.count({
+        where: { gameId: ctx.gameSession.id, removedAt: { not: null } },
+      });
+      return {
+        players: players.map(({ userId, ...player }) => ({
+          ...player,
+          /** Saved to an account: they sign in to return, no recovery link. */
+          isLinked: userId !== null,
+        })),
+        removedCount,
+      };
+    }),
+    renamePlayer: staffProcedure("moderateNames")
+      .input(
+        z.object({
+          gameUserId: z.string(),
+          name: z.string().max(400).optional(),
+          allowSelfRename: z.boolean().optional(),
+          expectedNameVersion: z.number().int().nonnegative().optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) =>
+        gameControl(ctx.gameSession.id, (gameId) =>
+          renamePlayer({ gameId, ...input, actor: { kind: "staff" } }),
+        ),
+      ),
+    renameTeam: staffProcedure("moderateNames")
+      .input(
+        z.object({
+          gameTeamId: z.string(),
+          name: z.string().max(400).optional(),
+          allowMemberRename: z.boolean().optional(),
+          expectedNameVersion: z.number().int().nonnegative().optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) =>
+        gameControl(ctx.gameSession.id, (gameId) =>
+          renameTeam({ gameId, ...input, actor: { kind: "staff" } }),
+        ),
+      ),
+    removePlayer: staffProcedure("removePlayers")
+      .input(z.object({ gameUserId: z.string() }))
+      .mutation(async ({ ctx, input }) =>
+        gameControl(ctx.gameSession.id, (gameId) =>
+          removePlayer({ gameId, gameUserId: input.gameUserId }),
+        ),
+      ),
+    createRecoveryLink: staffProcedure("recoverGuests")
+      .input(z.object({ gameUserId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await createRecoveryLink({
+          gameId: ctx.gameSession.id,
+          gameUserId: input.gameUserId,
+          issuedById: ctx.session.user.id,
+        });
+        if (result.isErr()) throw toTRPCError(result.error);
+        // The token is only returned here, once; only its hash is stored.
+        return {
+          path: `/recover/${result.value.token}`,
+          expiresAt: result.value.expiresAt,
+          nickname: result.value.nickname,
+        };
+      }),
   }),
 });

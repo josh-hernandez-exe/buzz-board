@@ -128,14 +128,20 @@ model Game {
 }
 
 model GameUser {
-  id         String  @id @default(cuid())
-  name       String
-  index      Int
-  gameId     String
-  gameTeamId String?
-  userId     String?
-  token      String  @unique
-  data       Json    @default("{}")
+  id              String    @id @default(cuid())
+  name            String
+  index           Int
+  gameId          String
+  gameTeamId      String?
+  userId          String?
+  token           String    @unique
+  data            Json      @default("{}")
+  /// Staff can lock a player's own renaming; staff can still rename them.
+  allowSelfRename Boolean   @default(true)
+  /// Increments on every rename, so an older edit can be refused.
+  nameVersion     Int       @default(0)
+  /// Set when staff remove the player. Their credential no longer works.
+  removedAt       DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -152,12 +158,15 @@ enum BuzzerState {
 }
 
 model GameTeam {
-  id          String      @id @default(cuid())
-  index       Int
-  name        String
-  gameId      String
-  buzzerState BuzzerState @default(available)
-  data        Json        @default("{}")
+  id                String      @id @default(cuid())
+  index             Int
+  name              String
+  gameId            String
+  buzzerState       BuzzerState @default(available)
+  data              Json        @default("{}")
+  /// Staff can lock renaming by team members; staff can still rename it.
+  allowMemberRename Boolean     @default(true)
+  nameVersion       Int         @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())

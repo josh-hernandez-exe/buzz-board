@@ -1,4 +1,4 @@
-import type { Game, GameAdmin, GameUser, User } from "@prisma/client";
+import type { Game, GameAdmin, GameUser } from "@prisma/client";
 import { cookies } from "next/headers";
 
 import { db } from "@/server/db";
@@ -19,11 +19,9 @@ import { logger } from "@/logger";
 async function gameUserAuth({
   gameId,
   gameUserToken,
-  user,
 }: {
   gameId: string | undefined;
   gameUserToken: string | undefined;
-  user?: Pick<User, "id"> | undefined;
 }): Promise<{ gameUser: GameUser | undefined | null }> {
   let gameUser;
 
@@ -43,23 +41,13 @@ async function gameUserAuth({
     gameUser = null;
   }
 
-  if (
-    typeof user?.id === "string" &&
-    gameUser &&
-    gameUser?.userId !== user.id
-  ) {
-    // user is authed and game user is authed and not linked
-    // link them
-    gameUser = await db.gameUser.update({
-      where: {
-        id: gameUser.id,
-      },
-      data: {
-        userId: user.id,
-      },
-    });
+  if (gameUser?.removedAt) {
+    logger.warn("Game User was removed from this game.");
+    gameUser = null;
   }
 
+  // Signing in never links a guest player to the account; the player links
+  // explicitly (identityService.linkPlayerToAccount).
   return {
     gameUser,
   };
@@ -175,7 +163,6 @@ export async function gameAuth({
     gameUserAuth({
       gameId,
       gameUserToken: gameUserToken ?? undefined,
-      user,
     }),
     gameAdminAuth({
       gameId,

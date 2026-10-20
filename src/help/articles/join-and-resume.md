@@ -24,9 +24,18 @@ It makes this browser forget you in that game. Your name, team and points stay i
 
 After leaving, this browser can't resume as you. Joining again creates a new player.
 
+## Can I save my player to an account?
+
+Yes. If you're signed in, select **Save this player to my account** at the top of your game page. Then, on any device, sign in and open the game's link or code: you'll be offered **Resume as** your name.
+
+Joining while signed in doesn't save your player automatically. Each account can have one saved player per game.
+
 ## I lost my device or cleared my browser. Can I get my player back?
 
-Not yet. Join again as a new player and tell your host. They can move you to the right team. Your old points stay with your old player on the scoreboard.
+- **Saved to an account:** sign in on the new device and choose **Resume as** your name.
+- **Playing as a guest:** ask your host for a **recovery link**. It brings back your name, team and points, and signs out your old device. It only works once, for a short time.
+
+If neither is possible, join again as a new player and tell your host. They can rename you and move you to the right team. Your old points stay with your old team.
 
 ## Why can't I join?
 

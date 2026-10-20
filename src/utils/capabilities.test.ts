@@ -16,9 +16,14 @@ describe("capabilities", () => {
   });
 
   it("keeps moderators away from gameplay, helpers and deletion", () => {
-    expect(capabilitiesOf("moderator")).toEqual(["moveRoster"]);
+    expect(capabilitiesOf("moderator")).toEqual([
+      "moveRoster",
+      "moderateNames",
+      "removePlayers",
+    ]);
     for (const capability of [
       "runGame",
+      "recoverGuests",
       "manageHelpers",
       "deleteGame",
       "duplicateGame",

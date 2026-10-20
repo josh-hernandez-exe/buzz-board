@@ -30,8 +30,11 @@ const CODE_LENGTH = 6;
  */
 export function JoinGameComponent({
   code: inputCode,
+  signedIn = false,
 }: {
   code?: string | undefined | null;
+  /** Whether this browser is signed in; enables resuming saved players. */
+  signedIn?: boolean;
 }) {
   const router = useRouter();
   const [gameCode, setGameCode] = useState((inputCode ?? "").toUpperCase());
@@ -49,6 +52,21 @@ export function JoinGameComponent({
     { enabled: !!storedToken && !joinAsNew, retry: false },
   );
   const resumable = !joinAsNew && preview.data ? preview.data : undefined;
+  const linked = api.public.linkedPlayers.useQuery(
+    { gameCode },
+    { enabled: signedIn && codeComplete && !storedToken && !joinAsNew },
+  );
+  const savedPlayer = !resumable && !joinAsNew ? linked.data?.[0] : undefined;
+  const resumeLinked = api.public.resumeLinked.useMutation({
+    onSuccess: (data) => {
+      setGameTokenData({
+        token: data.token,
+        code: gameCode,
+        gameId: data.gameId,
+      });
+      router.push(`/game/${data.gameId}/user`);
+    },
+  });
 
   const join = api.public.joinGame.useMutation({
     onSuccess: (data) => {
@@ -111,7 +129,40 @@ export function JoinGameComponent({
         </InputOTP>
       </div>
 
-      {resumable ? (
+      {savedPlayer && (
+        <div className="flex flex-col gap-3 rounded-xl bg-white/10 p-4">
+          <p>
+            Your account has a player in <strong>{savedPlayer.gameName}</strong>
+            : <strong>{savedPlayer.nickname}</strong>
+            {savedPlayer.teamName && (
+              <>
+                {" "}
+                on <strong>{savedPlayer.teamName}</strong>
+              </>
+            )}
+            .
+          </p>
+          <Button
+            disabled={resumeLinked.isPending}
+            onClick={() =>
+              resumeLinked.mutate({
+                gameCode,
+                gameUserId: savedPlayer.gameUserId,
+              })
+            }
+          >
+            Resume as {savedPlayer.nickname}
+          </Button>
+          <Button variant="secondary" onClick={() => setJoinAsNew(true)}>
+            Join as someone new
+          </Button>
+          <ErrorNotice
+            error={resumeLinked.error}
+            className="text-sm text-red-300"
+          />
+        </div>
+      )}
+      {savedPlayer ? null : resumable ? (
         <div className="flex flex-col gap-3 rounded-xl bg-white/10 p-4">
           <p>
             Welcome back to <strong>{resumable.gameName}</strong>. You played as{" "}

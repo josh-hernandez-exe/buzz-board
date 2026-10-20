@@ -220,7 +220,11 @@ export type JoinResult = {
 async function leastPopulatedTeam(tx: GameTx, gameId: string) {
   const teams = await tx.gameTeam.findMany({
     where: { gameId },
-    select: { id: true, index: true, _count: { select: { gameUsers: true } } },
+    select: {
+      id: true,
+      index: true,
+      _count: { select: { gameUsers: { where: { removedAt: null } } } },
+    },
     orderBy: { index: "asc" },
   });
   let best: (typeof teams)[number] | undefined;
@@ -234,7 +238,8 @@ async function leastPopulatedTeam(tx: GameTx, gameId: string) {
  * Joins a game by code, or resumes the player that `token` belongs to.
  *
  * New players get the nickname they chose (never an account name) or a
- * neutral "Player N". Placement and numbering happen under the game lock, so
+ * neutral "Player N", and are guests: joining while signed in does not save
+ * the player to the account. Placement and numbering happen under the game lock, so
  * concurrent joins get distinct numbers and automatic assignment stays
  * balanced. A resumed player keeps their name and team.
  */
@@ -242,12 +247,10 @@ export async function joinGame({
   gameCode,
   token,
   nickname,
-  userId,
 }: {
   gameCode: string;
   token?: string;
   nickname?: string;
-  userId?: string;
 }): Promise<Result<JoinResult, GameServiceError>> {
   const game = await db.game.findUnique({
     where: { code: gameCode.toUpperCase() },
@@ -256,7 +259,7 @@ export async function joinGame({
 
   if (token) {
     const existing = await db.gameUser.findUnique({ where: { token } });
-    if (existing?.gameId === game.id) {
+    if (existing?.gameId === game.id && !existing.removedAt) {
       return ok({ gameUser: existing, token, gameId: game.id, resumed: true });
     }
   }
@@ -318,7 +321,6 @@ export async function joinGame({
           index,
           token: newToken,
           gameTeamId,
-          userId,
         },
       });
       return ok({

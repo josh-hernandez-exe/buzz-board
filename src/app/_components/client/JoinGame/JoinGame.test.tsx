@@ -11,6 +11,13 @@ let joinError: { message: string } | null = null;
 let preview: Preview | null = null;
 let tokenStorage: Record<string, string> = {};
 let previewInput: unknown;
+const resumeLinked = vi.fn();
+let linked: {
+  gameUserId: string;
+  nickname: string;
+  gameName: string;
+  teamName: string | null;
+}[] = [];
 
 vi.mock("@/trpc/react", () => ({
   api: {
@@ -21,6 +28,18 @@ vi.mock("@/trpc/react", () => ({
           reset,
           isPending: false,
           error: joinError,
+        }),
+      },
+      linkedPlayers: {
+        useQuery: (_input: unknown, options: { enabled: boolean }) => ({
+          data: options.enabled ? linked : undefined,
+        }),
+      },
+      resumeLinked: {
+        useMutation: () => ({
+          mutate: resumeLinked,
+          isPending: false,
+          error: null,
         }),
       },
       resumePreview: {
@@ -47,6 +66,8 @@ describe("JoinGameComponent", () => {
     preview = null;
     tokenStorage = {};
     previewInput = undefined;
+    linked = [];
+    resumeLinked.mockReset();
   });
 
   it("pre-fills the code from a link but never joins automatically", () => {
@@ -143,5 +164,31 @@ describe("JoinGameComponent", () => {
     await userEvent.click(screen.getByRole("button", { name: "Join game" }));
 
     expect(mutate).toHaveBeenCalledWith({ gameCode: "ABC123", nickname: "Bo" });
+  });
+
+  it("offers a signed-in player their saved player on a new device", async () => {
+    linked = [
+      { gameUserId: "u1", nickname: "Ada", gameName: "Quiz", teamName: "Owls" },
+    ];
+
+    render(<JoinGameComponent code="ABC123" signedIn />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Resume as Ada" }),
+    );
+    expect(resumeLinked).toHaveBeenCalledWith({
+      gameCode: "ABC123",
+      gameUserId: "u1",
+    });
+  });
+
+  it("does not look up saved players when signed out", () => {
+    linked = [
+      { gameUserId: "u1", nickname: "Ada", gameName: "Quiz", teamName: null },
+    ];
+
+    render(<JoinGameComponent code="ABC123" />);
+
+    expect(screen.queryByRole("button", { name: "Resume as Ada" })).toBeNull();
   });
 });

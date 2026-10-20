@@ -21,6 +21,12 @@ export const CAPABILITIES = {
     "Run the buzzer and scores, manage teams, settings and the game's status",
   /** Move a player between existing teams. */
   moveRoster: "Move players between teams",
+  /** Rename players and teams, and lock or unlock their own renaming. */
+  moderateNames: "Rename players and teams, and lock their renaming",
+  /** Remove a player from the game at once. */
+  removePlayers: "Remove a player from the game",
+  /** Give a guest who lost their device a one-time link back in. */
+  recoverGuests: "Give a guest a one-time link back in",
   /** Invite, re-role or remove co-hosts and moderators (never the owner). */
   manageHelpers: "Invite helpers and change or remove their roles",
   /** Permanently delete the game. */
@@ -34,12 +40,23 @@ const GRANTS: Record<StaffRoleName, readonly Capability[]> = {
   owner: [
     "runGame",
     "moveRoster",
+    "moderateNames",
+    "removePlayers",
+    "recoverGuests",
     "manageHelpers",
     "deleteGame",
     "duplicateGame",
   ],
-  cohost: ["runGame", "moveRoster", "manageHelpers", "duplicateGame"],
-  moderator: ["moveRoster"],
+  cohost: [
+    "runGame",
+    "moveRoster",
+    "moderateNames",
+    "removePlayers",
+    "recoverGuests",
+    "manageHelpers",
+    "duplicateGame",
+  ],
+  moderator: ["moveRoster", "moderateNames", "removePlayers"],
 };
 
 export function can(role: StaffRoleName | null, capability: Capability) {
@@ -65,7 +82,8 @@ export const ROLE_SUMMARY: Record<InvitableRole, string> = {
   cohost:
     "Can run the event like the owner: buzzer, scores, teams, settings and helpers. Cannot delete the game or change the owner.",
   moderator:
-    "Can move players between teams and help keep things friendly. Cannot run the buzzer, change scores or invite helpers.",
+    "Can rename players and teams, lock renaming, move players between teams and remove players. Cannot run the buzzer, change scores or invite helpers.",
 };
 
 export const INVITE_LIFETIME_HOURS = 24;
+export const RECOVERY_LINK_LIFETIME_MINUTES = 15;

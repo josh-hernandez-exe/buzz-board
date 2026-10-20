@@ -20,7 +20,8 @@ export type HelpFactPanel =
   | "teamAssignment"
   | "gameStatus"
   | "scoreLimits"
-  | "staffRoles";
+  | "staffRoles"
+  | "recoveryLinks";
 
 export type HelpArticle = {
   id: string;
@@ -54,6 +55,14 @@ export const HELP_ARTICLES = [
       "Invite co-hosts and moderators with a private link, what each role can do, and changing or removing helpers.",
     audiences: ["host"],
     facts: ["staffRoles"],
+  },
+  {
+    id: "moderation",
+    title: "Managing players",
+    summary:
+      "Rename players and teams and lock their renaming, move or remove players, and help a guest who lost their device get back in.",
+    audiences: ["host"],
+    facts: ["nameLimits", "recoveryLinks"],
   },
   {
     id: "teams-and-names",

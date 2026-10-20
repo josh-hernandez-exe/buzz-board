@@ -30,7 +30,7 @@ export async function getPublicGameState({
           buzzerState: true,
           _count: {
             select: {
-              gameUsers: true,
+              gameUsers: { where: { removedAt: null } },
             },
           },
         },
@@ -100,7 +100,10 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
           name: true,
           index: true,
           buzzerState: true,
+          allowMemberRename: true,
+          nameVersion: true,
           gameUsers: {
+            where: { removedAt: null },
             select: {
               id: true,
             },
@@ -108,11 +111,14 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
         },
       },
       gameUsers: {
+        where: { removedAt: null },
         select: {
           id: true,
           name: true,
           index: true,
           gameTeamId: true,
+          allowSelfRename: true,
+          nameVersion: true,
           user: {
             select: {
               id: true,
@@ -163,6 +169,8 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       name: gameTeam.name,
       index: gameTeam.index,
       buzzerState: gameTeam.buzzerState,
+      allowMemberRename: gameTeam.allowMemberRename,
+      nameVersion: gameTeam.nameVersion,
       gameUsers: gameTeam.gameUsers.map((gameUser) => gameUser.id),
       score: scoreboardState[gameTeam.id] ?? 0,
     })),
@@ -173,6 +181,8 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
           name: gameUser.name,
           index: gameUser.index,
           gameTeamId: gameUser.gameTeamId,
+          allowSelfRename: gameUser.allowSelfRename,
+          nameVersion: gameUser.nameVersion,
           image: gameUser.user?.image,
         };
         return acc;

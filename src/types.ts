@@ -136,6 +136,8 @@ export type PrivateGameState = {
     name: GameTeam["name"];
     index: GameTeam["index"];
     buzzerState: GameTeam["buzzerState"];
+    allowMemberRename: GameTeam["allowMemberRename"];
+    nameVersion: GameTeam["nameVersion"];
     gameUsers: Array<GameUser["id"]>;
     score: number;
   }>;
@@ -146,6 +148,8 @@ export type PrivateGameState = {
       name: GameUser["name"];
       index: GameUser["index"];
       gameTeamId: GameUser["gameTeamId"];
+      allowSelfRename: GameUser["allowSelfRename"];
+      nameVersion: GameUser["nameVersion"];
       image: User["image"] | undefined;
     }
   >;

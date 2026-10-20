@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from "@/app/_components/ui/card";
 
-import { GameUserEditSheet } from "@/app/_components/client/GameUserEditSheet";
 import { api } from "@/trpc/react";
 
 import type {
@@ -85,7 +84,6 @@ export function GameUserTeamInfoCard({
         <p>Team Name: {gameTeam?.name}</p>
         <p>Team Index Number: {gameTeam?.index}</p>
         <p>Team Id: {gameTeam?.id}</p>
-        <GameUserEditSheet />
         <p>Number of Players on Team: {gameUsers.length}</p>
         <GameTeamUserTable
           data={gameUsers.map((gameUser) => {

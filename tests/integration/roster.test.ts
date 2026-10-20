@@ -87,7 +87,7 @@ describe("guest join and resume", () => {
     expect([user.name, user.gameTeam?.name]).toEqual(["Alex", "Alex"]);
   });
 
-  it("CURRENT BEHAVIOR: a signed-in user presenting a guest token is silently linked to it", async () => {
+  it("does not link a guest to an account just because the browser is signed in", async () => {
     const { game } = await createGame();
     const joined = await joinAsGuest(game.code);
     const account = await createUser("Signed In Player");
@@ -98,11 +98,11 @@ describe("guest join and resume", () => {
       user: account,
     }).gameUser.ping();
 
-    // The plan (invariant 5 / PR08) requires explicit linking instead.
+    // PR01 pinned silent linking here; PR08 requires an explicit choice.
     const gameUser = await db.gameUser.findUniqueOrThrow({
       where: { id: joined.gameUser.id },
     });
-    expect(gameUser.userId).toBe(account.id);
+    expect(gameUser.userId).toBeNull();
   });
 });
 
@@ -137,7 +137,7 @@ describe("teams", () => {
 
     await expect(
       player.gameUser.changeTeams({ gameTeamId: other.gameTeams[0]!.id }),
-    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("renames a team for everyone on it", async () => {

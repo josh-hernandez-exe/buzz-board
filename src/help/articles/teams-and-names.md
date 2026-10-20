@@ -11,18 +11,21 @@ Hosts choose a **team assignment** setting in the host desk's **Players** sectio
 When the host allows it, open the **Team** tab and choose a team. Switching isn't possible when:
 
 - the host has turned **Team Switching** off,
-- the host assigns teams, or
+- the host assigns teams,
+- the buzzer is open (wait for it to close), or
 - the game has finished.
 
 The **Team** tab says which of these applies.
 
 ## How do hosts move players or change teams?
 
-Use the host desk's **Team Management** and **Player Management** tabs. There you can add or delete teams and move a player to another team. Moving a player doesn't move their past points: points belong to the team that earned them.
+Use the host desk's **Team Management** tab to add or delete teams, and **Player Management** to rename, move or remove players. Moves wait while the buzzer is open. Moving a player doesn't move their past points: points belong to the team that earned them. See [Managing players](/help/moderation).
 
 ## How do I change my name or my team's name?
 
-On the **Info** tab, select **Edit**, change your name or your team's name, then **Save changes**. Names can include emoji and letters from any language. Line breaks and hidden control characters aren't allowed, and names have a maximum length (see Rules at a glance).
+On the **Info** tab, select **Edit my game profile**, change your name or your team's name, then **Save changes**. This only changes how you appear in this game, not your account. Names can include emoji and letters from any language. Line breaks and hidden control characters aren't allowed, and names have a maximum length (see Rules at a glance).
+
+Your host can lock your name or your team's name. A locked field says so; ask your host if it needs changing. If someone changes a name while you're editing it, your text is kept and you're asked to check it and save again.
 
 Names can't be changed after the game has finished.
 

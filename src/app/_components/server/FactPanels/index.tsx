@@ -2,6 +2,7 @@ import { type HelpFactPanel } from "@/help/manifest";
 import {
   CAPABILITIES,
   INVITE_LIFETIME_HOURS,
+  RECOVERY_LINK_LIFETIME_MINUTES,
   ROLE_LABEL,
   STAFF_ROLES,
   capabilitiesOf,
@@ -92,6 +93,19 @@ export const FACTS: Record<HelpFactPanel, { title: string; facts: Fact[] }> = {
       {
         label: "Invitation links",
         value: `Work once and expire after ${INVITE_LIFETIME_HOURS} hours`,
+      },
+    ],
+  },
+  recoveryLinks: {
+    title: "Recovery links",
+    facts: [
+      {
+        label: "Who can create one",
+        value: "Owners and co-hosts, for guests not saved to an account",
+      },
+      {
+        label: "How long it works",
+        value: `Once, for ${RECOVERY_LINK_LIFETIME_MINUTES} minutes`,
       },
     ],
   },

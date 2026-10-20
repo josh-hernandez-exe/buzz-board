@@ -83,7 +83,11 @@ export default async function GameUserPage({
           {/* Game sound effects for the user's team */}
           <GameSoundEffects gameTeamId={gameUser.gameTeamId ?? undefined} />
           <div className="flex w-full max-w-md flex-col items-center gap-6">
-            <PlayerHeader gameUserId={gameUser.id} />
+            <PlayerHeader
+              gameUserId={gameUser.id}
+              signedIn={!!session?.user}
+              linked={!!gameUser.user}
+            />
             <Tabs defaultValue={defaultTab} className="w-full">
               <TabsList
                 className={`grid w-full ${isTeamGame ? "grid-cols-3" : "grid-cols-2"}`}

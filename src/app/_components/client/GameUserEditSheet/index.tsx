@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 
+import { GameFormat } from "@prisma/client";
+
+import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
 import { Label } from "@/app/_components/ui/label";
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
   SheetFooter,
@@ -15,110 +18,154 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/app/_components/ui/sheet";
-
 import { api } from "@/trpc/react";
+import { NAME_LIMITS } from "@/utils/displayName";
 
+const LOCKED_SELF =
+  "Your host has locked name changes for you. Ask them if it needs changing.";
+const LOCKED_TEAM =
+  "Your host has locked this team's name. Ask them if it needs changing.";
+
+/**
+ * "My game profile": the player's name in this game (not their account) and,
+ * in team games, their team's name. Locked fields say who controls them, and
+ * a refused save keeps what was typed.
+ */
 export function GameUserEditSheet() {
-  const utils = api.useUtils();
-  const gameSelfInfo = api.gameUser.getSelfInfo.useQuery();
-  const [gameUserName, setGameUserName] = useState<string | undefined>();
-  const [gameTeamName, setGameTeamName] = useState<string | undefined>();
+  const { data } = useLiveGameState();
+  const self = api.gameUser.getSelfInfo.useQuery();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [teamName, setTeamName] = useState("");
+  // Versions loaded when the sheet opened, so a newer name isn't overwritten.
+  const [loaded, setLoaded] = useState({ name: 0, team: 0 });
+  const [saved, setSaved] = useState(false);
 
-  const changeNameMutation = api.gameUser.changeName.useMutation({
-    onSuccess: async () => {
-      void utils.gameUser.getSelfInfo.invalidate();
-    },
-    onError: async () => {
-      if (gameSelfInfo.data?.name) {
-        setGameUserName(gameSelfInfo.data?.name);
-      }
-    },
-  });
+  const changeName = api.gameUser.changeName.useMutation();
+  const changeTeamName = api.gameUser.changeTeamName.useMutation();
 
-  const changeTeamNameMutation = api.gameUser.changeTeamName.useMutation({
-    onSuccess: async () => {
-      return Promise.all([
-        utils.gameUser.getSelfInfo.invalidate(),
-        utils.gameUser.getSelfTeamInfo.invalidate(),
-      ]);
-    },
-    onError: async () => {
-      if (gameSelfInfo.data?.gameTeam?.name) {
-        setGameTeamName(gameSelfInfo.data?.gameTeam?.name);
-      }
-    },
-  });
+  const selfId = self.data?.id;
+  const player = selfId ? data?.gameUsers[selfId] : undefined;
+  const team = data?.gameTeams.find((t) => t.id === player?.gameTeamId);
+  const isTeamGame = data?.game.format === GameFormat.team;
+  const finished = data?.game.status === "finished";
+  if (!data || !player) return null;
 
-  if (gameSelfInfo.isLoading) {
-    return <div>Loading...</div>;
-  }
+  const nameLocked = !player.allowSelfRename;
+  const teamLocked = !!team && !team.allowMemberRename;
 
-  const onSubmit = () => {
-    if (
-      typeof gameUserName === "string" &&
-      gameUserName !== gameSelfInfo.data?.name
-    ) {
-      void changeNameMutation.mutate({
-        name: gameUserName,
-      });
+  const openSheet = (next: boolean) => {
+    setOpen(next);
+    if (next) {
+      setName(player.name);
+      setTeamName(team?.name ?? "");
+      setLoaded({ name: player.nameVersion, team: team?.nameVersion ?? 0 });
+      setSaved(false);
+      changeName.reset();
+      changeTeamName.reset();
     }
-    if (
-      typeof gameTeamName === "string" &&
-      gameTeamName !== gameSelfInfo.data?.gameTeam?.name
-    ) {
-      void changeTeamNameMutation.mutate({
-        name: gameTeamName,
-      });
+  };
+
+  const save = async () => {
+    setSaved(false);
+    const tasks: Promise<unknown>[] = [];
+    if (!nameLocked && name.trim() !== player.name) {
+      tasks.push(
+        changeName.mutateAsync({ name, expectedNameVersion: loaded.name }),
+      );
+    }
+    if (isTeamGame && team && !teamLocked && teamName.trim() !== team.name) {
+      tasks.push(
+        changeTeamName.mutateAsync({
+          name: teamName,
+          expectedNameVersion: loaded.team,
+        }),
+      );
+    }
+    const results = await Promise.allSettled(tasks);
+    // Keep the sheet open with the typed text when anything was refused.
+    if (results.every((r) => r.status === "fulfilled")) {
+      setSaved(true);
+      setOpen(false);
     }
   };
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={openSheet}>
       <SheetTrigger asChild>
-        <Button variant="outline">Edit</Button>
+        <Button variant="outline" disabled={finished}>
+          Edit my game profile
+        </Button>
       </SheetTrigger>
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Edit profile</SheetTitle>
+          <SheetTitle>My game profile</SheetTitle>
           <SheetDescription>
-            <p className="text-muted-foreground text-sm">
-              Make changes to your profile here. Click save when you&apos;re
-              done.
-            </p>
+            How you appear in this game only. Your account isn&apos;t changed.
           </SheetDescription>
         </SheetHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="player-name" className="text-right">
-              Player Name
-            </Label>
+        <form
+          className="grid gap-4 p-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save();
+          }}
+        >
+          <div className="grid gap-1">
+            <Label htmlFor="player-name">Your name</Label>
             <Input
               id="player-name"
-              defaultValue={gameSelfInfo.data?.name}
-              value={gameUserName}
-              onChange={(e) => setGameUserName(e.target.value)}
-              className="col-span-3"
+              value={name}
+              maxLength={NAME_LIMITS.maxDisplayName * 2}
+              disabled={nameLocked}
+              aria-describedby={nameLocked ? "player-name-locked" : undefined}
+              onChange={(e) => setName(e.target.value)}
             />
+            {nameLocked && (
+              <p id="player-name-locked" className="text-sm text-slate-600">
+                {LOCKED_SELF}
+              </p>
+            )}
+            <ErrorNotice error={changeName.error} />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="team-name" className="text-right">
-              Team Name
-            </Label>
-            <Input
-              id="team-name"
-              defaultValue={gameSelfInfo.data?.gameTeam?.name}
-              value={gameTeamName}
-              onChange={(e) => setGameTeamName(e.target.value)}
-              className="col-span-3"
-            />
-          </div>
-        </div>
-        <SheetFooter>
-          <SheetClose asChild>
-            <Button onClick={onSubmit}>Save changes</Button>
-          </SheetClose>
-        </SheetFooter>
+          {isTeamGame && team && (
+            <div className="grid gap-1">
+              <Label htmlFor="team-name">Team name</Label>
+              <Input
+                id="team-name"
+                value={teamName}
+                maxLength={NAME_LIMITS.maxDisplayName * 2}
+                disabled={teamLocked}
+                aria-describedby={teamLocked ? "team-name-locked" : undefined}
+                onChange={(e) => setTeamName(e.target.value)}
+              />
+              {teamLocked && (
+                <p id="team-name-locked" className="text-sm text-slate-600">
+                  {LOCKED_TEAM}
+                </p>
+              )}
+              <ErrorNotice error={changeTeamName.error} />
+            </div>
+          )}
+          <SheetFooter className="p-0">
+            <Button
+              type="submit"
+              disabled={
+                changeName.isPending ||
+                changeTeamName.isPending ||
+                (nameLocked && (teamLocked || !team || !isTeamGame))
+              }
+            >
+              Save changes
+            </Button>
+          </SheetFooter>
+        </form>
       </SheetContent>
+      {saved && (
+        <span role="status" className="sr-only">
+          Profile saved
+        </span>
+      )}
     </Sheet>
   );
 }

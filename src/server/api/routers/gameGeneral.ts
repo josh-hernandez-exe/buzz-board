@@ -41,14 +41,21 @@ export const gameGeneralRouter = createTRPCRouter({
   }) {
     const gameId = ctx.gameSession.id;
     const userId = ctx.session?.user?.id;
-    // Players are checked when they are removed (later PRs). A helper whose
-    // role was removed stops receiving private state at the next change.
-    const staffOnly =
-      !("gameUser" in ctx.gameSession && ctx.gameSession.gameUser) && !!userId;
+    const playerId =
+      "gameUser" in ctx.gameSession ? ctx.gameSession.gameUser?.id : undefined;
+    // Re-check access as state changes, so removal takes effect for streams
+    // that are already open, not just new requests.
+    const staffOnly = !playerId && !!userId;
     for await (const state of liveFeeds.privateGameState.subscribe(
       gameId,
       signal,
     )) {
+      if (playerId && !state.gameUsers[playerId]) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You were removed from this game.",
+        });
+      }
       if (staffOnly && !(await isStillStaff(gameId, userId))) {
         throw new TRPCError({
           code: "FORBIDDEN",

@@ -1,0 +1,83 @@
+import { createClient } from "redis";
+
+import { env } from "@/env";
+import { logger } from "@/logger";
+
+type RedisClient = ReturnType<typeof createClient>;
+
+/**
+ * Limits per client address. Joining is generous because a whole event can
+ * share one network address (an office or venue Wi-Fi): 60 people joining
+ * at once must never be blocked. Guessing codes is limited much harder.
+ */
+export const RATE_LIMITS = {
+  /** Join and resume attempts from one address. */
+  join: { limit: 300, windowSeconds: 60 },
+  /** Join attempts with a code that matches no game. */
+  unknownCode: { limit: 30, windowSeconds: 300 },
+  /** Recovery and invitation link redemptions from one address. */
+  redeemLink: { limit: 30, windowSeconds: 600 },
+} as const;
+export type RateLimitName = keyof typeof RATE_LIMITS;
+
+let client: RedisClient | undefined;
+
+function redis(): RedisClient {
+  if (!client) {
+    client = createClient({
+      url: env.KV_URL,
+      // Fail fast while Redis is down; limits then allow the request.
+      disableOfflineQueue: true,
+      socket: {
+        connectTimeout: 2_000,
+        reconnectStrategy: (retries) => Math.min(250 * 2 ** retries, 5_000),
+      },
+    });
+    client.on("error", (error) =>
+      logger.warn("Redis rate-limit client error", String(error)),
+    );
+    client
+      .connect()
+      .catch((error) => logger.warn("Redis rate-limit connect failed", error));
+  }
+  return client;
+}
+
+/** The address a request came from, as reported by the proxy in front. */
+export function clientAddress(headers: Headers): string {
+  const forwarded = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return forwarded ?? headers.get("x-real-ip")?.trim() ?? "unknown";
+}
+
+/**
+ * Counts one attempt and reports whether it is within the limit. If Redis is
+ * unavailable the attempt is allowed: limits protect against abuse, they must
+ * not stop a game.
+ */
+export async function takeRateLimit(
+  name: RateLimitName,
+  key: string,
+): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
+  const { limit, windowSeconds } = RATE_LIMITS[name];
+  const redisKey = `buzz-board:rate:${name}:${key}`;
+  try {
+    const connection = redis();
+    if (!connection.isReady) return { allowed: true, retryAfterSeconds: 0 };
+    const count = await connection.incr(redisKey);
+    // Only the first attempt starts the window. (EXPIRE ... NX would need
+    // Redis 7, which KeyDB does not support.)
+    if (count === 1) await connection.expire(redisKey, windowSeconds);
+    if (count <= limit) return { allowed: true, retryAfterSeconds: 0 };
+    let ttl = await connection.ttl(redisKey);
+    if (ttl < 0) {
+      // The expiry was lost (for example a crash between INCR and EXPIRE);
+      // never let a key block forever.
+      await connection.expire(redisKey, windowSeconds);
+      ttl = windowSeconds;
+    }
+    return { allowed: false, retryAfterSeconds: ttl };
+  } catch (error) {
+    logger.warn(`Rate limit ${name} unavailable; allowing`, String(error));
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+}

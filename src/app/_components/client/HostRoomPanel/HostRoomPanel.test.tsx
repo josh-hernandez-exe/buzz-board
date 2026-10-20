@@ -53,7 +53,15 @@ function gameState(game: Partial<PrivateGameState["game"]> = {}, players = 0) {
     gameUsers: Object.fromEntries(
       Array.from({ length: players }, (_, i) => [
         `u${i}`,
-        { id: `u${i}`, name: `P${i}`, index: i, gameTeamId: null, image: null },
+        {
+          id: `u${i}`,
+          name: `P${i}`,
+          index: i,
+          gameTeamId: null,
+          image: null,
+          allowSelfRename: true,
+          nameVersion: 0,
+        },
       ]),
     ),
     buzzWinner: null,

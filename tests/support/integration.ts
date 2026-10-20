@@ -36,6 +36,8 @@ type CallerOptions = {
   signal?: AbortSignal;
   /** Cookies sent with the request (shared by every tab in a browser). */
   cookies?: Record<string, string>;
+  /** Client network address, as a proxy reports it (x-forwarded-for). */
+  ip?: string;
 };
 
 /**
@@ -48,10 +50,12 @@ export async function callerFor({
   user,
   signal,
   cookies = {},
+  ip,
 }: CallerOptions) {
   const headers = new Headers();
   if (gameId) headers.set("x-buzz-board-game-id", gameId);
   if (gameUserToken) headers.set("x-buzz-board-game-user-token", gameUserToken);
+  if (ip) headers.set("x-forwarded-for", ip);
 
   const session: Session | null = user
     ? {

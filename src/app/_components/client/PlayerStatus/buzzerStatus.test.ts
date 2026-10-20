@@ -34,6 +34,8 @@ function state(
       buzzerState: rejected.has(id) ? "rejected" : "available",
       gameUsers: [],
       score: 0,
+      allowMemberRename: true,
+      nameVersion: 0,
     })),
     gameUsers: {
       me: {
@@ -43,14 +45,26 @@ function state(
         gameTeamId:
           overrides.selfTeam === undefined ? "t1" : overrides.selfTeam,
         image: null,
+        allowSelfRename: true,
+        nameVersion: 0,
       },
-      mate: { id: "mate", name: "Cy", index: 2, gameTeamId: "t1", image: null },
+      mate: {
+        id: "mate",
+        name: "Cy",
+        index: 2,
+        gameTeamId: "t1",
+        image: null,
+        allowSelfRename: true,
+        nameVersion: 0,
+      },
       rival: {
         id: "rival",
         name: "Bo",
         index: 3,
         gameTeamId: "t2",
         image: null,
+        allowSelfRename: true,
+        nameVersion: 0,
       },
     },
     buzzWinner: overrides.buzzWinner ?? null,
