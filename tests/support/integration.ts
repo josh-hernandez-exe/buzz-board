@@ -4,11 +4,21 @@ import { type GameFormat, type User } from "@prisma/client";
 import { type Session } from "next-auth";
 import { vi } from "vitest";
 
-// `gameAuth` reads cookies first and falls back to request headers. Outside a
-// Next request scope there are no cookies, so tests authenticate with the same
-// x-buzz-board-* headers the browser client sends.
+// Outside a Next request scope there are no cookies, so tests authenticate with
+// the same x-buzz-board-* headers the browser client sends. `cookies` can be
+// set per caller to simulate the shared cookie another tab left behind.
+const cookieJar: { current: Record<string, string> } = vi.hoisted(() => ({
+  current: {},
+}));
 vi.mock("next/headers", () => ({
-  cookies: async () => ({ get: () => undefined }),
+  cookies: async () => {
+    // Snapshot synchronously: gameAuth calls cookies() before its first await.
+    const jar = { ...cookieJar.current };
+    return {
+      get: (name: string) =>
+        jar[name] === undefined ? undefined : { name, value: jar[name] },
+    };
+  },
   headers: async () => new Headers(),
 }));
 
@@ -24,6 +34,8 @@ type CallerOptions = {
   user?: Pick<User, "id" | "name" | "email" | "image">;
   /** Aborts subscriptions, like a browser closing its SSE connection. */
   signal?: AbortSignal;
+  /** Cookies sent with the request (shared by every tab in a browser). */
+  cookies?: Record<string, string>;
 };
 
 /**
@@ -35,6 +47,7 @@ export async function callerFor({
   gameUserToken,
   user,
   signal,
+  cookies = {},
 }: CallerOptions) {
   const headers = new Headers();
   if (gameId) headers.set("x-buzz-board-game-id", gameId);
@@ -52,10 +65,10 @@ export async function callerFor({
       }
     : null;
 
-  const gameSession = await gameAuth({
-    headers,
-    user: session?.user,
-  });
+  cookieJar.current = cookies;
+  const pending = gameAuth({ headers, user: session?.user });
+  cookieJar.current = {};
+  const gameSession = await pending;
 
   return createCaller({ headers, db, session, gameSession }, { signal });
 }
@@ -118,11 +131,13 @@ export async function createGame({
 /** Joins as a guest through the real `public.joinGame` procedure. */
 export async function joinAsGuest(code: string) {
   const joined = await requestCaller({}).public.joinGame({ gameCode: code });
+  const { token } = joined;
+  if (!token) throw new Error("joinGame returned no participant token");
   const player = requestCaller({
     gameId: joined.gameId,
-    gameUserToken: joined.token,
+    gameUserToken: token,
   });
-  return { ...joined, player };
+  return { ...joined, token, player };
 }
 
 export async function currentScores(gameId: string) {

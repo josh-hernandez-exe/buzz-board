@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { api, HydrateClient } from "@/trpc/server";
+import { gameApi, HydrateClient } from "@/trpc/server";
 
 import { auth, gameAuth } from "@/server/auth";
 import { Scoreboard } from "./Scoreboard";
 import { logger } from "@/logger";
+import { GameScope } from "@/app/_components/client/GameScope";
 
 export default async function GamePage({
   params,
@@ -16,6 +17,7 @@ export default async function GamePage({
   const gameSession = await gameAuth({
     headers: await headers(),
     user: session?.user,
+    gameId,
   });
 
   if (!gameId) {
@@ -37,7 +39,9 @@ export default async function GamePage({
     redirect(`/game/${gameId}/scoreboard/public`);
   }
 
-  const currentGameState = await api.gameGeneral.currentGameState();
+  const currentGameState = await (
+    await gameApi(gameId)
+  ).gameGeneral.currentGameState();
 
   if (!currentGameState) {
     return (
@@ -52,6 +56,7 @@ export default async function GamePage({
 
   return (
     <HydrateClient>
+      <GameScope gameId={gameId} />
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
         <div className="flex min-h-screen flex-col items-center justify-center">
           <Scoreboard gameState={currentGameState} />

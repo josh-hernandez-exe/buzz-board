@@ -28,3 +28,16 @@ export const { trpc: api, HydrateClient } = createHydrationHelpers<AppRouter>(
   caller,
   getQueryClient,
 );
+
+/**
+ * A server-side caller scoped to one game, for pages under /game/[gameId].
+ * The generic `api` caller would fall back to the shared game cookie, which
+ * belongs to whichever game was opened most recently in any tab.
+ */
+export const gameApi = cache(async (gameId: string) => {
+  const heads = new Headers(await headers());
+  heads.set("x-trpc-source", "rsc");
+  heads.set("x-buzz-board-game-id", gameId);
+
+  return createCaller(await createTRPCContext({ headers: heads }));
+});

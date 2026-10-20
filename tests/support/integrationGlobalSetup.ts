@@ -9,7 +9,8 @@ import {
 } from "./testEnv";
 
 /**
- * Resets the disposable test database to the current Prisma schema and checks
+ * Resets the disposable test database by applying the checked-in migrations
+ * (so every run exercises them) and checks
  * Redis is reachable, failing fast with a hint instead of hanging (the app's
  * Redis client retries forever when the server is missing).
  */
@@ -39,7 +40,14 @@ export default async function setup() {
   try {
     execFileSync(
       "bunx",
-      ["prisma", "db", "push", "--force-reset", "--skip-generate"],
+      [
+        "prisma",
+        "migrate",
+        "reset",
+        "--force",
+        "--skip-seed",
+        "--skip-generate",
+      ],
       {
         env: { ...process.env, DATABASE_URL: databaseUrl },
         stdio: "pipe",

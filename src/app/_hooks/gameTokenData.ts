@@ -14,7 +14,14 @@ type GameTokenData = {
   tokenStorage: Record<string, string>;
 };
 
-export function useGameTokenData() {
+/**
+ * @param scopeGameId - The game this page renders (its route param). Every tab
+ *   shares localStorage and cookies, so without it a reload would scope this
+ *   tab's requests to whichever game was opened most recently in any tab.
+ */
+export function useGameTokenData({
+  scopeGameId,
+}: { scopeGameId?: string } = {}) {
   const { getCookie, setCookie } = useCookiesNext();
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [gameTokenData, setGameTokenDataInLocalStorage] =
@@ -99,7 +106,9 @@ export function useGameTokenData() {
   if (isFirstLoad) {
     logger.debug(`useGameTokenData: setting token on first load.`);
 
-    setHeadersFromToken(gameTokenData);
+    setHeadersFromToken(
+      scopeGameId ? { ...gameTokenData, gameId: scopeGameId } : gameTokenData,
+    );
     setIsFirstLoad(false);
   }
 

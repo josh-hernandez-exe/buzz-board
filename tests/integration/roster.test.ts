@@ -222,4 +222,66 @@ describe("game scoping", () => {
       requestCaller({}).user.game.create({ name: "x", format: "team" }),
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
+
+  it("uses the tab's game, not the shared cookie from a more recent tab", async () => {
+    const first = await createGame();
+    const second = await createGame({ teams: 3 });
+
+    // Host opened `second` in another tab, so the shared cookie points there.
+    const firstTab = requestCaller({
+      gameId: first.game.id,
+      user: first.host,
+      cookies: { "buzz-board-game-id": second.game.id },
+    });
+
+    const state = await firstTab.gameGeneral.currentGameState();
+    expect(state.game.id).toBe(first.game.id);
+    await firstTab.gameAdmin.addTeam();
+    expect(await db.gameTeam.count({ where: { gameId: first.game.id } })).toBe(
+      3,
+    );
+    expect(await db.gameTeam.count({ where: { gameId: second.game.id } })).toBe(
+      3,
+    );
+  });
+
+  it("does not use another game's player cookie in a tab scoped to this game", async () => {
+    const mine = await createGame();
+    const other = await createGame();
+    const otherGuest = await joinAsGuest(other.game.code);
+
+    const tab = requestCaller({
+      gameId: mine.game.id,
+      cookies: { "buzz-board-game-user-token": otherGuest.token },
+    });
+
+    await expect(tab.gameUser.ping()).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+  });
+
+  it("falls back to cookies for server-rendered requests without headers", async () => {
+    const { game } = await createGame();
+    const guest = await joinAsGuest(game.code);
+
+    const serverRender = requestCaller({
+      cookies: {
+        "buzz-board-game-id": game.id,
+        "buzz-board-game-user-token": guest.token,
+      },
+    });
+
+    expect(await serverRender.gameUser.ping()).toBe("pong");
+  });
+
+  it("returns no game session for an unknown game id", async () => {
+    const { host } = await createGame();
+
+    await expect(
+      requestCaller({
+        gameId: "missing-game",
+        user: host,
+      }).gameGeneral.currentGameState(),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
 });

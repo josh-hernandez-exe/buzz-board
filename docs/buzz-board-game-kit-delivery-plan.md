@@ -5,7 +5,7 @@
 > This document specifies future work. No Buzz Board implementation, dependency installation, infrastructure change, application test, or load test was performed for this revision. The review findings concern the plan; earlier repository observations were static, not runtime verification.
 
 > [!note] Implementation status
-> PR01 (rebaseline, toolchain and characterization) is implemented on branch `feature/game-kit-pr01-rebaseline`; its recorded evidence is in [PR01 baseline](./pr01-baseline.md). Everything else below is still proposed future work.
+> Implemented as stacked branches, with recorded evidence: PR01 rebaseline/toolchain/characterization ([PR01 baseline](./pr01-baseline.md)) and PR02 migration baseline/explicit scope/topology spike ([PR02 baseline](./pr02-baseline.md)). Everything else below is still proposed future work.
 
 ## Standalone implementation brief
 

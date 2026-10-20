@@ -10,7 +10,9 @@ const baseURL = `http://localhost:${PORT}`;
 const { NODE_ENV: _nodeEnv, ...serviceEnv } = testServiceEnv();
 
 export default defineConfig({
-  testDir: "./tests/e2e",
+  // Spikes are measurements, not pass/fail tests: `RUN_SPIKES=1 bunx playwright test tests/spike`.
+  testDir: process.env.RUN_SPIKES ? "./tests" : "./tests/e2e",
+  testMatch: "**/*.spec.ts",
   globalSetup: "./tests/e2e/globalSetup.ts",
   fullyParallel: false,
   workers: 1,

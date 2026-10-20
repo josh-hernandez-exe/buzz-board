@@ -4,7 +4,7 @@
  */
 import { expect, test } from "@playwright/test";
 
-import { db, signInAsNewHost } from "./support";
+import { db, selectGameFromDashboard, signInAsNewHost } from "./support";
 
 test.afterAll(async () => {
   await db.$disconnect();
@@ -32,8 +32,7 @@ test("host creates a game, a guest buzzes in and the display updates", async ({
   const game = await db.game.findFirstOrThrow({ where: { name: gameName } });
   expect(game.format).toBe("individual");
 
-  await row.getByRole("link", { name: "Select" }).click();
-  await host.waitForURL(`**/game/${game.id}/admin`);
+  await selectGameFromDashboard(host, { gameName, gameId: game.id });
   await expect(
     host.getByRole("button", { name: "Start Buzzer" }),
   ).toBeVisible();

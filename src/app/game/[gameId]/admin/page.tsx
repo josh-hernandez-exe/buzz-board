@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { api, HydrateClient } from "@/trpc/server";
+import { gameApi, HydrateClient } from "@/trpc/server";
 import { headers } from "next/headers";
 
 import { auth, gameAuth } from "@/server/auth";
@@ -19,6 +19,7 @@ export default async function GameAdminPage({
   const gameSession = await gameAuth({
     headers: await headers(),
     user: session?.user,
+    gameId,
   });
 
   if (gameSession?.gameAdmin?.gameId !== gameId) {
@@ -26,7 +27,9 @@ export default async function GameAdminPage({
     redirect("/dashboard");
   }
 
-  const currentGameState = await api.gameGeneral.currentGameState();
+  const currentGameState = await (
+    await gameApi(gameId)
+  ).gameGeneral.currentGameState();
   return (
     <HydrateClient>
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">

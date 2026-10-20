@@ -29,7 +29,7 @@ export function GameAdminInfo({
 }: {
   gameState: PrivateGameState;
 }) {
-  useGameTokenData();
+  useGameTokenData({ scopeGameId: initialGameState.game.id });
   const [activeTab, setActiveTab] = useState("quick-controls");
   const [isPending, startTransition] = useTransition();
 

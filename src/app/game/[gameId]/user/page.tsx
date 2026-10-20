@@ -4,7 +4,7 @@ import { GameFormat } from "@prisma/client";
 
 import { auth, gameAuth } from "@/server/auth";
 
-import { api, HydrateClient } from "@/trpc/server";
+import { gameApi, HydrateClient } from "@/trpc/server";
 import { GameBuzzerTab } from "@/app/_components/client/GameBuzzerTab";
 import { TeamSwitcherTab } from "@/app/_components/client/TeamSwitcherTab";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
@@ -19,6 +19,7 @@ import {
 
 import { logger } from "@/logger";
 import { InformationTab } from "./InformationTab";
+import { GameScope } from "@/app/_components/client/GameScope";
 
 export default async function GameUserPage({
   params,
@@ -30,6 +31,7 @@ export default async function GameUserPage({
   const gameSession = await gameAuth({
     headers: await headers(),
     user: session?.user,
+    gameId,
   });
 
   if (gameSession?.gameUser?.gameId !== gameId) {
@@ -48,6 +50,7 @@ export default async function GameUserPage({
     );
   }
 
+  const api = await gameApi(gameId);
   const gameUser = await api.gameUser.getSelfInfo();
   const currentGameState = await api.gameGeneral.currentGameState();
 
@@ -74,6 +77,7 @@ export default async function GameUserPage({
 
   return (
     <HydrateClient>
+      <GameScope gameId={gameId} />
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
         {/* Game sound effects for the user's team */}
         <GameSoundEffects gameTeamId={gameUser.gameTeamId ?? undefined} />

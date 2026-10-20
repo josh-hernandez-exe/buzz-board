@@ -34,7 +34,7 @@
     ],
 
     // Use 'postCreateCommand' to run commands after the container is created.
-    "postCreateCommand": "bun install && bun db:push",
+    "postCreateCommand": "bun install && bun db:migrate:deploy",
 
     // Configure tool-specific properties.
     "customizations": {

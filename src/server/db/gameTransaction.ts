@@ -1,0 +1,100 @@
+import { Prisma, type PrismaClient } from "@prisma/client";
+import { err, ok, type Result } from "neverthrow";
+
+import { db as defaultDb } from "@/server/db";
+import { logger } from "@/logger";
+
+export type GameTx = Prisma.TransactionClient;
+
+export type GameTransactionError =
+  | { kind: "gameNotFound"; gameId: string }
+  /** Lock wait, deadlock or serialization failure; safe for the client to retry. */
+  | { kind: "busy"; gameId: string; cause: unknown };
+
+const RETRYABLE_POSTGRES_CODES = new Set(["40001", "40P01", "55P03"]);
+
+// Most game writes take a few milliseconds. These bound how long a burst of
+// operations may queue (for a pooled connection, then for the game's row lock)
+// before reporting "busy" instead of hanging the request.
+const DEFAULT_MAX_WAIT_MS = 5_000;
+const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_LOCK_TIMEOUT_MS = 5_000;
+
+function postgresCode(error: unknown): string | undefined {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    const meta = error.meta as { code?: unknown } | undefined;
+    if (typeof meta?.code === "string") return meta.code;
+    if (error.code === "P2034") return "40001";
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return /\b(40001|40P01|55P03)\b/.exec(message)?.[1];
+}
+
+function isTransactionStartTimeout(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2028"
+  );
+}
+
+class GameNotFound extends Error {}
+
+/**
+ * Runs `work` in one transaction that holds a row lock on the game.
+ *
+ * Writes that read and then replace shared game state (scores, buzzer, roster
+ * revisions) must use this so concurrent requests for the same game run one
+ * after another instead of overwriting each other or deadlocking. Requests for
+ * different games do not wait for each other.
+ *
+ * Throwing inside `work` rolls back and the error propagates unchanged, so
+ * domain errors (e.g. `TRPCError`) reach the caller. Lock contention and a
+ * missing game are returned as `GameTransactionError` values; any other
+ * database failure is rethrown rather than reported as success.
+ */
+export async function withGameLock<T>(
+  gameId: string,
+  work: (tx: GameTx) => Promise<T>,
+  {
+    client = defaultDb,
+    maxWait = DEFAULT_MAX_WAIT_MS,
+    timeout = DEFAULT_TIMEOUT_MS,
+    lockTimeoutMs = DEFAULT_LOCK_TIMEOUT_MS,
+  }: {
+    client?: PrismaClient;
+    maxWait?: number;
+    timeout?: number;
+    lockTimeoutMs?: number;
+  } = {},
+): Promise<Result<T, GameTransactionError>> {
+  const lockTimeout = `${Math.max(1, Math.floor(lockTimeoutMs))}ms`;
+  try {
+    const value = await client.$transaction(
+      async (tx) => {
+        // Applies to this transaction only (including later locks in `work`).
+        await tx.$executeRaw`SELECT set_config('lock_timeout', ${lockTimeout}, true)`;
+        const locked = await tx.$queryRaw<{ id: string }[]>`
+          SELECT id FROM "Game" WHERE id = ${gameId} FOR UPDATE`;
+        if (locked.length === 0) {
+          throw new GameNotFound(gameId);
+        }
+        return work(tx);
+      },
+      { maxWait, timeout },
+    );
+    return ok(value);
+  } catch (error) {
+    if (error instanceof GameNotFound) {
+      return err({ kind: "gameNotFound", gameId });
+    }
+    const code = postgresCode(error);
+    if (
+      (code && RETRYABLE_POSTGRES_CODES.has(code)) ||
+      isTransactionStartTimeout(error)
+    ) {
+      logger.warn(`Game ${gameId} transaction busy`, code ?? "start timeout");
+      return err({ kind: "busy", gameId, cause: error });
+    }
+    throw error;
+  }
+}

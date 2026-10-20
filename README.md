@@ -67,9 +67,10 @@ Redirects:
 4. Start the development environment:
    ```bash
    docker compose --file ./docker-compose.db.yml up --detach
-   bun db:push
+   bun db:migrate:deploy
    bun dev
    ```
+   - A development database created earlier with `bun db:push` must be baselined once before migrations will apply: `bun db:baseline`.
 
 ### Common Commands
 - Start the database and backend services:
@@ -78,8 +79,13 @@ Redirects:
   ```
 - Apply database migrations:
   ```bash
-  bun db:push
+  bun db:migrate:deploy
   ```
+- Change the schema: edit `prisma/schema.prisma`, then create a reviewed migration (this applies it to the development database):
+  ```bash
+  bun db:migrate --name describe_the_change
+  ```
+  Migrations must be additive and keep existing games, scores and history working. `tests/integration/migrations.test.ts` fails if the schema and migrations drift apart and rehearses an upgrade of a populated legacy database.
 - Start the development server:
   ```bash
   bun dev
@@ -161,13 +167,18 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
      KV_URL=your-vercel-redis-connection-string
      ```
 
-3. **Apply the Database Schema**:
-   - Never run `prisma migrate reset` (or `db push --force-reset`) against a deployed database: it deletes every game, score and account.
-   - Back up the database first, then apply the schema without resetting it:
+3. **Apply Database Migrations**:
+   - Never run `prisma migrate reset`, `prisma migrate dev` or `db push --force-reset` against a deployed database: they can delete every game, score and account.
+   - Back up the database first (for example with your provider's snapshot or `pg_dump`), outside of a live event.
+   - **One time only**, for a database that was created with `db push` before migrations existed, mark the baseline as already applied. This changes no tables:
      ```bash
-     bun --env-file=.env.production db:push
+     bun --env-file=.env.production run db:baseline
      ```
-   - The project does not yet track migration files; adopting a reviewed migration baseline is planned work (PR02 in the [delivery plan](./docs/buzz-board-game-kit-delivery-plan.md)).
+   - Apply pending migrations:
+     ```bash
+     bun prod:db:migrate
+     ```
+   - Rolling back means restoring the backup or deploying a forward fix; migrations are additive so the previous application version keeps working on the upgraded schema unless a migration's notes say otherwise.
 
 4. **Verify Connections**:
    - Ensure that your application can connect to the managed PostgreSQL and Redis instances by testing locally or deploying to Vercel.
