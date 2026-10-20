@@ -153,7 +153,12 @@ describe("stream lifetime", () => {
 
     expect(await redisConnectionCount()).toBe(baseline);
     expect(liveFeeds.publicGameState.subscriberCount(game.id)).toBe(20);
-    expect(await channelSubscribers(game.id)).toBe(1);
+    expect(
+      await eventually(
+        () => channelSubscribers(game.id),
+        (n) => n === 1,
+      ),
+    ).toBe(1);
 
     streams.forEach((s) => s.controller.abort());
     await Promise.all(streams.map((s) => s.finished));
@@ -197,15 +202,21 @@ describe("Redis loss", () => {
       (n) => n === 1,
     );
 
+    // The listener reloads once when its subscription is confirmed.
+    const before = await eventually(
+      () => received,
+      (n) => n >= 1,
+    );
+
     // The publisher's connection is still opening when it first notifies.
     await publisher.notify(gameId);
 
     expect(
       await eventually(
         () => received,
-        (n) => n === 1,
+        (n) => n === before + 1,
       ),
-    ).toBe(1);
+    ).toBe(before + 1);
     await Promise.all([listener.close(), publisher.close()]);
   });
 
@@ -232,6 +243,35 @@ describe("Redis loss", () => {
     const first = await whoStream[Symbol.asyncIterator]().next();
     expect(first.value?.gameUser?.id).toBe(guest.gameUser.id);
     controller.abort();
+  });
+
+  it("catches a change another process made while this one was still subscribing", async () => {
+    const listener = new GameChangeBus(process.env.KV_URL!);
+    let version = 0;
+    // Simulates another process committing right after this process's first
+    // read, before its SUBSCRIBE is confirmed: no notification will arrive.
+    const feed = new GameFeed(
+      "gap",
+      () => listener,
+      async () => {
+        const read = version;
+        version = 1;
+        return ok(read);
+      },
+    );
+    const controller = new AbortController();
+    const s = collect(feed.subscribe(`gap-${Date.now()}`, controller.signal));
+
+    expect(
+      await eventually(
+        () => s.values.at(-1),
+        (v) => v === 1,
+      ),
+    ).toBe(1);
+    expect(s.values[0]).toBe(0);
+    controller.abort();
+    await s.finished;
+    await listener.close();
   });
 
   it("resyncs streams after the Redis subscriber connection drops", async () => {

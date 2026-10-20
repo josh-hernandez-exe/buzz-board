@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
@@ -51,7 +52,7 @@ export const publicRouter = createTRPCRouter({
 
       const result = await getPublicGameState({ gameId });
       if (result.isErr()) {
-        throw result.error;
+        throw new TRPCError({ code: "NOT_FOUND", message: "Game not found" });
       }
       return result.value;
     }),

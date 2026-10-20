@@ -5,6 +5,7 @@ import { CreateGame } from "@/app/_components/client/GameCreate";
 import { UserGameView } from "@/app/_components/client/UserGameView";
 import { auth } from "@/server/auth";
 import { api, HydrateClient } from "@/trpc/server";
+import { helpHref } from "@/help/manifest";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -25,6 +26,12 @@ export default async function DashboardPage() {
                 className="rounded-full bg-white/10 px-4 py-2 font-semibold hover:bg-white/20"
               >
                 Join a game
+              </Link>
+              <Link
+                href={helpHref("host-quickstart")}
+                className="rounded-full bg-white/10 px-4 py-2 font-semibold hover:bg-white/20"
+              >
+                Host guide
               </Link>
               <Link
                 href="/api/auth/signout"

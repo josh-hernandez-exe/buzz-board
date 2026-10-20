@@ -20,18 +20,23 @@ export function GameSoundEffects({ gameTeamId }: GameSoundEffectsProps) {
   return <BuzzerSounds gameTeams={data?.gameTeams} gameTeamId={gameTeamId} />;
 }
 
-/** Sound cues for the anonymous public scoreboard. */
-export function PublicGameSoundEffects() {
+/**
+ * Sound cues for the anonymous audience display. Off until turned on, so only
+ * the one display that shares its audio with the meeting plays sounds.
+ */
+export function PublicGameSoundEffects({ enabled }: { enabled: boolean }) {
   const { data } = usePublicLiveGameState();
-  return <BuzzerSounds gameTeams={data?.gameTeams} />;
+  return <BuzzerSounds gameTeams={data?.gameTeams} muted={!enabled} />;
 }
 
 function BuzzerSounds({
   gameTeams,
   gameTeamId,
+  muted = false,
 }: {
   gameTeams: TeamBuzzerStates | undefined;
   gameTeamId?: string;
+  muted?: boolean;
 }) {
   const previousGameTeamsRef = useRef<TeamBuzzerStates | undefined>(undefined);
 
@@ -104,7 +109,7 @@ function BuzzerSounds({
         previousTeam.buzzerState === BuzzerState.available &&
         currentTeam.buzzerState === BuzzerState.selected
       ) {
-        playBuzzInSound();
+        if (!muted) playBuzzInSound();
       }
 
       // Check for wrong answer (selected -> rejected)
@@ -112,10 +117,10 @@ function BuzzerSounds({
         previousTeam.buzzerState === BuzzerState.selected &&
         currentTeam.buzzerState === BuzzerState.rejected
       ) {
-        playWrongAnswerSound();
+        if (!muted) playWrongAnswerSound();
       }
     });
-  }, [gameTeams, gameTeamId, playBuzzInSound, playWrongAnswerSound]);
+  }, [gameTeams, gameTeamId, muted, playBuzzInSound, playWrongAnswerSound]);
 
   // This component doesn't render anything visible
   return null;

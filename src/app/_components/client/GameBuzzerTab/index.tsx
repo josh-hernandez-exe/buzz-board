@@ -5,6 +5,7 @@ import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { Button } from "@/app/_components/ui/button";
 import { api } from "@/trpc/react";
 import { newRequestId } from "@/utils/requestId";
+import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 
 const TONE_CLASS = {
   ready: "bg-green-600 hover:bg-green-700",
@@ -47,11 +48,10 @@ export function GameBuzzerTab({ gameUserId }: { gameUserId: string }) {
       >
         {status.message}
       </p>
-      {buzzIn.error && (
-        <p role="alert" className="text-center text-sm text-red-300">
-          {buzzIn.error.message}
-        </p>
-      )}
+      <ErrorNotice
+        error={buzzIn.error}
+        className="text-center text-sm text-red-300"
+      />
     </div>
   );
 }

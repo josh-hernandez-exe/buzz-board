@@ -32,6 +32,9 @@ export default async function Home() {
             >
               Host a game
             </Link>
+            <Link href="/help" className={linkClass}>
+              Help
+            </Link>
             {session && (
               <Link href="/api/auth/signout" className={linkClass}>
                 Sign out

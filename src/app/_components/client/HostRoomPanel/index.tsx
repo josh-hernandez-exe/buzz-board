@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { JoinQrCode, joinUrl } from "@/app/_components/client/JoinQrCode";
+
 import { GameFormat, GameStatus, TeamAssignment } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import * as QRCode from "qrcode";
 
 import { GenericCard } from "@/app/_components/GenericCard";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
@@ -20,51 +21,11 @@ import {
   DialogTrigger,
 } from "@/app/_components/ui/dialog";
 import { Switch } from "@/app/_components/ui/switch";
-import { env } from "@/env";
-import { logger } from "@/logger";
 import { api } from "@/trpc/react";
 import { newRequestId } from "@/utils/requestId";
-
-const REOPEN_WINDOW_MS = 24 * 60 * 60 * 1000;
-
-export const STATUS_LABEL: Record<GameStatus, string> = {
-  lobby: "Lobby: not started",
-  running: "Live",
-  finished: "Finished",
-};
-
-const ASSIGNMENT_LABEL: Record<TeamAssignment, string> = {
-  auto: "Automatic: fewest players first",
-  choose: "Players choose their team",
-  staff: "Host assigns teams",
-};
-
-export function joinUrl(code: string) {
-  return `${env.NEXT_PUBLIC_QRCODE_BASE_URL}/join?code=${code}`;
-}
-
-function JoinQrCode({ code }: { code: string }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    QRCode.toCanvas(
-      canvasRef.current,
-      joinUrl(code),
-      { errorCorrectionLevel: "L" },
-      (error) => {
-        if (error) logger.error("Error generating QR code", error);
-      },
-    );
-  }, [code]);
-  return (
-    <canvas
-      ref={canvasRef}
-      className="h-32 w-32"
-      role="img"
-      aria-label={`QR code to join with code ${code}`}
-    />
-  );
-}
+import { ASSIGNMENT_LABEL, GAME_LIMITS, STATUS_LABEL } from "@/utils/gameRules";
+import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
+import { helpHref } from "@/help/manifest";
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState<boolean | "failed">(false);
@@ -85,15 +46,6 @@ function CopyButton({ text, label }: { text: string; label: string }) {
           ? "Copy failed: select the link"
           : label}
     </Button>
-  );
-}
-
-function ErrorText({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <p role="alert" className="text-sm text-red-600">
-      {message}
-    </p>
   );
 }
 
@@ -134,7 +86,7 @@ export function HostRoomPanel({ isOwner }: { isOwner: boolean }) {
   const canReopen =
     finished &&
     !!game.finishedAt &&
-    now - new Date(game.finishedAt).getTime() <= REOPEN_WINDOW_MS;
+    now - new Date(game.finishedAt).getTime() <= GAME_LIMITS.reopenWindowMs;
   const deleteBlockedReason =
     finished || (game.status === GameStatus.lobby && playerCount === 0)
       ? undefined
@@ -192,7 +144,18 @@ export function HostRoomPanel({ isOwner }: { isOwner: boolean }) {
               </div>
               <p className="text-sm text-gray-600">
                 Screen-share the audience display, not this host desk. It shows
-                scores and buzzes, never controls.
+                scores and buzzes, never controls.{" "}
+                <a
+                  href={helpHref(
+                    "scoreboards-and-display",
+                    "what-is-the-audience-display",
+                  )}
+                  target="_blank"
+                  rel="noopener"
+                  className="underline"
+                >
+                  About the display
+                </a>
               </p>
             </div>
             <div className="flex flex-col items-center">
@@ -245,11 +208,8 @@ export function HostRoomPanel({ isOwner }: { isOwner: boolean }) {
                 </select>
               </label>
             )}
-            <ErrorText
-              message={
-                setJoiningOpen.error?.message ??
-                setTeamAssignment.error?.message
-              }
+            <ErrorNotice
+              error={setJoiningOpen.error ?? setTeamAssignment.error}
             />
           </section>
 
@@ -257,9 +217,19 @@ export function HostRoomPanel({ isOwner }: { isOwner: boolean }) {
             aria-labelledby="game-heading"
             className="flex flex-col gap-3"
           >
-            <h3 id="game-heading" className="font-semibold">
-              Game
-            </h3>
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 id="game-heading" className="font-semibold">
+                Game
+              </h3>
+              <a
+                href={helpHref("host-quickstart")}
+                target="_blank"
+                rel="noopener"
+                className="text-sm underline"
+              >
+                Host guide
+              </a>
+            </div>
             <div className="flex flex-wrap gap-2">
               {!finished && (
                 <Dialog>
@@ -342,7 +312,7 @@ export function HostRoomPanel({ isOwner }: { isOwner: boolean }) {
                         />
                       </label>
                     )}
-                    <ErrorText message={deleteGame.error?.message} />
+                    <ErrorNotice error={deleteGame.error} />
                     <DialogFooter>
                       <DialogClose asChild>
                         <Button variant="secondary">Cancel</Button>
@@ -363,11 +333,9 @@ export function HostRoomPanel({ isOwner }: { isOwner: boolean }) {
                 </Dialog>
               )}
             </div>
-            <ErrorText
-              message={
-                finishGame.error?.message ??
-                reopenGame.error?.message ??
-                duplicateGame.error?.message
+            <ErrorNotice
+              error={
+                finishGame.error ?? reopenGame.error ?? duplicateGame.error
               }
             />
           </section>

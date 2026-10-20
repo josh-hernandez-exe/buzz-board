@@ -102,6 +102,8 @@ export type PublicGameState = {
     format: Game["format"];
     isBuzzerListening: Game["isBuzzerListening"];
     status: Game["status"];
+    /** Only while new players may join; null otherwise. */
+    joinCode: Game["code"] | null;
   };
   gameTeams: Array<{
     id: GameTeam["id"];

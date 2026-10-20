@@ -13,6 +13,13 @@ li {
   list-style-type: circle;
 }
 
+/* Help pages choose list styles on <ul>/<ol>; the global rule above is
+   unlayered, so it would otherwise override Tailwind's list utilities. */
+.help-content li {
+  margin-left: 0;
+  list-style-type: inherit;
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);

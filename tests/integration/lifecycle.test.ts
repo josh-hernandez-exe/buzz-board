@@ -519,3 +519,29 @@ describe("dashboard", () => {
     expect(stranger.map((g) => g.id)).not.toContain(game.id);
   });
 });
+
+describe("audience display state", () => {
+  it("shows the join code only while new players can join", async () => {
+    const { game, admin } = await createGame();
+    const display = () =>
+      requestCaller({}).public.currentGameState({ gameId: game.id });
+
+    expect((await display()).game.joinCode).toBe(game.code);
+
+    await admin.gameAdmin.setJoiningOpen({ open: false });
+    expect((await display()).game.joinCode).toBeNull();
+
+    await admin.gameAdmin.setJoiningOpen({ open: true });
+    await admin.gameAdmin.finishGame();
+    expect((await display()).game).toMatchObject({
+      joinCode: null,
+      status: "finished",
+    });
+  });
+
+  it("reports an unknown game as not found", async () => {
+    await expect(
+      requestCaller({}).public.currentGameState({ gameId: "missing" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});

@@ -20,6 +20,8 @@ export async function getPublicGameState({
       format: true,
       isBuzzerListening: true,
       status: true,
+      code: true,
+      joiningOpen: true,
       gameTeams: {
         select: {
           id: true,
@@ -61,6 +63,8 @@ export async function getPublicGameState({
       format: game.format,
       isBuzzerListening: game.isBuzzerListening,
       status: game.status,
+      joinCode:
+        game.joiningOpen && game.status !== "finished" ? game.code : null,
     },
     gameTeams: game.gameTeams.map((gameTeam) => ({
       id: gameTeam.id,

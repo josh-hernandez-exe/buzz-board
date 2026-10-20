@@ -11,6 +11,8 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { HelpfulTRPCError } from "@/server/api/errors";
+
 import { auth, gameAuth } from "@/server/auth";
 import { db } from "@/server/db";
 import { logger } from "@/logger";
@@ -58,6 +60,8 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
         ...shape.data,
         zodError:
           error.cause instanceof ZodError ? error.cause.flatten() : null,
+        /** Help article path for expected errors, shown under the message. */
+        help: error instanceof HelpfulTRPCError ? error.help : null,
       },
     };
   },

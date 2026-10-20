@@ -22,14 +22,9 @@ The [T3 Stack](https://create.t3.gg/) is a modular and type-safe full-stack deve
 
 ## Usage
 
-### Authenticated Users
-- Create and manage games as an admin.
-- Use the admin interface to control game settings, manage teams, and oversee gameplay.
+Players join with a code or link and a nickname; no account is needed. Hosts sign in to create games, share them, run the buzzer and scores, and finish, reopen, duplicate or delete them.
 
-### Game Participants
-- Join a game using a unique game code.
-- Use the buzzer to interact during gameplay.
-
+Instructions for players and hosts live in the app's public **Help** at `/help`. Its source is in [`src/help`](./src/help), so it is versioned with the features it describes. Contributors: see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Development Setup
 

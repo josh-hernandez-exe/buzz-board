@@ -8,10 +8,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/app/_components/ui/button";
 import { api } from "@/trpc/react";
 import { NAME_LIMITS } from "@/utils/displayName";
+import { GAME_LIMITS } from "@/utils/gameRules";
 import { newRequestId } from "@/utils/requestId";
+import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 
-const MIN_TEAMS = 1;
-const MAX_TEAMS = 8;
+const { minTeams: MIN_TEAMS, maxTeams: MAX_TEAMS } = GAME_LIMITS;
 
 /**
  * One short form: name, format and (for team games) team count. Chat, modes
@@ -21,7 +22,7 @@ export function CreateGame() {
   const router = useRouter();
   const [name, setName] = useState("Trivia night");
   const [format, setFormat] = useState<GameFormat>(GameFormat.team);
-  const [teamCount, setTeamCount] = useState(2);
+  const [teamCount, setTeamCount] = useState<number>(GAME_LIMITS.defaultTeams);
   // One ID per attempt: a double-click or a retried request after a slow
   // response returns the same game instead of creating a second room.
   const requestId = useRef(newRequestId());
@@ -121,11 +122,7 @@ export function CreateGame() {
         </div>
       )}
 
-      {createGame.error && (
-        <p role="alert" className="text-sm text-red-300">
-          {createGame.error.message}
-        </p>
-      )}
+      <ErrorNotice error={createGame.error} className="text-sm text-red-300" />
 
       <Button type="submit" disabled={!canSubmit}>
         {createGame.isPending ? "Creating…" : "Create game"}

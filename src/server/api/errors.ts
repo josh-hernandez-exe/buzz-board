@@ -9,6 +9,7 @@ import { type GameServiceError } from "@/server/games/gameService";
 import { type ScoreCommandError } from "@/server/scores/scoreService";
 import { nameErrorMessage } from "@/utils/displayName";
 import { SCORE_LIMITS } from "@/server/scores/scoreMath";
+import { helpHref } from "@/help/manifest";
 
 export type ServiceError =
   | GameTransactionError
@@ -19,11 +20,57 @@ export type ServiceError =
 
 const number = (n: number) => n.toLocaleString("en-US");
 
+/** A TRPCError that also names the Help article explaining it. */
+export class HelpfulTRPCError extends TRPCError {
+  readonly help: string;
+  constructor(
+    opts: ConstructorParameters<typeof TRPCError>[0] & { help: string },
+  ) {
+    super(opts);
+    this.help = opts.help;
+  }
+}
+
+/** Help for each expected error, so error messages can link to it. */
+const ERROR_HELP: Partial<Record<ServiceError["kind"], string>> = {
+  gameNotFound: helpHref("join-and-resume", "why-cant-i-join"),
+  joiningClosed: helpHref("troubleshooting", "joining-is-closed"),
+  gameFinished: helpHref("troubleshooting", "this-game-has-finished"),
+  busy: helpHref("troubleshooting", "the-game-is-busy"),
+  invalidName: helpHref(
+    "teams-and-names",
+    "how-do-i-change-my-name-or-my-teams-name",
+  ),
+  notListening: helpHref("troubleshooting", "why-cant-i-buzz"),
+  teamRejected: helpHref("troubleshooting", "why-cant-i-buzz"),
+  notOnTeam: helpHref("teams-and-names", "how-do-players-get-a-team"),
+  invalidAmount: helpHref("scoreboards-and-display", "how-do-i-change-scores"),
+  scoreOutOfRange: helpHref(
+    "scoreboards-and-display",
+    "how-do-i-change-scores",
+  ),
+  reopenExpired: helpHref("host-quickstart", "can-i-run-the-same-game-again"),
+  cannotDeleteActiveGame: helpHref("host-quickstart", "how-do-i-delete-a-game"),
+};
+
 /**
  * Maps every service error to the API's standard typed errors, with a message
  * a player or host can act on.
  */
 export function toTRPCError(error: ServiceError): TRPCError {
+  const base = baseError(error);
+  const help = ERROR_HELP[error.kind];
+  return help
+    ? new HelpfulTRPCError({
+        code: base.code,
+        message: base.message,
+        cause: base.cause,
+        help,
+      })
+    : base;
+}
+
+function baseError(error: ServiceError): TRPCError {
   switch (error.kind) {
     case "gameNotFound":
       return new TRPCError({

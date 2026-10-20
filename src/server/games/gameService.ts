@@ -23,14 +23,9 @@ import {
   normalizeName,
   type NameError,
 } from "@/utils/displayName";
+import { GAME_LIMITS } from "@/utils/gameRules";
 
-export const GAME_LIMITS = {
-  minTeams: 1,
-  maxTeams: 8,
-  defaultTeams: 2,
-  /** How long after finishing a game can be reopened to correct results. */
-  reopenWindowMs: 24 * 60 * 60 * 1000,
-} as const;
+export { GAME_LIMITS };
 
 export type GameServiceError =
   | GameTransactionError

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { Button } from "@/app/_components/ui/button";
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
+import { helpHref } from "@/help/manifest";
 
 /**
  * Who and where the player is: game, code, their name and team. Also offers
@@ -49,6 +50,14 @@ export function PlayerHeader({ gameUserId }: { gameUserId: string }) {
           This game has finished. Final scores are on the scoreboard.
         </p>
       )}
+      <a
+        href={helpHref("troubleshooting", "why-cant-i-buzz")}
+        target="_blank"
+        rel="noopener"
+        className="text-sm text-white/80 underline"
+      >
+        Help: what do the buzzer messages mean?
+      </a>
       <details className="text-sm">
         <summary className="cursor-pointer text-white/80">
           Leave this room on this device

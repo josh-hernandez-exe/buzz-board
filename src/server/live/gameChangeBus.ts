@@ -45,6 +45,12 @@ export class GameChangeBus {
         .subscribe(CHANNEL_PREFIX + gameId, (message) =>
           this.onMessage(gameId, message),
         )
+        // Listeners load their first state before SUBSCRIBE is confirmed, so
+        // a change made by another process in between would be missed.
+        // Reload once now that every later change will be announced.
+        .then(() => {
+          if (this.listeners.get(gameId) === set) this.deliver(gameId);
+        })
         .catch((error) =>
           logger.warn(`Could not subscribe to game ${gameId} changes`, error),
         );

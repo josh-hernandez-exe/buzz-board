@@ -19,6 +19,7 @@ import {
   nameErrorMessage,
   normalizeName,
 } from "@/utils/displayName";
+import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 
 const CODE_LENGTH = 6;
 
@@ -78,7 +79,7 @@ export function JoinGameComponent({
     join.mutate({ gameCode, nickname: name.value });
   };
 
-  const error = formError || join.error?.message;
+  const error = formError || join.error;
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-4">
@@ -169,11 +170,7 @@ export function JoinGameComponent({
         </form>
       )}
 
-      {error && (
-        <p role="alert" className="text-sm text-red-300">
-          {error}
-        </p>
-      )}
+      <ErrorNotice error={error} className="text-sm text-red-300" />
     </div>
   );
 }

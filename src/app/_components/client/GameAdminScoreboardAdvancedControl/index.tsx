@@ -13,6 +13,7 @@ import { newRequestId } from "@/utils/requestId";
 
 import { DataTable } from "./GameTeamsTable";
 import { columns } from "./gameTeamTableColumns";
+import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 
 export function GameAdminScoreboardAdvancedControl({
   gameTeams,
@@ -39,7 +40,7 @@ export function GameAdminScoreboardAdvancedControl({
     redoScoreMutation,
   ];
   const isSaving = mutations.some((m) => m.isPending);
-  const lastError = mutations.find((m) => m.isError)?.error?.message;
+  const lastError = mutations.find((m) => m.isError)?.error;
 
   if (!Array.isArray(gameTeams) || gameTeams.length === 0) {
     return undefined;
@@ -162,11 +163,10 @@ export function GameAdminScoreboardAdvancedControl({
           {disabledReason && (
             <p className="mt-2 text-sm text-gray-600">{disabledReason}</p>
           )}
-          {lastError && (
-            <p role="alert" className="mt-2 text-sm text-red-600">
-              {lastError}
-            </p>
-          )}
+          <ErrorNotice
+            error={lastError}
+            className="mt-2 text-sm text-red-600"
+          />
         </div>
       }
     />
