@@ -4,9 +4,26 @@ import { err, ok, type Result } from "neverthrow";
 import { db } from "@/server/db";
 import { getPublicGameState, getPrivateGameState } from "@/server/db/common";
 import { getBuzzWinner } from "@/server/buzzer/buzzerService";
-import { gameChangeBus } from "@/server/live/gameChangeBus";
+import { loadChatSummary, type ChatSummary } from "@/server/chat/chatLive";
+import { type GameChangeBus, gameChangeBus } from "@/server/live/gameChangeBus";
 import { GameFeed } from "@/server/live/gameFeed";
 import type { PublicGameState, PrivateGameState, WhoBuzzedIn } from "@/types";
+
+/** Bus topic for chat changes, separate so chat never reloads game state. */
+export const chatTopic = (gameId: string) => `chat:${gameId}`;
+
+/**
+ * Chat change signals. Reloads on chat changes and on game changes (names,
+ * teams, roles, finishing), coalesces bursts into one read, and re-checks
+ * every 5 seconds in case a notification was lost.
+ */
+export function createChatFeed(bus: () => GameChangeBus) {
+  return new GameFeed<ChatSummary>("chat", bus, loadChatSummary, {
+    topics: (gameId) => [gameId, chatTopic(gameId)],
+    coalesceMs: 100,
+    refreshEveryMs: 5_000,
+  });
+}
 
 /**
  * Live state streams. Each yields an initial snapshot from PostgreSQL and a
@@ -30,6 +47,7 @@ export const liveFeeds = {
     gameChangeBus,
     (gameId) => getWhoBuzzedIn(gameId),
   ),
+  chat: createChatFeed(gameChangeBus),
 };
 
 /**
@@ -44,6 +62,14 @@ export async function emitUpdatedGameState({
 }): Promise<Result<void, Error>> {
   await gameChangeBus().notify(gameId);
   return ok();
+}
+
+/**
+ * Announces a committed chat change (message, moderation, mute or channel
+ * setting). Carries no content; viewers re-fetch what they may see.
+ */
+export async function emitChatChanged(gameId: Game["id"]): Promise<void> {
+  await gameChangeBus().notify(chatTopic(gameId));
 }
 
 async function getWhoBuzzedIn(

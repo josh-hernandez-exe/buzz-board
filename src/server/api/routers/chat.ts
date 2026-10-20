@@ -24,7 +24,16 @@ import {
   unmuteActor,
 } from "@/server/chat/chatService";
 import { staffRoleFor } from "@/server/staff/staffService";
-import { emitUpdatedGameState } from "@/server/utils/events";
+import {
+  projectChatPulse,
+  type ChatPulse,
+  type ChatViewer,
+} from "@/server/chat/chatLive";
+import {
+  emitChatChanged,
+  emitUpdatedGameState,
+  liveFeeds,
+} from "@/server/utils/events";
 import { CHAT_LIMITS, type ChatActor } from "@/utils/chatRules";
 
 const requestIdSchema = z
@@ -115,11 +124,54 @@ async function control<T>(
   return outcome.value;
 }
 
+/** Like `control`, then tells live viewers the game's chat changed. */
+async function announce<T>(
+  gameId: string,
+  result: Promise<Result<T, Parameters<typeof toTRPCError>[0]>>,
+) {
+  const value = await control(result);
+  await emitChatChanged(gameId);
+  return value;
+}
+
+const sameChannels = (a: ChatPulse, b: ChatPulse) =>
+  JSON.stringify(a) === JSON.stringify(b);
+
 export const chatRouter = createTRPCRouter({
   /** Whether chat is on, the caller's channels, and why they can't post. */
   status: chatProcedure.query(async ({ ctx }) =>
     chatStatus({ gameId: ctx.gameId, actor: ctx.actor }),
   ),
+  /**
+   * Live chat signal: the caller's channels with their revisions, their
+   * posting state and a roster revision. Sent first on connect and again
+   * whenever any of it changes, never with message text. Clients re-fetch
+   * a channel when its revision changes, and drop channels that disappear.
+   * Access is re-checked against current membership on every change.
+   */
+  live: chatProcedure.subscription(async function* ({ ctx, signal }) {
+    const viewer: ChatViewer =
+      ctx.actor.kind === "player"
+        ? { kind: "player", gameUserId: ctx.actor.gameUserId }
+        : { kind: "staff", userId: ctx.actor.userId };
+    let last: ChatPulse | undefined;
+    for await (const summary of liveFeeds.chat.subscribe(ctx.gameId, signal)) {
+      const pulse = projectChatPulse(summary, viewer);
+      if (pulse.isErr()) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            pulse.error.kind === "removed"
+              ? "You were removed from this game."
+              : "Your role in this game was removed.",
+        });
+      }
+      // Most changes are in channels this viewer can't see; skip those.
+      if (last && sameChannels(last, pulse.value)) continue;
+      last = pulse.value;
+      yield pulse.value;
+    }
+  }),
   /** Recent messages in one channel the caller can read. */
   channel: chatProcedure
     .input(
@@ -149,8 +201,8 @@ export const chatRouter = createTRPCRouter({
         requestId: requestIdSchema,
       }),
     )
-    .mutation(async ({ ctx, input }) =>
-      control(
+    .mutation(async ({ ctx, input }) => {
+      const result = await control(
         sendMessage({
           gameId: ctx.gameId,
           actor: ctx.actor,
@@ -158,8 +210,10 @@ export const chatRouter = createTRPCRouter({
           body: input.body,
           requestId: input.requestId,
         }),
-      ),
-    ),
+      );
+      if (!result.replayed) await emitChatChanged(ctx.gameId);
+      return result;
+    }),
 
   /** Turns chat on or off for everyone. Owner and co-hosts. */
   setEnabled: protectedGameAdminProcedure
@@ -197,7 +251,8 @@ export const chatRouter = createTRPCRouter({
     remove: moderatorProcedure
       .input(z.object({ messageId: z.string(), reason: reasonSchema }))
       .mutation(async ({ ctx, input }) =>
-        control(
+        announce(
+          ctx.gameSession.id,
           removeMessage({
             gameId: ctx.gameSession.id,
             messageId: input.messageId,
@@ -222,7 +277,8 @@ export const chatRouter = createTRPCRouter({
         }),
       )
       .mutation(async ({ ctx, input }) =>
-        control(
+        announce(
+          ctx.gameSession.id,
           muteActor({
             gameId: ctx.gameSession.id,
             staff: ctx.staffActor,
@@ -235,7 +291,8 @@ export const chatRouter = createTRPCRouter({
     unmute: moderatorProcedure
       .input(z.object({ actorKey: z.string().max(64) }))
       .mutation(async ({ ctx, input }) =>
-        control(
+        announce(
+          ctx.gameSession.id,
           unmuteActor({
             gameId: ctx.gameSession.id,
             staff: ctx.staffActor,
@@ -257,7 +314,10 @@ export const chatRouter = createTRPCRouter({
         }),
       )
       .mutation(async ({ ctx, input }) =>
-        control(setChannelPolicy({ gameId: ctx.gameSession.id, ...input })),
+        announce(
+          ctx.gameSession.id,
+          setChannelPolicy({ gameId: ctx.gameSession.id, ...input }),
+        ),
       ),
     pin: moderatorProcedure
       .input(
@@ -267,12 +327,16 @@ export const chatRouter = createTRPCRouter({
         }),
       )
       .mutation(async ({ ctx, input }) =>
-        control(pinMessage({ gameId: ctx.gameSession.id, ...input })),
+        announce(
+          ctx.gameSession.id,
+          pinMessage({ gameId: ctx.gameSession.id, ...input }),
+        ),
       ),
     clear: moderatorProcedure
       .input(z.object({ channelKey: channelKeySchema }))
       .mutation(async ({ ctx, input }) =>
-        control(
+        announce(
+          ctx.gameSession.id,
           clearHistory({
             gameId: ctx.gameSession.id,
             channelKey: input.channelKey,

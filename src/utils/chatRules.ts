@@ -66,6 +66,24 @@ export const GAME_CHANNEL_KEY = "game";
 export const teamChannelKey = (gameTeamId: string) => `team:${gameTeamId}`;
 
 /**
+ * The channels an actor can read: everyone sees the game channel; in team
+ * games players also see their current team's channel and staff see every
+ * team's.
+ */
+export function channelKeysForActor(
+  game: { isTeamGame: boolean; teamIds: readonly string[] },
+  actor: ChatActor,
+): string[] {
+  if (!game.isTeamGame) return [GAME_CHANNEL_KEY];
+  if (actor.kind === "staff") {
+    return [GAME_CHANNEL_KEY, ...game.teamIds.map(teamChannelKey)];
+  }
+  return actor.gameTeamId
+    ? [GAME_CHANNEL_KEY, teamChannelKey(actor.gameTeamId)]
+    : [GAME_CHANNEL_KEY];
+}
+
+/**
  * Who may mute whom. Every staff role can mute players; owners and co-hosts
  * can also mute other helpers (co-hosts and moderators). Nobody can mute the
  * owner or themselves.

@@ -21,6 +21,7 @@ import { ROLE_LABEL, type StaffRoleName } from "@/utils/capabilities";
 import {
   actorKey,
   canMute,
+  channelKeysForActor,
   CHAT_LIMITS,
   GAME_CHANNEL_KEY,
   hashBody,
@@ -101,16 +102,13 @@ export async function channelKeysFor(
       gameTeams: { select: { id: true }, orderBy: { index: "asc" } },
     },
   });
-  if (game.format !== GameFormat.team) return [GAME_CHANNEL_KEY];
-  if (actor.kind === "staff") {
-    return [
-      GAME_CHANNEL_KEY,
-      ...game.gameTeams.map((team) => teamChannelKey(team.id)),
-    ];
-  }
-  return actor.gameTeamId
-    ? [GAME_CHANNEL_KEY, teamChannelKey(actor.gameTeamId)]
-    : [GAME_CHANNEL_KEY];
+  return channelKeysForActor(
+    {
+      isTeamGame: game.format === GameFormat.team,
+      teamIds: game.gameTeams.map((team) => team.id),
+    },
+    actor,
+  );
 }
 
 /**

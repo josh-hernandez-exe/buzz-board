@@ -18,6 +18,23 @@ type GameEntry<T> = {
   dirty: boolean;
 };
 
+export type GameFeedOptions = {
+  /**
+   * Bus topics that trigger a reload; defaults to the game itself. For
+   * example chat reloads on chat changes and on roster changes.
+   */
+  topics?: (gameId: string) => string[];
+  /** Waits this long before reading, so a burst of changes costs one read. */
+  coalesceMs?: number;
+  /**
+   * Reloads this often while anyone is subscribed, catching changes whose
+   * notification was lost (for example while Redis was down).
+   */
+  refreshEveryMs?: number;
+};
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 /**
  * A live view of one kind of game state (for example the public scoreboard).
  *
@@ -35,6 +52,7 @@ export class GameFeed<T> {
     private readonly name: string,
     private readonly bus: () => GameChangeBus,
     private readonly load: (gameId: string) => Promise<Result<T, Error>>,
+    private readonly options: GameFeedOptions = {},
   ) {}
 
   /** Yields the current state, then every later change, until `signal` aborts. */
@@ -91,9 +109,21 @@ export class GameFeed<T> {
         dirty: false,
         unlisten: () => undefined,
       };
-      created.unlisten = this.bus().listen(gameId, () => {
-        void this.refresh(gameId, created);
-      });
+      const topics = this.options.topics?.(gameId) ?? [gameId];
+      const unlisteners = topics.map((topic) =>
+        this.bus().listen(topic, () => void this.refresh(gameId, created)),
+      );
+      const timer = this.options.refreshEveryMs
+        ? setInterval(
+            () => void this.refresh(gameId, created),
+            this.options.refreshEveryMs,
+          )
+        : undefined;
+      timer?.unref?.();
+      created.unlisten = () => {
+        clearInterval(timer);
+        for (const unlisten of unlisteners) unlisten();
+      };
       this.games.set(gameId, created);
       entry = created;
     }
@@ -118,6 +148,7 @@ export class GameFeed<T> {
     }
     entry.reading = true;
     try {
+      if (this.options.coalesceMs) await sleep(this.options.coalesceMs);
       do {
         entry.dirty = false;
         const result: Result<T, Error> = await this.load(gameId).catch(
