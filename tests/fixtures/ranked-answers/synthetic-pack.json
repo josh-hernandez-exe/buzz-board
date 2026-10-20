@@ -1,0 +1,102 @@
+{
+  "$comment": "SYNTHETIC practice content for rehearsals and tests. Invented prefixes and answers, not captured from any search engine. Not a real question pack.",
+  "kind": "ranked-answers-synthetic-pack",
+  "version": 1,
+  "rules": {
+    "turnCycles": 2,
+    "consultationSeconds": 10,
+    "answerSeconds": 5,
+    "roundTargetSeconds": 360,
+    "pointValuesByRank": [30, 25, 20, 15, 10, 8, 5, 2],
+    "multiplier": 1
+  },
+  "boards": [
+    {
+      "id": "practice-toolbox",
+      "role": "practice",
+      "prefix": "things in a toolbox",
+      "source": {
+        "kind": "synthetic",
+        "note": "Invented for practice; ranks are arbitrary."
+      },
+      "answers": [
+        { "id": "hammer", "rank": 1, "text": "hammer", "aliases": [] },
+        {
+          "id": "screwdriver",
+          "rank": 2,
+          "text": "screwdriver",
+          "aliases": ["screw driver"]
+        },
+        {
+          "id": "tape-measure",
+          "rank": 3,
+          "text": "tape measure",
+          "aliases": ["measuring tape"]
+        },
+        { "id": "pliers", "rank": 4, "text": "pliers", "aliases": [] },
+        { "id": "spanner", "rank": 5, "text": "spanner", "aliases": ["wrench"] }
+      ]
+    },
+    {
+      "id": "board-picnic",
+      "role": "main",
+      "prefix": "what to bring to a picnic",
+      "source": {
+        "kind": "synthetic",
+        "note": "Invented for practice; ranks are arbitrary."
+      },
+      "answers": [
+        { "id": "blanket", "rank": 1, "text": "blanket", "aliases": [] },
+        { "id": "sandwiches", "rank": 2, "text": "sandwiches", "aliases": [] },
+        { "id": "water", "rank": 3, "text": "water", "aliases": ["drinks"] },
+        { "id": "fruit", "rank": 4, "text": "fruit", "aliases": [] },
+        {
+          "id": "sunscreen",
+          "rank": 5,
+          "text": "sunscreen",
+          "aliases": ["sun cream"]
+        },
+        { "id": "napkins", "rank": 6, "text": "napkins", "aliases": [] },
+        { "id": "games", "rank": 7, "text": "games", "aliases": [] },
+        { "id": "umbrella", "rank": 8, "text": "umbrella", "aliases": [] }
+      ]
+    },
+    {
+      "id": "board-rainy-day",
+      "role": "main",
+      "prefix": "rainy day activities",
+      "source": {
+        "kind": "synthetic",
+        "note": "Invented for practice; ranks are arbitrary."
+      },
+      "answers": [
+        { "id": "movie", "rank": 1, "text": "watch a movie", "aliases": [] },
+        {
+          "id": "board-game",
+          "rank": 2,
+          "text": "board games",
+          "aliases": []
+        },
+        { "id": "baking", "rank": 3, "text": "baking", "aliases": [] },
+        { "id": "reading", "rank": 4, "text": "reading", "aliases": [] },
+        { "id": "puzzle", "rank": 5, "text": "jigsaw puzzle", "aliases": [] },
+        { "id": "crafts", "rank": 6, "text": "crafts", "aliases": [] }
+      ]
+    },
+    {
+      "id": "spare-breakfast",
+      "role": "spare",
+      "prefix": "breakfast foods",
+      "source": {
+        "kind": "synthetic",
+        "note": "Invented tie-break spare; ranks are arbitrary."
+      },
+      "answers": [
+        { "id": "toast", "rank": 1, "text": "toast", "aliases": [] },
+        { "id": "cereal", "rank": 2, "text": "cereal", "aliases": [] },
+        { "id": "eggs", "rank": 3, "text": "eggs", "aliases": [] },
+        { "id": "pancakes", "rank": 4, "text": "pancakes", "aliases": [] }
+      ]
+    }
+  ]
+}
