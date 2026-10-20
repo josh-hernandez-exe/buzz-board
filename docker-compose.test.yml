@@ -1,0 +1,35 @@
+# Disposable services for automated tests only. Data lives in tmpfs and is
+# discarded when the containers stop. Ports differ from docker-compose.db.yml so
+# tests never touch a development database.
+#
+#   bun test:services:up
+#   bun test:services:down
+name: buzz-board-test
+
+services:
+  buzz-board-test-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: buzz_board_test
+    ports:
+      - "55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d buzz_board_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  buzz-board-test-redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "56379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

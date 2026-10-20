@@ -21,7 +21,7 @@ export default async function GameAdminPage({
     user: session?.user,
   });
 
-  if (!gameSession?.gameAdmin || gameSession.gameAdmin.gameId !== gameId) {
+  if (gameSession?.gameAdmin?.gameId !== gameId) {
     logger.error("Game admin not found for this game.");
     redirect("/dashboard");
   }

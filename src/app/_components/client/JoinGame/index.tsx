@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 import { useRouter } from "next/navigation";
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
@@ -24,7 +24,9 @@ export function JoinGameComponent({
   const [gameCode, setGameCode] = useState(inputCode ?? "");
   const [error, setError] = useState("");
   const [gameTokenData, setGameTokenData] = useGameTokenData();
-  const [attemptedAutoJoin, setAttemptedAutoJoin] = useState(false); // Add this state
+  // A ref (not state) so a failed auto-join does not re-trigger the effect and
+  // retry the same code in a loop; the user can retry with the Join button.
+  const attemptedAutoJoin = useRef(false);
 
   const router = useRouter();
 
@@ -40,7 +42,6 @@ export function JoinGameComponent({
     },
     onError: (err) => {
       setError(err.message);
-      setAttemptedAutoJoin(false); // Reset auto-join attempt on error
     },
   });
 
@@ -61,12 +62,12 @@ export function JoinGameComponent({
     // Automatically attempt to join if the code is set in the input code.
     // which is defined from the search params.
     // Only attempt auto-join once.
-    if (inputCode && !attemptedAutoJoin) {
-      setAttemptedAutoJoin(true);
-      setGameCode(inputCode);
+    // `gameCode` is initialised from `inputCode`, so no state update is needed.
+    if (inputCode && !attemptedAutoJoin.current) {
+      attemptedAutoJoin.current = true;
       void handleJoinGame();
     }
-  }, [inputCode, handleJoinGame, attemptedAutoJoin]); // Add attemptedAutoJoin to dependencies
+  }, [inputCode, handleJoinGame]);
 
   return (
     <div>

@@ -1,10 +1,6 @@
-import { FlatCompat } from "@eslint/eslintrc";
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import tseslint from "typescript-eslint";
 import neverthrow from "eslint-plugin-neverthrow";
-
-const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-});
 
 export default tseslint.config(
   {
@@ -14,9 +10,13 @@ export default tseslint.config(
       "node_modules/", // Exclude the node_modules folder
       "dist/", // Exclude the dist folder
       "build/", // Exclude the build folder
+      "next-env.d.ts",
+      "playwright-report/",
+      "test-results/",
+      "scripts/k6/dist/",
     ],
   },
-  ...compat.extends("next/core-web-vitals"),
+  ...nextCoreWebVitals,
   {
     files: ["**/*.ts", "**/*.tsx"],
     extends: [

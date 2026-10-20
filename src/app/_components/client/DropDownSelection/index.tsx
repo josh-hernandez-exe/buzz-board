@@ -29,8 +29,8 @@ export function DropDownSelection<T>({
 }) {
   if (!Array.isArray(options)) {
     logger.debug(`Dropdown Selection: No options given.`);
-    options = [];
   }
+  const items = Array.isArray(options) ? options : [];
 
   const [value, setValue] = useState<DropdownOption<T>["id"]>(
     defaultValue ?? "",
@@ -41,7 +41,7 @@ export function DropDownSelection<T>({
   }
 
   const onValueChange = (id: string) => {
-    const selectedItem = options.find((item) => item.id === id);
+    const selectedItem = items.find((item) => item.id === id);
 
     if (selectedItem === undefined) {
       logger.error(`Selected item ${id} not found in dropdown`);
@@ -65,7 +65,7 @@ export function DropDownSelection<T>({
       <SelectContent className="w-56">
         <SelectGroup>
           <SelectLabel>{title}</SelectLabel>
-          {options.map((item) => {
+          {items.map((item) => {
             return (
               <SelectItem value={item.id} key={item.id}>
                 {item.name}

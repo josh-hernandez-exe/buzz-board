@@ -17,14 +17,12 @@ type GameTokenData = {
 export function useGameTokenData() {
   const { getCookie, setCookie } = useCookiesNext();
   const [isFirstLoad, setIsFirstLoad] = useState(true);
-  const [gameTokenData, setGameTokenDataInLocalStorage] = useLocalStorage(
-    "buzz-board-game-token-storage",
-    {
+  const [gameTokenData, setGameTokenDataInLocalStorage] =
+    useLocalStorage<GameTokenData>("buzz-board-game-token-storage", {
       token: null,
       gameId: null,
       tokenStorage: {},
-    } as GameTokenData,
-  );
+    });
 
   const setHeadersFromToken = (gtd: GameTokenData) => {
     const { token, gameId } = gtd;

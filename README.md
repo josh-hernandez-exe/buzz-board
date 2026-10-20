@@ -96,6 +96,24 @@ Redirects:
   ```bash
   bun db:studio
   ```
+- Lint and typecheck:
+  ```bash
+  bun run check
+  ```
+
+### Testing
+
+Vitest runs unit, component and integration tests; Playwright runs browser tests. Integration and browser tests use disposable PostgreSQL and Redis containers that are separate from the development database:
+
+```bash
+bun run test                 # unit + component, no services needed
+bun run test:services:up     # disposable PostgreSQL :55432 and Redis :56379
+bun run test:integration     # real tRPC routers against those services
+bun run test:e2e             # Playwright smoke tests (first run: bunx playwright install chromium)
+bun run test:services:down
+```
+
+See [tests/README.md](./tests/README.md) for the conventions, including how known defects are tracked with `it.fails`.
 
 
 ## Deployment
@@ -143,12 +161,13 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
      KV_URL=your-vercel-redis-connection-string
      ```
 
-3. **Apply Database Migrations**:
-   - Run Prisma migrations to set up the database schema:
+3. **Apply the Database Schema**:
+   - Never run `prisma migrate reset` (or `db push --force-reset`) against a deployed database: it deletes every game, score and account.
+   - Back up the database first, then apply the schema without resetting it:
      ```bash
-     bun --env-file=.env.production prisma migrate reset
      bun --env-file=.env.production db:push
      ```
+   - The project does not yet track migration files; adopting a reviewed migration baseline is planned work (PR02 in the [delivery plan](./docs/buzz-board-game-kit-delivery-plan.md)).
 
 4. **Verify Connections**:
    - Ensure that your application can connect to the managed PostgreSQL and Redis instances by testing locally or deploying to Vercel.

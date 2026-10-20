@@ -79,3 +79,9 @@ yarn-error.log*
 
 # idea files
 .idea
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

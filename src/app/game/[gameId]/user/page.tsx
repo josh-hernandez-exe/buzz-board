@@ -32,7 +32,7 @@ export default async function GameUserPage({
     user: session?.user,
   });
 
-  if (!gameSession?.gameUser || gameSession.gameUser.gameId !== gameId) {
+  if (gameSession?.gameUser?.gameId !== gameId) {
     logger.error("Game user not found for this game.");
     redirect("/join");
   }

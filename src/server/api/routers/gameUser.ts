@@ -268,7 +268,7 @@ export const gameUserRouter = createTRPCRouter({
           gameId: gameUser.gameId,
           gameTeamId: gameUser.gameTeamId,
           userId: gameUser.userId,
-        } as GameUserBasicInfo;
+        };
       }
 
       if (settings?.freezeTeams) {
@@ -317,7 +317,7 @@ export const gameUserRouter = createTRPCRouter({
         gameId: gameUserUpdated.gameId,
         gameTeamId: gameUserUpdated.gameTeamId,
         userId: gameUserUpdated.userId,
-      } as GameUserBasicInfo;
+      };
     }),
   buzzIn: protectedGameUserProcedure.mutation(async ({ ctx }) => {
     const { gameUser, isBuzzerListening } = ctx.gameSession;

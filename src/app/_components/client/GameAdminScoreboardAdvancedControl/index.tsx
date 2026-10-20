@@ -11,7 +11,7 @@ import { Button } from "@/app/_components/ui/button";
 import { logger } from "@/logger";
 
 import { DataTable } from "./GameTeamsTable";
-import { type GameTeamDataTableRow, columns } from "./gameTeamTableColumns";
+import { columns } from "./gameTeamTableColumns";
 
 export function GameAdminScoreboardAdvancedControl({
   gameTeams,
@@ -66,7 +66,7 @@ export function GameAdminScoreboardAdvancedControl({
                 index: team.index,
                 buzzerState: team.buzzerState,
                 score: team.score,
-              } as GameTeamDataTableRow;
+              };
             })}
             onChange={setSelectedGameTeams}
           />

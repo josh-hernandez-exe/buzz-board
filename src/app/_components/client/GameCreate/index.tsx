@@ -5,10 +5,7 @@ import { useState } from "react";
 import { type Game, GameFormat } from "@prisma/client";
 import { useRouter } from "next/navigation";
 
-import {
-  DropDownSelection,
-  type DropdownOption,
-} from "@/app/_components/client/DropDownSelection";
+import { DropDownSelection } from "@/app/_components/client/DropDownSelection";
 
 import { api } from "@/trpc/react";
 import { logger } from "@/logger";
@@ -62,7 +59,7 @@ export function CreateGame() {
               id: val,
               name: val,
               data: val,
-            } as DropdownOption<Game["format"]>;
+            };
           })}
           defaultValue={GameFormat.team}
           onChange={(val) => {
