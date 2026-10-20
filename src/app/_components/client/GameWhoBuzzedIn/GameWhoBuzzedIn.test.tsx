@@ -40,6 +40,7 @@ function gameState(
       finishedAt: null,
       joiningOpen: true,
       teamAssignment: "auto",
+      chatEnabled: false,
     },
     gameTeams: [
       {

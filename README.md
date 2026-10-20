@@ -126,6 +126,10 @@ git checkout production
 git merge --ff-only development
 ```
 
+### Scheduled cleanup
+
+Run `bun run ops:cleanup` on a schedule (for example hourly) with the production environment. It is safe to repeat. It removes chat text older than 7 days and expired mutes, strips moderation reasons older than 30 days, and lists (never deletes) unfinished games idle for 7 days. It prints a JSON summary and exits non-zero on failure so the scheduler can alert. Reads already hide expired chat text if a run is missed.
+
 ### Steps to Deploy on Vercel
 1. **Connect Your Repository**:
    - Log in to your Vercel account and connect your GitHub repository.

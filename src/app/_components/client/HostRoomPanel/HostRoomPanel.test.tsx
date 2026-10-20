@@ -47,6 +47,7 @@ function gameState(game: Partial<PrivateGameState["game"]> = {}, players = 0) {
       finishedAt: null,
       joiningOpen: true,
       teamAssignment: "auto",
+      chatEnabled: false,
       ...game,
     },
     gameTeams: [],

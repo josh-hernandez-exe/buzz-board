@@ -81,3 +81,66 @@ export async function takeRateLimit(
     return { allowed: true, retryAfterSeconds: 0 };
   }
 }
+
+export type ChatAllowance =
+  | { allowed: true }
+  | { allowed: false; reason: "tooFast"; retryAfterSeconds: number }
+  | { allowed: false; reason: "gameBusy" }
+  | { allowed: false; reason: "unavailable" };
+
+async function count(connection: RedisClient, key: string, seconds: number) {
+  const value = await connection.incr(key);
+  if (value === 1) await connection.expire(key, seconds);
+  return value;
+}
+
+/**
+ * Counts one chat message against the sender's burst and per-minute limits
+ * and the game's per-second ceiling. Unlike join limits this **fails closed**:
+ * if Redis is unavailable, chat sends are refused rather than unlimited.
+ * Chat limits never apply to buzzing, scores or other game actions.
+ */
+export async function takeChatAllowance({
+  gameId,
+  actorKey,
+  limits,
+}: {
+  gameId: string;
+  actorKey: string;
+  limits: {
+    burstMessages: number;
+    burstSeconds: number;
+    perMinute: number;
+    gamePerSecond: number;
+  };
+}): Promise<ChatAllowance> {
+  try {
+    const connection = redis();
+    if (!connection.isReady) return { allowed: false, reason: "unavailable" };
+    const prefix = `buzz-board:chat:${gameId}`;
+    const second = Math.floor(Date.now() / 1000);
+    const [burst, minute, game] = await Promise.all([
+      count(connection, `${prefix}:burst:${actorKey}`, limits.burstSeconds),
+      count(connection, `${prefix}:minute:${actorKey}`, 60),
+      count(connection, `${prefix}:game:${second}`, 2),
+    ]);
+    if (game > limits.gamePerSecond)
+      return { allowed: false, reason: "gameBusy" };
+    if (burst > limits.burstMessages || minute > limits.perMinute) {
+      const ttl = await connection.ttl(
+        burst > limits.burstMessages
+          ? `${prefix}:burst:${actorKey}`
+          : `${prefix}:minute:${actorKey}`,
+      );
+      return {
+        allowed: false,
+        reason: "tooFast",
+        retryAfterSeconds: Math.max(1, ttl),
+      };
+    }
+    return { allowed: true };
+  } catch (error) {
+    logger.warn("Chat rate limit unavailable; refusing send", String(error));
+    return { allowed: false, reason: "unavailable" };
+  }
+}

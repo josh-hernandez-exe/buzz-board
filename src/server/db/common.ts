@@ -94,6 +94,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       finishedAt: true,
       joiningOpen: true,
       teamAssignment: true,
+      chatEnabled: true,
       gameTeams: {
         select: {
           id: true,
@@ -163,6 +164,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       finishedAt: game.finishedAt,
       joiningOpen: game.joiningOpen,
       teamAssignment: game.teamAssignment,
+      chatEnabled: game.chatEnabled,
     },
     gameTeams: game.gameTeams.map((gameTeam) => ({
       id: gameTeam.id,

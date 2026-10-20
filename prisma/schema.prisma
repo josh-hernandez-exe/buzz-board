@@ -105,6 +105,8 @@ model Game {
   finishedAt        DateTime?
   joiningOpen       Boolean        @default(true)
   teamAssignment    TeamAssignment @default(auto)
+  /// Chat is off unless a host turns it on.
+  chatEnabled       Boolean        @default(false)
   /// Client-supplied ID that makes a retried "create game" return the same game.
   creationRequestId String?        @db.VarChar(64)
 
@@ -123,6 +125,9 @@ model Game {
   scoreEffects     ScoreEffect[]
   buzzClaims       BuzzClaim[]
   invites          GameInvite[]
+  chatChannels     ChatChannel[]
+  chatMessages     ChatMessage[]
+  chatMutes        ChatMute[]
 
   @@unique([createdById, creationRequestId])
 }
@@ -171,8 +176,9 @@ model GameTeam {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
-  game      Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameUsers GameUser[]
+  game         Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameUsers    GameUser[]
+  chatChannels ChatChannel[]
 
   @@unique([gameId, index])
 }
@@ -329,4 +335,73 @@ model GameInvite {
   usedBy   User? @relation("UsedInvites", fields: [usedById], references: [id], onDelete: SetNull)
 
   @@index([gameId, purpose])
+}
+
+/// One game-wide channel, and one per team in team games.
+model ChatChannel {
+  id                     String   @id @default(cuid())
+  gameId                 String
+  /// "game", or "team:<gameTeamId>". Unique per game.
+  key                    String   @db.VarChar(64)
+  gameTeamId             String?
+  /// Only staff can post (for example to keep guesses quiet during a round).
+  staffOnly              Boolean  @default(false)
+  /// Minimum seconds between one person's messages; 0 is off.
+  slowModeSeconds        Int      @default(0)
+  pinnedMessageId        String?
+  /// Sequence of the newest message.
+  lastSequence           Int      @default(0)
+  /// Messages up to this sequence are hidden by "clear history".
+  clearedThroughSequence Int      @default(0)
+  /// Changes whenever anything visible in the channel changes.
+  revision               Int      @default(0)
+  createdAt              DateTime @default(now())
+
+  game     Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameTeam GameTeam?     @relation(fields: [gameTeamId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@unique([gameId, key])
+}
+
+/// A chat message. Removal and expiry clear the body; there is no restore.
+model ChatMessage {
+  id          String    @id @default(cuid())
+  gameId      String
+  channelId   String
+  sequence    Int
+  /// "player:<gameUserId>" or "staff:<userId>", derived by the server.
+  actorKey    String    @db.VarChar(64)
+  /// Client-chosen ID; a retry returns the same message.
+  requestId   String    @db.VarChar(64)
+  /// SHA-256 of the body, so a reused request ID can't change the text.
+  bodyHash    String    @db.VarChar(64)
+  body        String?
+  createdAt   DateTime  @default(now())
+  removedAt   DateTime?
+  removedById String?
+  /// Set when cleanup removed the body after the retention period.
+  expiredAt   DateTime?
+
+  game    Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  channel ChatChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, sequence])
+  @@unique([gameId, actorKey, requestId])
+  @@index([gameId, createdAt])
+}
+
+/// A game-wide chat mute. No row means not muted; a null `until` lasts until
+/// unmuted. Muting never affects buzzing or scores.
+model ChatMute {
+  id          String    @id @default(cuid())
+  gameId      String
+  actorKey    String    @db.VarChar(64)
+  until       DateTime?
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, actorKey])
 }

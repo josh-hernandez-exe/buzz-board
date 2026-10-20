@@ -25,6 +25,7 @@ function state(
       finishedAt: null,
       joiningOpen: true,
       teamAssignment: "auto",
+      chatEnabled: false,
       ...overrides.game,
     },
     gameTeams: ["t1", "t2"].map((id, i) => ({

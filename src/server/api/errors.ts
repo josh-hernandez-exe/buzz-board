@@ -10,6 +10,7 @@ import { type ScoreCommandError } from "@/server/scores/scoreService";
 import { type StaffError } from "@/server/staff/staffService";
 import { type RosterError } from "@/server/roster/rosterService";
 import { type IdentityError } from "@/server/identity/identityService";
+import { type ChatError } from "@/server/chat/chatService";
 import { nameErrorMessage } from "@/utils/displayName";
 import { SCORE_LIMITS } from "@/server/scores/scoreMath";
 import { helpHref } from "@/help/manifest";
@@ -22,7 +23,8 @@ export type ServiceError =
   | ScoreCommandError
   | StaffError
   | RosterError
-  | IdentityError;
+  | IdentityError
+  | ChatError;
 
 const number = (n: number) => n.toLocaleString("en-US");
 
@@ -335,6 +337,79 @@ function baseError(error: ServiceError): TRPCError {
       return new TRPCError({
         code: "CONFLICT",
         message: `Your account already has a player in this game (${error.playerName}). Join as that player instead, or keep playing as a guest.`,
+      });
+    case "chatDisabled":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Chat is turned off for this game.",
+      });
+    case "chatClosed":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "This game has finished, so chat is read-only.",
+      });
+    case "channelNotFound":
+      return new TRPCError({
+        code: "NOT_FOUND",
+        message: "You can't see that chat.",
+      });
+    case "channelStaffOnly":
+      return new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only organizers can post here right now.",
+      });
+    case "muted":
+      return new TRPCError({
+        code: "FORBIDDEN",
+        message: error.until
+          ? `You're muted in chat until ${error.until.toISOString()}. You can still play.`
+          : "You're muted in chat until an organizer unmutes you. You can still play.",
+      });
+    case "slowMode":
+      return new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: `Slow mode is on. Wait ${error.retryAfterSeconds} seconds before your next message.`,
+      });
+    case "chatTooFast":
+      return new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: `You're sending messages too quickly. Wait ${error.retryAfterSeconds} seconds.`,
+      });
+    case "chatBusy":
+      return new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "Chat is very busy right now. Try again in a moment.",
+      });
+    case "chatUnavailable":
+      return new TRPCError({
+        code: "SERVICE_UNAVAILABLE",
+        message:
+          "Chat is temporarily unavailable. Your message wasn't sent; the game itself still works.",
+      });
+    case "invalidMessage":
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          error.error.kind === "empty"
+            ? "Type a message first."
+            : error.error.kind === "tooLong"
+              ? `Messages can be up to ${number(error.error.maxBytes)} bytes (fewer characters if you use emoji or accents).`
+              : "Messages can't contain hidden control characters.",
+      });
+    case "messageNotFound":
+      return new TRPCError({
+        code: "NOT_FOUND",
+        message: "That message is no longer available.",
+      });
+    case "muteTargetNotFound":
+      return new TRPCError({
+        code: "NOT_FOUND",
+        message: "That person is no longer in this game.",
+      });
+    case "cannotMute":
+      return new TRPCError({
+        code: "FORBIDDEN",
+        message: "Your role can't mute that person.",
       });
     case "historyCorrupt":
       return new TRPCError({

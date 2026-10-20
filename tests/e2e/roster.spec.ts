@@ -69,7 +69,10 @@ test("staff rename and lock a name, remove a player, and recover a guest", async
   await modDesk.getByLabel("New name").fill("Player One");
   await modDesk.getByLabel("Stop this player renaming themselves").check();
   await modDesk.getByRole("button", { name: "Save" }).click();
+  // The dialog closes once the save lands; typing before that is lost.
+  await expect(modDesk.getByRole("dialog")).toBeHidden();
   await modDesk.getByLabel("Find a player").fill("");
+  await expect(modDesk.getByLabel("Find a player")).toHaveValue("");
   await expect(
     modDesk.getByTestId("roster-player").filter({ hasText: "Player One" }),
   ).toContainText("Name locked");

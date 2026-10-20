@@ -130,6 +130,7 @@ export type PrivateGameState = {
     finishedAt: Game["finishedAt"];
     joiningOpen: Game["joiningOpen"];
     teamAssignment: Game["teamAssignment"];
+    chatEnabled: Game["chatEnabled"];
   };
   gameTeams: Array<{
     id: GameTeam["id"];

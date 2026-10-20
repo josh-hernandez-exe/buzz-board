@@ -23,6 +23,8 @@ export const CAPABILITIES = {
   moveRoster: "Move players between teams",
   /** Rename players and teams, and lock or unlock their own renaming. */
   moderateNames: "Rename players and teams, and lock their renaming",
+  /** Remove chat messages, mute people, pin, clear and set chat modes. */
+  moderateChat: "Moderate chat: remove messages, mute, pin and clear",
   /** Remove a player from the game at once. */
   removePlayers: "Remove a player from the game",
   /** Give a guest who lost their device a one-time link back in. */
@@ -41,6 +43,7 @@ const GRANTS: Record<StaffRoleName, readonly Capability[]> = {
     "runGame",
     "moveRoster",
     "moderateNames",
+    "moderateChat",
     "removePlayers",
     "recoverGuests",
     "manageHelpers",
@@ -51,12 +54,13 @@ const GRANTS: Record<StaffRoleName, readonly Capability[]> = {
     "runGame",
     "moveRoster",
     "moderateNames",
+    "moderateChat",
     "removePlayers",
     "recoverGuests",
     "manageHelpers",
     "duplicateGame",
   ],
-  moderator: ["moveRoster", "moderateNames", "removePlayers"],
+  moderator: ["moveRoster", "moderateNames", "moderateChat", "removePlayers"],
 };
 
 export function can(role: StaffRoleName | null, capability: Capability) {
@@ -82,7 +86,7 @@ export const ROLE_SUMMARY: Record<InvitableRole, string> = {
   cohost:
     "Can run the event like the owner: buzzer, scores, teams, settings and helpers. Cannot delete the game or change the owner.",
   moderator:
-    "Can rename players and teams, lock renaming, move players between teams and remove players. Cannot run the buzzer, change scores or invite helpers.",
+    "Can moderate chat, rename players and teams, lock renaming, move players between teams and remove players. Cannot run the buzzer, change scores or invite helpers.",
 };
 
 export const INVITE_LIFETIME_HOURS = 24;

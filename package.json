@@ -23,6 +23,7 @@
     "k6:build": "bun run scripts/k6/build.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "ops:cleanup": "bun run scripts/ops/cleanup.ts",
     "postinstall": "bun db:generate",
     "preview": "next build && next start",
     "prod:db:migrate": "bun --env-file=.env.production run db:migrate:deploy",

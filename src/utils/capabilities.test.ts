@@ -19,6 +19,7 @@ describe("capabilities", () => {
     expect(capabilitiesOf("moderator")).toEqual([
       "moveRoster",
       "moderateNames",
+      "moderateChat",
       "removePlayers",
     ]);
     for (const capability of [
