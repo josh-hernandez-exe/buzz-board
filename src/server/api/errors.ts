@@ -95,7 +95,28 @@ const ERROR_HELP: Partial<Record<ServiceError["kind"], string>> = {
     "why-does-my-invitation-say-it-cant-be-used",
   ),
   cannotChangeOwner: helpHref("helpers-and-roles", "who-can-help-run-a-game"),
+  chatDisabled: helpHref("chat", "why-cant-i-send-a-message"),
+  chatClosed: helpHref("chat", "why-cant-i-send-a-message"),
+  channelStaffOnly: helpHref("chat", "why-cant-i-send-a-message"),
+  muted: helpHref("chat", "why-cant-i-send-a-message"),
+  slowMode: helpHref("chat", "why-cant-i-send-a-message"),
+  chatTooFast: helpHref("chat", "why-cant-i-send-a-message"),
+  chatBusy: helpHref("chat", "why-cant-i-send-a-message"),
+  chatUnavailable: helpHref("chat", "why-cant-i-send-a-message"),
+  invalidMessage: helpHref("chat", "why-cant-i-send-a-message"),
+  cannotMute: helpHref("chat", "how-do-i-moderate-chat"),
 };
+
+/** "about 3 more minutes", from server time, so device clocks don't matter. */
+function mutedFor(until: Date) {
+  const minutes = Math.max(
+    1,
+    Math.ceil((until.getTime() - Date.now()) / 60_000),
+  );
+  return minutes === 1
+    ? "about 1 more minute"
+    : `about ${minutes} more minutes`;
+}
 
 /**
  * Maps every service error to the API's standard typed errors, with a message
@@ -362,7 +383,7 @@ function baseError(error: ServiceError): TRPCError {
       return new TRPCError({
         code: "FORBIDDEN",
         message: error.until
-          ? `You're muted in chat until ${error.until.toISOString()}. You can still play.`
+          ? `You're muted in chat for ${mutedFor(error.until)}. You can still play.`
           : "You're muted in chat until an organizer unmutes you. You can still play.",
       });
     case "slowMode":

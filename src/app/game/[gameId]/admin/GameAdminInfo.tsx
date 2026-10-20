@@ -23,6 +23,7 @@ import type { PrivateGameState } from "@/types";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { HostRoomPanel } from "@/app/_components/client/HostRoomPanel";
 import { HelpersPanel } from "@/app/_components/client/HelpersPanel";
+import { ChatPanel } from "@/app/_components/client/ChatPanel";
 import { ROLE_LABEL, can, type StaffRoleName } from "@/utils/capabilities";
 
 export function GameAdminInfo({
@@ -83,6 +84,7 @@ export function GameAdminInfo({
             <TabsTrigger value="team-management">Team Management</TabsTrigger>
           )}
           <TabsTrigger value="player-management">Player Management</TabsTrigger>
+          <TabsTrigger value="chat">Chat</TabsTrigger>
           <TabsTrigger value="helpers">Helpers</TabsTrigger>
           <TabsTrigger value="information">Information</TabsTrigger>
         </TabsList>
@@ -128,6 +130,13 @@ export function GameAdminInfo({
             <Skeleton className="h-[400px] w-full" />
           ) : (
             <RosterPanel staffRole={staffRole} />
+          )}
+        </TabsContent>
+        <TabsContent value="chat">
+          {isPending ? (
+            <Skeleton className="h-[400px] w-full" />
+          ) : (
+            <ChatPanel as="staff" staffRole={staffRole} />
           )}
         </TabsContent>
         <TabsContent value="helpers">

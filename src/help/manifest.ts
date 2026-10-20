@@ -21,7 +21,8 @@ export type HelpFactPanel =
   | "gameStatus"
   | "scoreLimits"
   | "staffRoles"
-  | "recoveryLinks";
+  | "recoveryLinks"
+  | "chatLimits";
 
 export type HelpArticle = {
   id: string;
@@ -79,6 +80,14 @@ export const HELP_ARTICLES = [
       "Show scores to your audience safely, control sound, and add, set, undo or redo scores.",
     audiences: ["host", "player"],
     facts: ["scoreLimits"],
+  },
+  {
+    id: "chat",
+    title: "Chat",
+    summary:
+      "Turn chat on, who can read each channel, why a message won't send, moderating chat, and how long messages are kept.",
+    audiences: ["player", "host"],
+    facts: ["chatLimits"],
   },
   {
     id: "troubleshooting",

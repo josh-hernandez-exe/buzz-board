@@ -7,6 +7,7 @@ import {
   STAFF_ROLES,
   capabilitiesOf,
 } from "@/utils/capabilities";
+import { CHAT_LIMITS } from "@/utils/chatLimits";
 import {
   ASSIGNMENT_DESCRIPTION,
   ASSIGNMENT_LABEL,
@@ -106,6 +107,32 @@ export const FACTS: Record<HelpFactPanel, { title: string; facts: Fact[] }> = {
       {
         label: "How long it works",
         value: `Once, for ${RECOVERY_LINK_LIFETIME_MINUTES} minutes`,
+      },
+    ],
+  },
+  chatLimits: {
+    title: "Chat",
+    facts: [
+      { label: "New games", value: "Chat is off until the host turns it on" },
+      {
+        label: "Message length",
+        value: `Up to ${n(CHAT_LIMITS.maxMessageBytes)} bytes of plain text`,
+      },
+      {
+        label: "Sending",
+        value: `Up to ${CHAT_LIMITS.burstMessages} messages in ${CHAT_LIMITS.burstSeconds} seconds and ${CHAT_LIMITS.perMinute} a minute per person`,
+      },
+      {
+        label: "Mutes",
+        value: `${CHAT_LIMITS.defaultMuteMinutes} minutes by default, or until unmuted`,
+      },
+      {
+        label: "History you can scroll back",
+        value: `The newest ${CHAT_LIMITS.recentWindow} messages per channel`,
+      },
+      {
+        label: "Message text kept for",
+        value: `${CHAT_LIMITS.retentionDays} days`,
       },
     ],
   },

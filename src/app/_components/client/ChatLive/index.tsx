@@ -31,10 +31,10 @@ export function useChatLive(as: "player" | "staff", enabled = true) {
         for (const channelKey of changes.refetch) {
           void utils.chat.channel.invalidate({ as, channelKey });
         }
-        if (changes.refetch.length > 0 || changes.drop.length > 0) {
-          void utils.chat.status.invalidate({ as });
-          if (as === "staff") void utils.chat.moderation.recent.invalidate();
-        }
+        // Every pulse means something this viewer can see changed (channels,
+        // mute, read-only), so their status and staff lists are refreshed.
+        void utils.chat.status.invalidate({ as });
+        if (as === "staff") void utils.chat.moderation.invalidate();
       },
     },
   );

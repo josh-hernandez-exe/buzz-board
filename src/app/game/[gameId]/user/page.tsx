@@ -21,6 +21,7 @@ import { logger } from "@/logger";
 import { InformationTab } from "./InformationTab";
 import { GameScope } from "@/app/_components/client/GameScope";
 import { PlayerHeader } from "@/app/_components/client/PlayerStatus";
+import { ChatPanel } from "@/app/_components/client/ChatPanel";
 
 export default async function GameUserPage({
   params,
@@ -90,12 +91,13 @@ export default async function GameUserPage({
             />
             <Tabs defaultValue={defaultTab} className="w-full">
               <TabsList
-                className={`grid w-full ${isTeamGame ? "grid-cols-3" : "grid-cols-2"}`}
+                className={`grid w-full ${isTeamGame ? "grid-cols-4" : "grid-cols-3"}`}
               >
                 <TabsTrigger value="buzzer">Buzzer</TabsTrigger>
                 {isTeamGame && (
                   <TabsTrigger value="team-switcher">Team</TabsTrigger>
                 )}
+                <TabsTrigger value="chat">Chat</TabsTrigger>
                 <TabsTrigger value="information">Info</TabsTrigger>
               </TabsList>
               <TabsContent value="buzzer" className="flex flex-col gap-4">
@@ -111,6 +113,9 @@ export default async function GameUserPage({
                   />
                 </TabsContent>
               )}
+              <TabsContent value="chat">
+                <ChatPanel as="player" />
+              </TabsContent>
               <TabsContent value="information">
                 <InformationTab
                   gameState={currentGameState}
