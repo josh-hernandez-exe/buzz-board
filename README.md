@@ -116,6 +116,8 @@ bun run test:services:down
 
 See [tests/README.md](./tests/README.md) for the conventions, including how known defects are tracked with `it.fails`.
 
+Load testing uses real bots over the app's HTTP and live streams, locally only: `bun run load -- --profile smoke-10 --dry-run` shows the plan first. See [docs/operations.md](./docs/operations.md#load-runner) for profiles, safety interlocks and how to read the report.
+
 
 ## Deployment
 
@@ -128,7 +130,7 @@ git merge --ff-only development
 
 ### Scheduled cleanup
 
-Run `bun run ops:cleanup` on a schedule (for example hourly) with the production environment. It is safe to repeat. It removes chat text older than 7 days and expired mutes, strips moderation reasons older than 30 days, and lists (never deletes) unfinished games idle for 7 days. It prints a JSON summary and exits non-zero on failure so the scheduler can alert. Reads already hide expired chat text if a run is missed.
+Run `bun run ops:cleanup` on a schedule (for example hourly) with the production environment. It is safe to repeat. It removes chat text older than 7 days and expired mutes, strips moderation reasons older than 30 days, and lists (never deletes) unfinished games idle for 7 days. It prints a JSON summary and exits non-zero on failure so the scheduler can alert. Reads already hide expired chat text if a run is missed. What to alert on is in the [operations runbook](./docs/operations.md#scheduled-cleanup).
 
 ### Steps to Deploy on Vercel
 1. **Connect Your Repository**:

@@ -194,6 +194,34 @@ describe("buzzer", () => {
     expect(await db.buzzClaim.count({ where: { gameId: game.id } })).toBe(1);
   });
 
+  it("answers a buzz that can't win without waiting for the game lock", async () => {
+    const { admin, game, players } = await teamGameWithPlayers(2);
+    await admin.gameAdmin.startBuzzer();
+    await players[0]!.player.gameUser.buzzIn();
+
+    // Another change holds the game row; losing buzzes are still answered.
+    let release!: () => void;
+    const held = db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Game" WHERE id = ${game.id} FOR UPDATE`;
+      await new Promise<void>((resolve) => (release = resolve));
+    });
+    await new Promise((r) => setTimeout(r, 50));
+    const started = Date.now();
+    try {
+      await expect(players[1]!.player.gameUser.buzzIn()).rejects.toMatchObject({
+        message: "Game is not listening for buzzers",
+      });
+      await expect(players[0]!.player.gameUser.buzzIn()).resolves.toEqual({
+        accepted: true,
+        replayed: true,
+      });
+      expect(Date.now() - started).toBeLessThan(1_000);
+    } finally {
+      release();
+      await held;
+    }
+  });
+
   it("never has two winners while the host reopens and resets during buzzing", async () => {
     const { admin, game, players } = await teamGameWithPlayers(4);
 

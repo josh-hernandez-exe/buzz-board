@@ -110,6 +110,9 @@ export async function buzzIn({
   gameUserId: string;
   requestId?: string;
 }): Promise<Result<BuzzOutcome, BuzzError>> {
+  const settled = await settledOutcome({ gameId, gameUserId, requestId });
+  if (settled) return settled;
+
   const outcome = await withGameLock(
     gameId,
     async (tx): Promise<Result<BuzzOutcome, BuzzError>> => {
@@ -158,6 +161,54 @@ export async function buzzIn({
     },
   );
   return outcome.isErr() ? err(outcome.error) : outcome.value;
+}
+
+/**
+ * Answers a buzz without the game lock when committed state already decides
+ * it: a retried claim, a team that already holds or lost the buzz, a
+ * finished game, or a closed buzzer. These are the same answers the locked
+ * path gives for a request that arrived at that moment. When everyone buzzes
+ * at once, only attempts that could still win wait for the lock. Returns
+ * null when the locked path must decide.
+ */
+async function settledOutcome({
+  gameId,
+  gameUserId,
+  requestId,
+}: {
+  gameId: string;
+  gameUserId: string;
+  requestId?: string;
+}): Promise<Result<BuzzOutcome, BuzzError> | null> {
+  if (requestId) {
+    const previous = await defaultDb.buzzClaim.findUnique({
+      where: { gameId_requestId: { gameId, requestId } },
+    });
+    if (previous) {
+      return previous.gameUserId === gameUserId
+        ? ok({ accepted: true, replayed: true })
+        : err({ kind: "requestIdReused" });
+    }
+  }
+  const gameUser = await defaultDb.gameUser.findFirst({
+    where: { id: gameUserId, gameId },
+    select: {
+      gameTeam: { select: { buzzerState: true } },
+      game: { select: { status: true, isBuzzerListening: true } },
+    },
+  });
+  if (!gameUser?.gameTeam) return null;
+  if (gameUser.gameTeam.buzzerState === BuzzerState.rejected) {
+    return err({ kind: "teamRejected" });
+  }
+  if (gameUser.gameTeam.buzzerState === BuzzerState.selected) {
+    return ok({ accepted: true, replayed: true });
+  }
+  if (gameUser.game.status === GameStatus.finished) {
+    return err({ kind: "gameFinished" });
+  }
+  if (!gameUser.game.isBuzzerListening) return err({ kind: "notListening" });
+  return null;
 }
 
 async function claim(

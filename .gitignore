@@ -85,3 +85,6 @@ yarn-error.log*
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# load runner reports (may include timings of local hardware)
+/load-results/

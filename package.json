@@ -23,6 +23,7 @@
     "k6:build": "bun run scripts/k6/build.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "load": "bun run scripts/load/run.ts",
     "ops:cleanup": "bun run scripts/ops/cleanup.ts",
     "postinstall": "bun db:generate",
     "preview": "next build && next start",
