@@ -1,5 +1,12 @@
+import { MODE_KIND } from "@/server/modes/rankedAnswersService";
 import {
-  BuzzerMode,
+  contentSchema,
+  type Content,
+  type Rules,
+} from "@/utils/rankedAnswers/content";
+import { sampleContent } from "@/utils/rankedAnswers/sample";
+import {
+  type BuzzerMode,
   GameFormat,
   GameStatus,
   Prisma,
@@ -74,6 +81,8 @@ async function insertGame(data: {
   settings?: Prisma.InputJsonValue;
   teamAssignment?: TeamAssignment;
   buzzerMode?: BuzzerMode;
+  /** A Ranked Answers draft (rules and boards) to set up with the game. */
+  modeDraft?: Content;
   requestId?: string;
 }): Promise<Created> {
   if (data.requestId) {
@@ -108,6 +117,16 @@ async function insertGame(data: {
         const state = await tx.scoreboardState.create({
           data: { gameId: created.id, scoreboardId: created.scoreboard!.id },
         });
+        if (data.modeDraft) {
+          await tx.gameMode.create({
+            data: {
+              gameId: created.id,
+              kind: MODE_KIND,
+              draft: data.modeDraft,
+              draftRevision: 1,
+            },
+          });
+        }
         await tx.scoreboard.update({
           where: { id: created.scoreboard!.id },
           data: { currentStateId: state.id },
@@ -134,6 +153,7 @@ export async function createGame({
   format,
   teamCount = GAME_LIMITS.defaultTeams,
   buzzerMode,
+  rankedAnswers,
   requestId,
 }: {
   ownerId: string;
@@ -141,6 +161,8 @@ export async function createGame({
   format: GameFormat;
   teamCount?: number;
   buzzerMode?: BuzzerMode;
+  /** Set the game up for Ranked Answers with these rules. */
+  rankedAnswers?: { rules: Rules; sampleBoards?: boolean };
   requestId?: string;
 }): Promise<Result<Created, GameServiceError>> {
   if (requestId) {
@@ -171,15 +193,23 @@ export async function createGame({
           ? Array.from({ length: teamCount }, (_, i) => `Team ${i + 1}`)
           : [],
       buzzerMode,
+      modeDraft: rankedAnswers
+        ? contentSchema.parse({
+            rules: rankedAnswers.rules,
+            boards: rankedAnswers.sampleBoards
+              ? sampleContent(teamCount).boards
+              : [],
+          })
+        : undefined,
       requestId,
     }),
   );
 }
 
 /**
- * Copies a game's name, format, settings, team policy and team names into a
- * new lobby game owned by `ownerId`. Players, credentials, scores, history and
- * helpers are not copied.
+ * Copies a game's name, format, settings, team policy, buzzing mode, team
+ * names and Ranked Answers rules and boards into a new lobby game owned by
+ * `ownerId`. Players, credentials, scores, history and helpers are not copied.
  */
 export async function duplicateGame({
   gameId,
@@ -192,7 +222,7 @@ export async function duplicateGame({
 }): Promise<Result<Created, GameServiceError>> {
   const source = await db.game.findUnique({
     where: { id: gameId },
-    include: { gameTeams: { orderBy: { index: "asc" } } },
+    include: { gameTeams: { orderBy: { index: "asc" } }, gameMode: true },
   });
   if (!source) return err({ kind: "gameNotFound", gameId });
 
@@ -207,6 +237,10 @@ export async function duplicateGame({
       settings: source.settings ?? {},
       teamAssignment: source.teamAssignment,
       buzzerMode: source.buzzerMode,
+      // Ranked Answers rules and boards come along, ready to play again.
+      modeDraft: source.gameMode
+        ? contentSchema.parse(source.gameMode.content ?? source.gameMode.draft)
+        : undefined,
       teamNames:
         source.format === GameFormat.team
           ? source.gameTeams.map((team) => team.name)

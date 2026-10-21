@@ -5,24 +5,23 @@ import { useEffect, useRef, useState } from "react";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { RankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
+import { RankedRulesEditor } from "@/app/_components/client/RankedRulesEditor";
 import { Button } from "@/app/_components/ui/button";
 import { helpHref } from "@/help/manifest";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { newRequestId } from "@/utils/requestId";
 import {
   LIMITS,
-  PLAY_STYLES,
-  STYLE_DESCRIPTION,
-  STYLE_LABEL,
-  STYLE_TEAM_RANGE,
   contentSchema,
   pointsFor,
   preflight,
-  suggestedStyle,
+  resolveRules,
   type Board,
+  type ResolvedRules,
   type Content,
   type Rules,
 } from "@/utils/rankedAnswers/content";
+import { stealersOf } from "@/utils/rankedAnswers/engine";
 import { sampleContent } from "@/utils/rankedAnswers/sample";
 
 type HostView = RouterOutputs["rankedAnswers"]["hostView"];
@@ -105,8 +104,6 @@ function Editor({ view }: { view: HostView }) {
     setDirty(true);
     save.reset();
   };
-  const setRules = (patch: Partial<Rules>) =>
-    update({ ...draft, rules: { ...draft.rules, ...patch } });
   const setBoard = (i: number, board: Board | null) => {
     const boards = [...draft.boards];
     if (board) boards[i] = board;
@@ -121,96 +118,25 @@ function Editor({ view }: { view: HostView }) {
   };
 
   const check = preflight(draft, teamCount);
-  const [min, max] = STYLE_TEAM_RANGE[draft.rules.playStyle];
 
   return (
     <div className="flex flex-col gap-4">
-      <fieldset className="border-border flex flex-col gap-3 rounded border p-3">
-        <legend className="px-1 font-semibold">Rules</legend>
-        <label className="flex flex-col gap-1 text-sm">
-          Play style ({teamCount} teams in this game; suggested:{" "}
-          {STYLE_LABEL[suggestedStyle(teamCount)]})
-          <select
-            className={field}
-            value={draft.rules.playStyle}
-            onChange={(e) =>
-              setRules({ playStyle: e.target.value as Rules["playStyle"] })
-            }
-          >
-            {PLAY_STYLES.map((style) => (
-              <option key={style} value={style}>
-                {STYLE_LABEL[style]}
-              </option>
-            ))}
-          </select>
-          <span className="text-muted-foreground">
-            {STYLE_DESCRIPTION[draft.rules.playStyle]}
-            {(teamCount < min || teamCount > max) &&
-              ` This style needs ${min === max ? min : `${min}–${max}`} teams.`}
+      <section
+        aria-label="Rules"
+        className="border-border flex flex-col gap-2 rounded-lg border p-3"
+      >
+        <h3 className="font-semibold">
+          Rules{" "}
+          <span className="text-muted-foreground text-sm font-normal">
+            ({teamCount} teams in this game)
           </span>
-        </label>
-        <PointsInput
-          key={draft.rules.pointValuesByRank.join()}
-          value={draft.rules.pointValuesByRank}
-          onChange={(pointValuesByRank) => setRules({ pointValuesByRank })}
+        </h3>
+        <RankedRulesEditor
+          rules={draft.rules}
+          teamCount={teamCount}
+          onChange={(rules) => update({ ...draft, rules })}
         />
-        <div className="flex flex-wrap gap-3 text-sm">
-          <NumberField
-            label="Points multiplier"
-            value={draft.rules.multiplier}
-            min={1}
-            max={LIMITS.maxMultiplier}
-            onChange={(multiplier) => setRules({ multiplier })}
-          />
-          {(draft.rules.playStyle === "classic" ||
-            draft.rules.playStyle === "faceOffLadder") && (
-            <>
-              <NumberField
-                label="Strikes"
-                value={draft.rules.strikes}
-                min={1}
-                max={5}
-                onChange={(strikes) => setRules({ strikes })}
-              />
-              <label className="flex flex-col gap-1">
-                Face-off
-                <select
-                  className={field}
-                  value={draft.rules.faceOffMethod}
-                  onChange={(e) =>
-                    setRules({
-                      faceOffMethod: e.target.value as Rules["faceOffMethod"],
-                    })
-                  }
-                >
-                  <option value="buzzer">Buzzer: first to buzz answers</option>
-                  <option value="secret">
-                    Secret: both answer, higher row wins
-                  </option>
-                </select>
-              </label>
-            </>
-          )}
-          {draft.rules.playStyle === "roundRobin" && (
-            <NumberField
-              label="Answers per team per board"
-              value={draft.rules.turnCycles}
-              min={1}
-              max={4}
-              onChange={(turnCycles) => setRules({ turnCycles })}
-            />
-          )}
-          {draft.rules.playStyle === "allPlay" && (
-            <NumberField
-              label="Rounds per board"
-              value={draft.rules.allPlayRounds}
-              min={1}
-              max={8}
-              onChange={(allPlayRounds) => setRules({ allPlayRounds })}
-            />
-          )}
-        </div>
-      </fieldset>
+      </section>
 
       <div className="flex flex-col gap-3">
         <h3 className="font-semibold">Boards ({draft.boards.length})</h3>
@@ -316,66 +242,6 @@ function Editor({ view }: { view: HostView }) {
         className="text-destructive text-sm"
       />
     </div>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  min,
-  max,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <label className="flex flex-col gap-1">
-      {label}
-      <input
-        type="number"
-        className={`${field} w-24`}
-        value={value}
-        min={min}
-        max={max}
-        onChange={(e) => {
-          const n = Math.round(Number(e.target.value));
-          if (Number.isFinite(n)) onChange(Math.min(max, Math.max(min, n)));
-        }}
-      />
-    </label>
-  );
-}
-
-function PointsInput({
-  value,
-  onChange,
-}: {
-  value: number[];
-  onChange: (v: number[]) => void;
-}) {
-  const [text, setText] = useState(value.join(", "));
-  return (
-    <label className="flex flex-col gap-1 text-sm">
-      Points by rank (rank 1 first; used when a board has no points of its own)
-      <input
-        className={field}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => {
-          const numbers = text
-            .split(/[\s,]+/)
-            .map(Number)
-            .filter((n) => Number.isInteger(n) && n > 0)
-            .slice(0, LIMITS.maxAnswers);
-          if (numbers.length > 0) onChange(numbers);
-          else setText(value.join(", "));
-        }}
-      />
-    </label>
   );
 }
 
@@ -711,8 +577,14 @@ function Controls({ view }: { view: HostView }) {
     onSettled: refresh,
   });
   const end = api.rankedAnswers.end.useMutation({ onSettled: refresh });
-  const send = (action: Parameters<typeof act.mutate>[0]["action"]) =>
-    act.mutate({ action, expectedStep: step(), requestId: newRequestId() });
+  const send = (
+    action: Parameters<typeof act.mutate>[0]["action"],
+    onDone?: () => void,
+  ) =>
+    act.mutate(
+      { action, expectedStep: step(), requestId: newRequestId() },
+      onDone ? { onSuccess: onDone } : undefined,
+    );
   const busy = act.isPending || undo.isPending;
   const running = view.status === "running";
 
@@ -993,18 +865,32 @@ function PhaseControls({
     action: Parameters<
       ReturnType<typeof api.rankedAnswers.act.useMutation>["mutate"]
     >[0]["action"],
+    onDone?: () => void,
   ) => void;
 }) {
   const board = view.state!.board!;
   const rules = view.content!.rules;
+  const opts = resolveRules(rules);
+  const live = useLiveGameState().data;
+  // Whoever holds the buzz right now, to pre-fill "who buzzed".
+  const holder =
+    live?.game.buzzerMode === "queue"
+      ? live.buzzQueue.find((e) => e.status === "answering")?.gameTeamId
+      : live?.buzzWinner?.gameTeamId;
   const [picks, setPicks] = useState<Record<string, string>>({});
-  const [first, setFirst] = useState<string>(board.faceOffTeams[0] ?? "");
+  const [chosenFirst, setFirst] = useState<string | null>(null);
+  const first =
+    chosenFirst ??
+    (holder && board.faceOffTeams.includes(holder)
+      ? holder
+      : (board.faceOffTeams[0] ?? ""));
   const step = useRef(view.step);
   // Clear the form whenever the board moves on.
   useEffect(() => {
     if (step.current !== view.step) {
       step.current = view.step;
       setPicks({});
+      setFirst(null);
     }
   }, [view.step]);
   const pick = (team: string) => (v: string) =>
@@ -1148,12 +1034,14 @@ function PhaseControls({
         </div>
       );
     case "steal": {
-      const stealers = board.teams.filter((t) => t !== board.control);
+      const stealers = stealersOf(rules, board);
       const ready = stealers.every((t) => picks[t]);
+      const forBank =
+        opts.scoring === "bank" && opts.stealReward === "bankPlusRow";
       return (
         <div className="flex flex-col gap-2">
           <p className="font-semibold">
-            Steal for {board.bank} points:{" "}
+            Steal{forBank ? ` for ${board.bank} points` : " (row points only)"}:{" "}
             {stealers.map((t) => name(t)).join(", ")}
           </p>
           <div className="flex flex-wrap gap-3">
@@ -1190,10 +1078,14 @@ function PhaseControls({
           <p className="font-semibold">
             {name(team)}&apos;s turn ({board.turn + 1} of{" "}
             {board.order.length * rules.turnCycles})
+            {rules.playStyle === "passAlong" &&
+              ": they keep answering until a miss"}
           </p>
           {answerButtons(
             (answerId) => send({ type: "answer", answerId }),
-            "✕ Wrong / pass",
+            rules.playStyle === "passAlong"
+              ? "✕ Miss: next team"
+              : "✕ Wrong / pass",
           )}
           {closeButton}
         </div>
@@ -1237,7 +1129,173 @@ function PhaseControls({
         </div>
       );
     }
+    case "race":
+      return (
+        <RaceControls
+          board={board}
+          names={names}
+          holder={holder ?? null}
+          rules={opts}
+          disabled={disabled}
+          answerButtons={answerButtons}
+          send={send}
+          closeButton={closeButton}
+        />
+      );
     default:
       return null;
   }
+}
+
+/**
+ * Buzz race: pick who buzzed (pre-filled from the buzzer), then their
+ * answer. "Also update the buzzer" marks the buzzer too, so the host
+ * doesn't record everything twice.
+ */
+function RaceControls({
+  board,
+  names,
+  holder,
+  rules,
+  disabled,
+  answerButtons,
+  send,
+  closeButton,
+}: {
+  board: NonNullable<HostView["state"]>["board"] & object;
+  names: Record<string, string>;
+  holder: string | null;
+  rules: ResolvedRules;
+  disabled: boolean;
+  answerButtons: (
+    onPick: (answerId: string | null) => void,
+    wrongLabel: string,
+  ) => React.ReactNode;
+  send: (
+    action: Parameters<
+      ReturnType<typeof api.rankedAnswers.act.useMutation>["mutate"]
+    >[0]["action"],
+    onDone?: () => void,
+  ) => void;
+  closeButton: React.ReactNode;
+}) {
+  const live = useLiveGameState().data;
+  const utils = api.useUtils();
+  const refresh = () => utils.gameAdmin.buzzer.history.invalidate();
+  const open = api.gameAdmin.startBuzzer.useMutation({ onSuccess: refresh });
+  const next = api.gameAdmin.resetBuzzer.useMutation({ onSuccess: refresh });
+  const judge = api.gameAdmin.buzzer.judge.useMutation({ onSuccess: refresh });
+  const [syncBuzzer, setSyncBuzzer] = useState(true);
+  const [chosen, setChosen] = useState<string | null>(null);
+  const locked = board.lockedOut ?? [];
+  const eligible = board.teams.filter((t) => !locked.includes(t));
+  const team =
+    chosen && eligible.includes(chosen)
+      ? chosen
+      : holder && eligible.includes(holder)
+        ? holder
+        : null;
+  const name = (id: string) => names[id] ?? "Team";
+
+  /**
+   * Mirrors on the real buzzer what the board just decided, once the board
+   * action has succeeded: right closes the question; wrong rejects the team
+   * only if the rules sit it out; if everyone is out, the buzzer starts
+   * afresh so they can all go again.
+   */
+  const updateBuzzer = (answered: string, hit: boolean) => {
+    if (!syncBuzzer || !live || answered !== holder) return;
+    const queue = live.game.buzzerMode === "queue";
+    const entry = live.buzzQueue.find(
+      (e) => e.status === "answering" && e.gameTeamId === answered,
+    );
+    if (hit) {
+      if (queue && entry)
+        judge.mutate({ entryId: entry.id, verdict: "correct" });
+      else if (!queue) next.mutate();
+      return;
+    }
+    const misses = (board.teamStrikes?.[answered] ?? 0) + 1;
+    const sitsOut =
+      rules.raceLockout === "untilNextFind" ||
+      (rules.raceLockout === "afterStrikes" && misses >= rules.strikes);
+    const outAfter = sitsOut ? [...locked, answered] : locked;
+    if (board.teams.every((t) => outAfter.includes(t))) {
+      // Everyone gets another go (or the board closed): a fresh question.
+      next.mutate();
+    } else if (sitsOut) {
+      if (queue && entry) judge.mutate({ entryId: entry.id, verdict: "wrong" });
+      else if (!queue) open.mutate();
+    } else if (queue && entry) {
+      // No lockout: the next in line answers; this team may buzz again.
+      judge.mutate({ entryId: entry.id, verdict: "skip" });
+    } else if (!queue) {
+      next.mutate(undefined, { onSuccess: () => open.mutate() });
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="font-semibold">
+        Buzz race: who buzzed?
+        {locked.length > 0 && (
+          <span className="text-muted-foreground font-normal">
+            {" "}
+            Sitting out: {locked.map(name).join(", ")}
+          </span>
+        )}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          aria-label="Team answering"
+          className={field}
+          value={team ?? ""}
+          onChange={(e) => setChosen(e.target.value || null)}
+        >
+          <option value="">Choose a team…</option>
+          {eligible.map((t) => (
+            <option key={t} value={t}>
+              {name(t)}
+              {t === holder ? " (holds the buzz)" : ""}
+            </option>
+          ))}
+        </select>
+        {live && !live.game.isBuzzerListening && (
+          <Button
+            variant="secondary"
+            disabled={disabled || open.isPending}
+            onClick={() => open.mutate()}
+          >
+            Open buzzer
+          </Button>
+        )}
+        <label className="flex items-center gap-1 text-sm">
+          <input
+            type="checkbox"
+            checked={syncBuzzer}
+            onChange={(e) => setSyncBuzzer(e.target.checked)}
+          />
+          Also update the buzzer
+        </label>
+      </div>
+      {team ? (
+        answerButtons(
+          (answerId) => {
+            const answered = team;
+            send({ type: "raceAnswer", team, answerId }, () =>
+              updateBuzzer(answered, answerId !== null),
+            );
+            setChosen(null);
+          },
+          `✕ Wrong: ${name(team)}`,
+        )
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          Open the buzzer, or choose the team that answered.
+        </p>
+      )}
+      <ErrorNotice error={open.error ?? next.error ?? judge.error} />
+      {closeButton}
+    </div>
+  );
 }

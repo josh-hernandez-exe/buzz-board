@@ -8,6 +8,8 @@ export const PLAY_STYLES = [
   "classic",
   "faceOffLadder",
   "roundRobin",
+  "passAlong",
+  "buzzRace",
   "allPlay",
 ] as const;
 export type PlayStyle = (typeof PLAY_STYLES)[number];
@@ -17,6 +19,8 @@ export const STYLE_TEAM_RANGE: Record<PlayStyle, [number, number]> = {
   classic: [2, 2],
   faceOffLadder: [3, 8],
   roundRobin: [2, 12],
+  passAlong: [2, 12],
+  buzzRace: [2, 50],
   allPlay: [2, 50],
 };
 
@@ -24,6 +28,8 @@ export const STYLE_LABEL: Record<PlayStyle, string> = {
   classic: "Classic (2 teams)",
   faceOffLadder: "Face-off ladder (3–8 teams)",
   roundRobin: "Round robin (2–12 teams)",
+  passAlong: "Pass-along (2–12 teams)",
+  buzzRace: "Buzz race (2–50 teams)",
   allPlay: "All-play (2–50 teams)",
 };
 
@@ -34,6 +40,10 @@ export const STYLE_DESCRIPTION: Record<PlayStyle, string> = {
     "Two teams face off each board (pairs rotate). The playing team answers until it clears the board or strikes out; then every other team gives one steal answer. The highest steal takes the bank.",
   roundRobin:
     "Teams answer one at a time in a rotating order. Each answer found scores for the team that found it.",
+  passAlong:
+    "A team keeps answering until it misses; then the next team in order takes over. Each answer found scores for the team that found it.",
+  buzzRace:
+    "Every answer is a race: teams buzz in, the first answers. A right answer scores for that team; a wrong one locks the team out (until the next answer is found, or after a number of misses).",
   allPlay:
     "Every team answers at the same time each round (captains post in their team chat). Every team that finds a row scores it.",
 };
@@ -86,8 +96,31 @@ export const rulesSchema = z.object({
   strikes: z.number().int().min(1).max(5),
   turnCycles: z.number().int().min(1).max(4),
   allPlayRounds: z.number().int().min(1).max(8),
-  /** "secret" face-offs can't be won on connection speed. */
-  faceOffMethod: z.enum(["buzzer", "secret"]),
+  /**
+   * "secret" face-offs can't be won on connection speed. "none" skips the
+   * face-off: the playing team takes turns by rotation.
+   */
+  faceOffMethod: z.enum(["buzzer", "secret", "none"]),
+  // Added later: optional, so drafts saved before them still load. Read
+  // them through `resolveRules`, which fills in each style's default.
+  /** Face-off winner may pass the board to the other team. */
+  allowPass: z.boolean().optional(),
+  /** Who may steal after the strikes: the face-off opponent, every other team, or nobody. */
+  stealBy: z.enum(["opponent", "everyone", "none"]).optional(),
+  /** Several teams steal: the best (highest) row takes the bank, or every correct stealer does. */
+  stealWinner: z.enum(["bestRow", "allCorrect"]).optional(),
+  /** A successful steal takes the bank plus the row, or only the row (the playing team keeps the bank). */
+  stealReward: z.enum(["bankPlusRow", "rowOnly"]).optional(),
+  /** Face-off styles: rows build a bank paid at the end, or score straight away for whoever found them. */
+  scoring: z.enum(["bank", "direct"]).optional(),
+  /** All-play: when several teams find the same row, each gets it all, they split it, or nobody scores it. */
+  sharedAnswers: z.enum(["full", "split", "uniqueOnly"]).optional(),
+  /** Buzz race: after a wrong answer, a team waits for the next row to be found, sits out after `strikes` misses, or isn't locked out. */
+  raceLockout: z.enum(["untilNextFind", "afterStrikes", "none"]).optional(),
+  /** Points taken off a team for a miss when it alone was answering (0 = none). */
+  missPenalty: z.number().int().min(0).max(LIMITS.maxPoints).optional(),
+  /** Shown to everyone: the first team to reach it wins. Informational; the host still finishes. */
+  targetScore: z.number().int().positive().max(1_000_000).nullable().optional(),
 });
 
 export const contentSchema = z.object({
@@ -98,6 +131,53 @@ export const contentSchema = z.object({
 export type Answer = z.infer<typeof answerSchema>;
 export type Board = z.infer<typeof boardSchema>;
 export type Rules = z.infer<typeof rulesSchema>;
+export type ResolvedRules = Required<Omit<Rules, "targetScore">> & {
+  targetScore: number | null;
+};
+
+/** Styles where two teams face off and one plays the board. */
+export const isFaceOffStyle = (style: PlayStyle) =>
+  style === "classic" || style === "faceOffLadder";
+
+/** Rules with every option filled in: the style's default where unset. */
+export function resolveRules(rules: Rules): ResolvedRules {
+  return {
+    ...rules,
+    allowPass: rules.allowPass ?? true,
+    stealBy:
+      rules.stealBy ??
+      (rules.playStyle === "faceOffLadder" ? "everyone" : "opponent"),
+    stealWinner: rules.stealWinner ?? "bestRow",
+    stealReward: rules.stealReward ?? "bankPlusRow",
+    scoring: rules.scoring ?? "bank",
+    sharedAnswers: rules.sharedAnswers ?? "full",
+    raceLockout: rules.raceLockout ?? "untilNextFind",
+    missPenalty: rules.missPenalty ?? 0,
+    targetScore: rules.targetScore ?? null,
+  };
+}
+
+/** Which options matter for a style, so editors only show those. */
+export function optionsFor(rules: Rules) {
+  const style = rules.playStyle;
+  const faceOff = isFaceOffStyle(style);
+  const r = resolveRules(rules);
+  return {
+    strikes:
+      faceOff || (style === "buzzRace" && r.raceLockout === "afterStrikes"),
+    faceOffMethod: faceOff,
+    allowPass: faceOff && r.faceOffMethod !== "none",
+    scoring: faceOff,
+    stealBy: faceOff,
+    stealWinner: faceOff && r.stealBy === "everyone",
+    stealReward: faceOff && r.stealBy !== "none" && r.scoring === "bank",
+    turnCycles: style === "roundRobin" || style === "passAlong",
+    allPlayRounds: style === "allPlay",
+    sharedAnswers: style === "allPlay",
+    raceLockout: style === "buzzRace",
+    missPenalty: style !== "allPlay",
+  };
+}
 export type Content = z.infer<typeof contentSchema>;
 
 export function defaultRules(teamCount: number): Rules {
@@ -112,8 +192,122 @@ export function defaultRules(teamCount: number): Rules {
   };
 }
 
+export type PresetId =
+  | "classic"
+  | "noFaceOff"
+  | "ladder"
+  | "headToHead"
+  | "roundRobin"
+  | "passAlong"
+  | "buzzRace"
+  | "allPlay"
+  | "uniqueAnswers";
+
+export type Preset = {
+  id: PresetId;
+  label: string;
+  teams: [number, number];
+  summary: string;
+  rules: Partial<Rules> & { playStyle: PlayStyle };
+};
+
+/**
+ * Named starting points. Each is just a set of rule options: everything
+ * stays editable afterwards.
+ */
+export const PRESETS: Preset[] = [
+  {
+    id: "classic",
+    label: "Classic feud",
+    teams: [2, 2],
+    summary:
+      "The TV format: face-off, play or pass, three strikes, one steal for the bank.",
+    rules: { playStyle: "classic", faceOffMethod: "buzzer" },
+  },
+  {
+    id: "noFaceOff",
+    label: "Take turns, no face-off",
+    teams: [2, 2],
+    summary:
+      "Teams take turns playing whole boards: three strikes, then the other team steals.",
+    rules: { playStyle: "classic", faceOffMethod: "none" },
+  },
+  {
+    id: "ladder",
+    label: "Face-off ladder",
+    teams: [3, 8],
+    summary:
+      "Two teams face off each board, pairs rotating. After three strikes every other team steals at once.",
+    rules: { playStyle: "faceOffLadder", stealBy: "everyone" },
+  },
+  {
+    id: "headToHead",
+    label: "Head-to-head pairs",
+    teams: [3, 8],
+    summary:
+      "Classic matches between rotating pairs: only the face-off opponent can steal.",
+    rules: { playStyle: "faceOffLadder", stealBy: "opponent" },
+  },
+  {
+    id: "roundRobin",
+    label: "Round robin",
+    teams: [2, 12],
+    summary: "One answer per team in turn. Calm and simple; every find scores.",
+    rules: { playStyle: "roundRobin" },
+  },
+  {
+    id: "passAlong",
+    label: "Pass-along",
+    teams: [2, 12],
+    summary:
+      "Keep answering until you miss, then the next team takes over. Every find scores.",
+    rules: { playStyle: "passAlong" },
+  },
+  {
+    id: "buzzRace",
+    label: "Buzz race",
+    teams: [2, 50],
+    summary:
+      "Every answer is a buzzer race. Wrong answers sit out until the next answer is found. Best with queued buzzing.",
+    rules: { playStyle: "buzzRace", raceLockout: "untilNextFind" },
+  },
+  {
+    id: "allPlay",
+    label: "All-play",
+    teams: [2, 50],
+    summary:
+      "Every team answers secretly each round; every team that finds a row scores it.",
+    rules: { playStyle: "allPlay", sharedAnswers: "full" },
+  },
+  {
+    id: "uniqueAnswers",
+    label: "All-play, unique answers only",
+    teams: [2, 50],
+    summary:
+      "Everyone answers each round, but a row only scores if exactly one team found it. Rewards thinking differently.",
+    rules: { playStyle: "allPlay", sharedAnswers: "uniqueOnly" },
+  },
+];
+
+/** The rules for a preset, starting from the defaults. */
+export function presetRules(id: PresetId, teamCount: number): Rules {
+  const preset = PRESETS.find((p) => p.id === id) ?? PRESETS[0]!;
+  return { ...defaultRules(teamCount), ...preset.rules };
+}
+
+/** The preset suggested for a number of teams. */
+export function suggestedPreset(teamCount: number): PresetId {
+  if (teamCount <= 2) return "classic";
+  if (teamCount <= 6) return "ladder";
+  return "allPlay";
+}
+
 /** Points for the row at `rank` (1-based) on `board`. */
-export function pointsFor(rules: Rules, board: Board, rank: number): number {
+export function pointsFor(
+  rules: Pick<Rules, "pointValuesByRank" | "multiplier">,
+  board: Board,
+  rank: number,
+): number {
   const answer = board.answers[rank - 1];
   const base = answer?.points ?? rules.pointValuesByRank[rank - 1] ?? 0;
   return base * (board.multiplier ?? rules.multiplier);

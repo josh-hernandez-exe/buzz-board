@@ -1,6 +1,6 @@
 # Ranked Answers mode
 
-The family-feud style game mode, built so it can run a first event now. The rules are the proposal in [pr13-ranked-answers-event-spec.md](./pr13-ranked-answers-event-spec.md): configurable points and four play styles from 2 to 50 teams. How to use it is in the [Ranked Answers Help article](../src/help/articles/ranked-answers.md).
+The family-feud style game mode, built so it can run a first event now. The rules started as the proposal in [pr13-ranked-answers-event-spec.md](./pr13-ranked-answers-event-spec.md) (configurable points and four play styles). They are now fully configurable: six play styles, nine presets and options for face-offs, passing, banking, steals, shared answers, race lockouts, miss penalties and a target score, chosen when the game is created ([the rule space](./ranked-answers-rules.md)). How to use it is in the [Ranked Answers Help article](../src/help/articles/ranked-answers.md).
 
 | Item          | Value                                                                                                                         |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -52,7 +52,7 @@ The family-feud style game mode, built so it can run a first event now. The rule
 
 - **Approval:** the rules are your call. Everything above is the proposal, and changing it is cheap while the engine is small.
 - **Timers:** pacing (seconds to consult and answer) is up to the host; the engine doesn't run clocks.
-- **Typed answers:** players don't submit answers in the app. Teams say them aloud or post in team chat, and the host records them. The plan's team-answer feature (Sequential Quiz) would let captains submit directly.
+- **Typed answers:** players don't submit answers in the app. Teams say them aloud or post in team chat, and the host records them. What typing would add, cost and enable is weighed in the [typed answers exploration](./typed-answers-exploration.md).
 - **Undo vs. basic score undo:** the Game Controls tab's score undo/redo still works while a mode runs. Using it reverts a score without the board, so the Help article points hosts to the mode's own undo.
 - **Captains:** there is no captain role yet; the host decides who speaks for a team.
 - **Load:** the mode adds a little to each game-state read, but hasn't been load-tested with 100 bots.

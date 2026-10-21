@@ -11,6 +11,7 @@ import { GameScope } from "@/app/_components/client/GameScope";
 import { AppHeader } from "@/app/_components/server/AppHeader";
 import { PageShell } from "@/app/_components/ui/page";
 import { staffRoleFor } from "@/server/staff/staffService";
+import { db } from "@/server/db";
 
 export default async function GameAdminPage({
   params,
@@ -44,6 +45,11 @@ export default async function GameAdminPage({
   const currentGameState = await (
     await gameApi(gameId)
   ).gameGeneral.currentGameState();
+  // Games set up for Ranked Answers open on its tab until it's over.
+  const mode = await db.gameMode.findUnique({
+    where: { gameId },
+    select: { status: true },
+  });
   return (
     <HydrateClient>
       <GameScope gameId={gameId} initialState={currentGameState}>
@@ -57,7 +63,11 @@ export default async function GameAdminPage({
           }
           width="wide"
         >
-          <GameAdminInfo gameState={currentGameState} staffRole={staffRole} />
+          <GameAdminInfo
+            gameState={currentGameState}
+            staffRole={staffRole}
+            rankedAnswersFirst={!!mode && mode.status !== "ended"}
+          />
         </PageShell>
       </GameScope>
     </HydrateClient>

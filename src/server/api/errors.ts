@@ -534,6 +534,8 @@ function engineMessage(error: EngineError): string {
       return "That isn't one of this board's answers.";
     case "unknownTeam":
       return "That team can't answer right now.";
+    case "teamLockedOut":
+      return "That team is sitting out until another answer is found.";
     case "badTeams":
       return "Choose at least two different teams from this game.";
   }

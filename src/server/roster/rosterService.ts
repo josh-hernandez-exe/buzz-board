@@ -6,6 +6,7 @@ import {
   type GameTransactionError,
   type GameTx,
 } from "@/server/db/gameTransaction";
+import { releaseTeamsFromQueue } from "@/server/buzzer/buzzerService";
 import { generateToken } from "@/server/utils/codeGeneration";
 import { normalizeName, type NameError } from "@/utils/displayName";
 import type { GameSettings } from "@/types";
@@ -346,6 +347,15 @@ export async function removePlayer({
           where: { id: gameUserId },
           data: { removedAt: now, token: generateToken() },
         });
+        // In individual games the player is their own team: a removed
+        // player can't answer, so their place in the buzz queue is skipped.
+        const game = await tx.game.findUniqueOrThrow({
+          where: { id: gameId },
+          select: { format: true },
+        });
+        if (game.format === GameFormat.individual && player.gameTeamId) {
+          await releaseTeamsFromQueue(tx, gameId, [player.gameTeamId]);
+        }
         return ok({ changed: true });
       },
     ),

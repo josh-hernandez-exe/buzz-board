@@ -22,15 +22,27 @@ export function boardStatus(board: PublicBoard, names: TeamNames): string {
     case "control":
       return `${name(board.control)} is playing`;
     case "steal": {
-      const stealers = board.teams.filter((t) => t !== board.control);
+      const stealers = board.stealers;
+      const prize =
+        board.bank > 0 && board.stealTakesBank
+          ? ` for ${board.bank} points`
+          : "";
       return stealers.length === 1
-        ? `${name(stealers[0]!)} can steal ${board.bank} points!`
-        : `Steal! Every other team gets one answer for ${board.bank} points`;
+        ? `${name(stealers[0]!)} can steal${prize}!`
+        : `Steal! Every other team gets one answer${prize}`;
     }
     case "turns":
-      return `${name(board.currentTeam)}'s turn (${board.turn + 1} of ${board.maxTurns})`;
+      return board.keepTurnOnHit
+        ? `${name(board.currentTeam)}'s turn: keep going until a miss (${board.turn + 1} of ${board.maxTurns})`
+        : `${name(board.currentTeam)}'s turn (${board.turn + 1} of ${board.maxTurns})`;
     case "allPlay":
       return `Round ${board.round + 1} of ${board.maxRounds}: captains, give your team's answer`;
+    case "race": {
+      const out = board.lockedOut.length;
+      return out > 0
+        ? `Buzz in to answer! Sitting out: ${list(board.lockedOut, names)}`
+        : "Buzz in to answer!";
+    }
     case "closed":
       if (board.bankWinners.length > 0) {
         return `${list(board.bankWinners, names)} ${board.bankWinners.length === 1 ? "takes" : "take"} the bank: ${board.bank} points`;
@@ -48,14 +60,37 @@ export function RankedAnswersBoard({
   names,
   hostAnswers,
   size = "normal",
+  scores,
 }: {
   view: PublicModeView;
   names: TeamNames;
   hostAnswers?: { text: string; points: number }[];
   size?: "normal" | "large";
+  /** Team scores, to announce who reached the target score. */
+  scores?: Record<string, number>;
 }) {
   const board = view.board;
   const large = size === "large";
+  const target = view.targetScore;
+  const reached =
+    target && scores
+      ? Object.entries(scores)
+          .filter(([, s]) => s >= target)
+          .sort((a, b) => b[1] - a[1])
+          .map(([id]) => id)
+      : [];
+  const targetLine = target ? (
+    <p
+      data-testid="ranked-target"
+      className={`font-bold ${large ? "text-2xl" : "text-sm"} ${
+        reached.length > 0 ? "text-stage-highlight" : "text-stage-muted"
+      }`}
+    >
+      {reached.length > 0
+        ? `🏆 ${list(reached, names)} reached ${target} points!`
+        : `First to ${target} points wins`}
+    </p>
+  ) : null;
   if (!board) {
     return (
       <section
@@ -69,6 +104,7 @@ export function RankedAnswersBoard({
               ? "Back to the buzzer"
               : "Get ready for the first board"}
         </p>
+        {targetLine}
       </section>
     );
   }
@@ -96,6 +132,7 @@ export function RankedAnswersBoard({
               : `Board ${view.mainBoardsStarted} of ${view.mainBoardsTotal}`}
           {board.multiplier > 1 && ` · ${board.multiplier}× points`}
         </span>
+        {targetLine && <div className="w-full">{targetLine}</div>}
       </header>
 
       <p
@@ -185,9 +222,11 @@ export function RankedAnswersBoard({
               </span>
             ))}
           </span>
-          <span className={`font-bold ${large ? "text-3xl" : "text-lg"}`}>
-            Bank: <span data-testid="ranked-bank">{board.bank}</span>
-          </span>
+          {board.usesBank && (
+            <span className={`font-bold ${large ? "text-3xl" : "text-lg"}`}>
+              Bank: <span data-testid="ranked-bank">{board.bank}</span>
+            </span>
+          )}
         </div>
       )}
     </section>
@@ -199,5 +238,6 @@ export function LiveRankedAnswersBoard() {
   const { data } = useLiveGameState();
   if (data?.mode?.status !== "running") return null;
   const names = Object.fromEntries(data.gameTeams.map((t) => [t.id, t.name]));
-  return <RankedAnswersBoard view={data.mode} names={names} />;
+  const scores = Object.fromEntries(data.gameTeams.map((t) => [t.id, t.score]));
+  return <RankedAnswersBoard view={data.mode} names={names} scores={scores} />;
 }

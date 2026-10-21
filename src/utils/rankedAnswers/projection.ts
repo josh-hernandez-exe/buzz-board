@@ -3,8 +3,13 @@
  * have no text and no points, so nothing about an unrevealed answer leaves
  * the server. Pure; the host's full view is a separate staff-only query.
  */
-import { type Content, LIMITS, pointsFor } from "./content";
-import { type EngineState, type Phase } from "./engine";
+import { type Content, LIMITS, pointsFor, resolveRules } from "./content";
+import {
+  currentTurnTeam,
+  stealersOf,
+  type EngineState,
+  type Phase,
+} from "./engine";
 
 export type PublicRow = {
   rank: number;
@@ -39,12 +44,23 @@ export type PublicBoard = {
   maxRounds: number;
   bankWinners: string[];
   awarded: Record<string, number>;
+  /** Steal phase: who may steal, and whether a steal takes the bank. */
+  stealers: string[];
+  stealTakesBank: boolean;
+  /** Pass-along: a team keeps the turn while it finds answers. */
+  keepTurnOnHit: boolean;
+  /** Buzz race: teams sitting out right now. */
+  lockedOut: string[];
+  /** Face-off styles: rows build a bank, or score at once. */
+  usesBank: boolean;
 };
 
 export type PublicModeView = {
   kind: "rankedAnswers";
   status: "running" | "ended";
   playStyle: Content["rules"]["playStyle"];
+  /** The first team to reach it wins (informational), or null. */
+  targetScore: number | null;
   mainBoardsTotal: number;
   mainBoardsStarted: number;
   board: PublicBoard | null;
@@ -57,6 +73,7 @@ export function projectPublic(
   status: "running" | "ended",
 ): PublicModeView {
   const { rules } = content;
+  const opts = resolveRules(rules);
   const b = state.board;
   const board = b ? content.boards.find((x) => x.id === b.boardId) : undefined;
   let view: PublicBoard | null = null;
@@ -85,20 +102,26 @@ export function projectPublic(
       faceOffTeams: b.faceOffTeams,
       faceOffWinner: b.faceOffWinner,
       control: b.control,
-      currentTeam:
-        b.phase === "turns" ? (b.order[b.turn % b.order.length] ?? null) : null,
+      currentTeam: currentTurnTeam(b),
       turn: b.turn,
       maxTurns: b.order.length * rules.turnCycles,
       round: b.round,
       maxRounds: rules.allPlayRounds,
       bankWinners: b.bankWinners,
       awarded: b.awarded,
+      stealers: b.phase === "steal" ? stealersOf(rules, b) : [],
+      stealTakesBank:
+        opts.scoring === "bank" && opts.stealReward === "bankPlusRow",
+      keepTurnOnHit: rules.playStyle === "passAlong",
+      lockedOut: b.lockedOut ?? [],
+      usesBank: opts.scoring === "bank",
     };
   }
   return {
     kind: "rankedAnswers",
     status,
     playStyle: rules.playStyle,
+    targetScore: opts.targetScore,
     mainBoardsTotal: content.boards.filter((x) => x.role === "main").length,
     mainBoardsStarted: state.mainStarted,
     board: view,

@@ -1,3 +1,4 @@
+import { rulesSchema } from "@/utils/rankedAnswers/content";
 import { TRPCError } from "@trpc/server";
 import { BuzzerMode, GameFormat } from "@prisma/client";
 import { z } from "zod";
@@ -41,6 +42,13 @@ export const userRouter = createTRPCRouter({
             .optional(),
           /** "queue": every buzz queues in order. Default: first buzz wins. */
           buzzerMode: z.enum([BuzzerMode.first, BuzzerMode.queue]).optional(),
+          /** Set the game up for Ranked Answers with these rules. */
+          rankedAnswers: z
+            .object({
+              rules: rulesSchema,
+              sampleBoards: z.boolean().optional(),
+            })
+            .optional(),
           requestId: z
             .string()
             .min(8)
@@ -56,6 +64,7 @@ export const userRouter = createTRPCRouter({
           format: input.format,
           teamCount: input.teamCount,
           buzzerMode: input.buzzerMode,
+          rankedAnswers: input.rankedAnswers,
           requestId: input.requestId,
         });
         if (result.isErr()) throw toTRPCError(result.error);

@@ -2,6 +2,7 @@ import {
   BuzzerMode,
   BuzzerState,
   BuzzQueueStatus,
+  GameFormat,
   GameStatus,
   Prisma,
   type PrismaClient,
@@ -156,6 +157,38 @@ async function applySnapshot(tx: GameTx, gameId: string, snap: BuzzerSnapshot) {
  * answering team selected.
  */
 async function normalizeQueue(tx: GameTx, gameId: string, window: number) {
+  const teamIds = new Set(
+    (
+      await tx.gameTeam.findMany({ where: { gameId }, select: { id: true } })
+    ).map((t) => t.id),
+  );
+  // Teams deleted since can't answer: their place in line is skipped. In
+  // individual games, so is a removed player's (they are their own team).
+  const { format } = await tx.game.findUniqueOrThrow({
+    where: { id: gameId },
+    select: { format: true },
+  });
+  const removedPlayers =
+    format === GameFormat.individual
+      ? (
+          await tx.gameUser.findMany({
+            where: { gameId, removedAt: { not: null } },
+            select: { id: true },
+          })
+        ).map((u) => u.id)
+      : [];
+  await tx.buzzQueueEntry.updateMany({
+    where: {
+      gameId,
+      window,
+      status: { in: [BuzzQueueStatus.waiting, BuzzQueueStatus.answering] },
+      OR: [
+        { gameTeamId: { notIn: [...teamIds] } },
+        { gameUserId: { in: removedPlayers } },
+      ],
+    },
+    data: { status: BuzzQueueStatus.skipped },
+  });
   const entries = await tx.buzzQueueEntry.findMany({
     where: { gameId, window },
     orderBy: { position: "asc" },
@@ -396,6 +429,35 @@ async function teamName(tx: GameTx, gameTeamId: string) {
     select: { name: true },
   });
   return team?.name ?? "a removed team";
+}
+
+/**
+ * Takes teams out of the current question's queue, for example when a team
+ * is deleted or an individual player is removed. Their waiting or answering
+ * entries are skipped, and the next in line answers. Runs inside the
+ * caller's game-locked transaction; not an undoable host action.
+ */
+export async function releaseTeamsFromQueue(
+  tx: GameTx,
+  gameId: string,
+  gameTeamIds: string[],
+) {
+  if (gameTeamIds.length === 0) return;
+  const game = await tx.game.findUniqueOrThrow({
+    where: { id: gameId },
+    select: { buzzerWindow: true, buzzerMode: true },
+  });
+  if (game.buzzerMode !== BuzzerMode.queue) return;
+  const { count } = await tx.buzzQueueEntry.updateMany({
+    where: {
+      gameId,
+      window: game.buzzerWindow,
+      gameTeamId: { in: gameTeamIds },
+      status: { in: [BuzzQueueStatus.waiting, BuzzQueueStatus.answering] },
+    },
+    data: { status: BuzzQueueStatus.skipped },
+  });
+  if (count > 0) await normalizeQueue(tx, gameId, game.buzzerWindow);
 }
 
 /** The next waiting entry becomes answering. */

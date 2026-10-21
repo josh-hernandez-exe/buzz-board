@@ -93,7 +93,12 @@ function AudienceDisplay({
       </header>
 
       {state.mode?.status === "running" ? (
-        <RankedAnswersBoard view={state.mode} names={teamNames} size="large" />
+        <RankedAnswersBoard
+          view={state.mode}
+          names={teamNames}
+          size="large"
+          scores={Object.fromEntries(gameTeams.map((t) => [t.id, t.score]))}
+        />
       ) : (
         <p
           role="status"

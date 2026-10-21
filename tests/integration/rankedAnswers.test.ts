@@ -6,9 +6,11 @@ import { randomUUID } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
+import { presetRules } from "@/utils/rankedAnswers/content";
 import { sampleContent } from "@/utils/rankedAnswers/sample";
 
 import {
+  callerFor,
   createGame,
   createUser,
   currentScores,
@@ -288,5 +290,81 @@ describe("play", () => {
     await expect(
       ra.saveDraft({ draft: sampleContent(2), expectedRevision: 1 }),
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+});
+
+describe("rules chosen at game creation", () => {
+  it("creates the game with the rules and sample boards, and duplicate copies them", async () => {
+    const host = await createUser();
+    const user = await callerFor({ user: host });
+    const rules = { ...presetRules("buzzRace", 4), missPenalty: 5 };
+    const game = await user.user.game.create({
+      name: "Race night",
+      format: "team",
+      teamCount: 4,
+      rankedAnswers: { rules, sampleBoards: true },
+    });
+    const admin = requestCaller({ gameId: game.id, user: host });
+
+    const view = await admin.rankedAnswers.hostView();
+    expect(view.status).toBe("draft");
+    expect(view.draft.rules).toMatchObject({
+      playStyle: "buzzRace",
+      missPenalty: 5,
+    });
+    expect(view.draft.boards.length).toBeGreaterThan(0);
+    expect(view.preflight.blocking).toEqual([]);
+
+    const copy = await admin.gameAdmin.duplicateGame({ requestId: rid() });
+    const copyAdmin = requestCaller({ gameId: copy.gameId, user: host });
+    const copied = await copyAdmin.rankedAnswers.hostView();
+    expect(copied.draft).toEqual(view.draft);
+  });
+
+  it("refuses rules that aren't valid", async () => {
+    const host = await createUser();
+    const user = await callerFor({ user: host });
+    await expect(
+      user.user.game.create({
+        name: "Bad rules",
+        format: "team",
+        teamCount: 2,
+        rankedAnswers: {
+          rules: { ...presetRules("classic", 2), strikes: 9 },
+        },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("plays a buzz race through the API: lockouts and miss penalties land on the scoreboard", async () => {
+    const created = await createGame({ teams: 3 });
+    const ra = created.admin.rankedAnswers;
+    const content = sampleContent(3);
+    content.rules = { ...presetRules("buzzRace", 3), missPenalty: 2 };
+    await ra.saveDraft({ draft: content, expectedRevision: 0 });
+    await ra.start();
+    const main = content.boards.find((b) => b.role === "main")!;
+    const [t1, t2] = created.gameTeams.map((t) => t.id);
+    await act(ra, { type: "startBoard", boardId: main.id });
+
+    await act(ra, { type: "raceAnswer", team: t1!, answerId: null });
+    await expect(
+      act(ra, {
+        type: "raceAnswer",
+        team: t1!,
+        answerId: main.answers[0]!.id,
+      }),
+    ).rejects.toMatchObject({
+      message: "That team is sitting out until another answer is found.",
+    });
+    await act(ra, {
+      type: "raceAnswer",
+      team: t2!,
+      answerId: main.answers[0]!.id,
+    });
+
+    const scores = await currentScores(created.game.id);
+    expect(scores[t1!]).toBe(-2);
+    expect(scores[t2!]).toBeGreaterThan(0);
   });
 });

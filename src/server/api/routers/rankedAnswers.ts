@@ -43,6 +43,7 @@ const actionSchema = z.discriminatedUnion("type", [
     type: z.literal("allPlayRound"),
     answers: z.record(id, answerId),
   }),
+  z.object({ type: z.literal("raceAnswer"), team: id, answerId }),
   z.object({ type: z.literal("closeBoard") }),
   z.object({ type: z.literal("revealRemaining") }),
   z.object({ type: z.literal("finish") }),

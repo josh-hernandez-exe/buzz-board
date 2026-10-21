@@ -101,7 +101,7 @@ export const HELP_ARTICLES = [
     id: "ranked-answers",
     title: "Ranked Answers (family-feud style)",
     summary:
-      "Set up boards of ranked answers, choose a play style for 2 to 50 teams, run each board, fix mistakes and go back to the buzzer.",
+      "Set up boards of ranked answers, choose from nine rule sets for 2 to 50 teams (or fine-tune every rule), run each board, fix mistakes and go back to the buzzer.",
     audiences: ["host", "player"],
     facts: [],
   },

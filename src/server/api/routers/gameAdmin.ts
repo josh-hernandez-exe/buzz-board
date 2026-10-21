@@ -51,7 +51,9 @@ import {
   redoBuzzer,
   judgeQueueEntry,
   setBuzzerMode,
+  releaseTeamsFromQueue,
 } from "@/server/buzzer/buzzerService";
+import { withGameLock } from "@/server/db/gameTransaction";
 import { type Result } from "neverthrow";
 
 import type { GameSettings } from "@/types";
@@ -192,56 +194,33 @@ export const gameAdminRouter = createTRPCRouter({
           message: "Game format does not support teams",
         });
       }
-      const gameTeam = await ctx.db.gameTeam.findUnique({
-        where: {
-          id: gameTeamId,
-        },
-        include: {
-          game: true,
-          gameUsers: true,
-        },
+      // Read and change the team under the game lock, so two removals (or
+      // a buzz) can't interleave: indexes are shifted from a fresh read.
+      const removed = await withGameLock(gameId, async (tx) => {
+        const gameTeam = await tx.gameTeam.findFirst({
+          where: { id: gameTeamId, gameId },
+          select: { id: true, index: true },
+        });
+        if (!gameTeam) return false;
+        await releaseTeamsFromQueue(tx, gameId, [gameTeam.id]);
+        await tx.gameUser.updateMany({
+          where: { gameTeamId: gameTeam.id },
+          data: { gameTeamId: null },
+        });
+        await tx.gameTeam.delete({ where: { id: gameTeam.id } });
+        await tx.gameTeam.updateMany({
+          where: { gameId, index: { gt: gameTeam.index } },
+          data: { index: { decrement: 1 } },
+        });
+        return true;
       });
-      if (!gameTeam) {
+      if (removed.isErr()) throw toTRPCError(removed.error);
+      if (!removed.value) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Game team not found",
         });
       }
-      if (gameTeam.gameId !== gameId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Game team not found in this game",
-        });
-      }
-
-      await ctx.db.$transaction([
-        ctx.db.gameUser.updateMany({
-          where: {
-            gameTeamId: gameTeam.id,
-          },
-          data: {
-            gameTeamId: null,
-          },
-        }),
-        ctx.db.gameTeam.delete({
-          where: {
-            id: gameTeam.id,
-          },
-        }),
-        ctx.db.gameTeam.updateMany({
-          where: {
-            gameId: gameTeam.gameId,
-            index: {
-              gt: gameTeam.index,
-            },
-          },
-          data: {
-            index: {
-              decrement: 1,
-            },
-          },
-        }),
-      ]);
 
       await emitUpdatedGameState({ gameId });
     }),

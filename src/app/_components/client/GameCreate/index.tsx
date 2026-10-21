@@ -11,12 +11,19 @@ import { NAME_LIMITS } from "@/utils/displayName";
 import { GAME_LIMITS } from "@/utils/gameRules";
 import { newRequestId } from "@/utils/requestId";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
+import { RankedRulesEditor } from "@/app/_components/client/RankedRulesEditor";
+import {
+  presetRules,
+  suggestedPreset,
+  type Rules,
+} from "@/utils/rankedAnswers/content";
 
 const { minTeams: MIN_TEAMS, maxTeams: MAX_TEAMS } = GAME_LIMITS;
 
 /**
- * One short form: name, format, (for team games) team count and how buzzing
- * works. Chat, modes and content are set up later from the host desk.
+ * One short form: name, format, (for team games) team count, how buzzing
+ * works, and optionally Ranked Answers with its rules. Boards, chat and
+ * everything else can be set up later from the host desk.
  */
 export function CreateGame() {
   const router = useRouter();
@@ -24,6 +31,13 @@ export function CreateGame() {
   const [format, setFormat] = useState<GameFormat>(GameFormat.team);
   const [teamCount, setTeamCount] = useState<number>(GAME_LIMITS.defaultTeams);
   const [buzzerMode, setBuzzerMode] = useState<BuzzerMode>(BuzzerMode.first);
+  const [ranked, setRanked] = useState(false);
+  const [sampleBoards, setSampleBoards] = useState(true);
+  // null until the host touches the rules: follows the team count till then.
+  const [rules, setRules] = useState<Rules | null>(null);
+  const knownTeams = format === GameFormat.team ? teamCount : null;
+  const shownRules =
+    rules ?? presetRules(suggestedPreset(knownTeams ?? 2), knownTeams ?? 2);
   // One ID per attempt: a double-click or a retried request after a slow
   // response returns the same game instead of creating a second room.
   const requestId = useRef(newRequestId());
@@ -40,7 +54,7 @@ export function CreateGame() {
 
   return (
     <form
-      className="flex w-full max-w-sm flex-col gap-4"
+      className={`flex w-full flex-col gap-4 ${ranked ? "max-w-2xl" : "max-w-sm"}`}
       onSubmit={(e) => {
         e.preventDefault();
         if (!canSubmit) return;
@@ -49,6 +63,9 @@ export function CreateGame() {
           format,
           teamCount: format === GameFormat.team ? teamCount : undefined,
           buzzerMode,
+          rankedAnswers: ranked
+            ? { rules: shownRules, sampleBoards }
+            : undefined,
           requestId: requestId.current,
         });
       }}
@@ -159,6 +176,60 @@ export function CreateGame() {
           You can switch between questions from the host desk.
         </p>
       </fieldset>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium">Game</legend>
+        {(
+          [
+            [
+              false,
+              "Buzzer and scoreboard",
+              "Ask questions your own way; players buzz and you keep score.",
+            ],
+            [
+              true,
+              "Ranked Answers (family-feud style)",
+              "Boards of ranked answers, revealed as teams find them. Choose the rules now; add boards before you start.",
+            ],
+          ] as const
+        ).map(([value, label, hint]) => (
+          <label key={label} className="flex items-start gap-2">
+            <input
+              type="radio"
+              name="gameType"
+              className="mt-1"
+              checked={ranked === value}
+              onChange={() => setRanked(value)}
+            />
+            <span className="flex flex-col">
+              {label}
+              <span className="text-muted-foreground text-xs">{hint}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+
+      {ranked && (
+        <div className="border-border flex flex-col gap-3 rounded-lg border p-3">
+          <RankedRulesEditor
+            rules={shownRules}
+            teamCount={knownTeams}
+            onChange={setRules}
+          />
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={sampleBoards}
+              onChange={(e) => setSampleBoards(e.target.checked)}
+            />
+            Start with sample boards (you can edit or replace them)
+          </label>
+          <p className="text-muted-foreground text-xs">
+            Every rule can still be changed on the host desk until you start
+            Ranked Answers.
+          </p>
+        </div>
+      )}
 
       <ErrorNotice
         error={createGame.error}

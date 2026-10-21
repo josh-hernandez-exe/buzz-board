@@ -5,7 +5,8 @@ Buzz-Board runs buzzers and a live scoreboard. Present your questions however yo
 1. Choose **Host a game** on the home page and sign in.
 2. Give the game a name, choose whether players compete **as teams** or **individually**, and pick how many teams to start with.
 3. Choose how buzzing works: **First buzz wins** or **Queue**. You can change this later between questions. See [Buzzing modes and undo](/help/buzzing).
-4. Select **Create game**. You'll go straight to the host desk.
+4. Under **Game**, keep **Buzzer and scoreboard**, or choose **Ranked Answers** and its rules. See [Ranked Answers](/help/ranked-answers).
+5. Select **Create game**. You'll go straight to the host desk.
 
 New games start in the **lobby**. Players can join and pick names before you begin.
 
@@ -53,7 +54,7 @@ If you notice a mistake, select **Reopen to correct results** shortly afterwards
 
 ## Can I run the same game again?
 
-Select **Duplicate** to make a new game with the same name, format, settings and team names. Players, scores and history are not copied, and the copy gets a new join code. You own the copy, even if you were helping run the original.
+Select **Duplicate** to make a new game with the same name, format, settings, buzzing mode, team names, and Ranked Answers rules and boards. Players, scores and history are not copied, and the copy gets a new join code. You own the copy, even if you were helping run the original.
 
 ## How do I delete a game?
 

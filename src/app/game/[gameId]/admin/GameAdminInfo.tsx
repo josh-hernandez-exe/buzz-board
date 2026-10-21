@@ -29,12 +29,17 @@ import { can, type StaffRoleName } from "@/utils/capabilities";
 export function GameAdminInfo({
   gameState: initialGameState,
   staffRole,
+  rankedAnswersFirst = false,
 }: {
   gameState: PrivateGameState;
   staffRole: StaffRoleName;
+  /** Open on the Ranked Answers tab (the game was set up for it). */
+  rankedAnswersFirst?: boolean;
 }) {
   const runsGame = can(staffRole, "runGame");
-  const [activeTab, setActiveTab] = useState(runsGame ? "play" : "players");
+  const [activeTab, setActiveTab] = useState(
+    !runsGame ? "players" : rankedAnswersFirst ? "ranked-answers" : "play",
+  );
   const { data } = useLiveGameState();
   const state = data ?? initialGameState;
 

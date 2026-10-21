@@ -41,8 +41,14 @@ test("the owner deletes a game in play from the dashboard; its player is told", 
   await expect(row).toContainText("Owner");
   await expect(row).toContainText("1 player");
 
-  await row.getByRole("button", { name: `Delete ${doomed.name}` }).click();
   const dialog = dashboard.getByRole("dialog");
+  // A click before the table hydrates (a cold dev server) is dropped: retry.
+  await expect(async () => {
+    await row
+      .getByRole("button", { name: `Delete ${doomed.name}` })
+      .click({ timeout: 5_000 });
+    await expect(dialog).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 45_000 });
   await dialog.getByLabel("Game name to confirm deletion").fill(doomed.name);
   const confirm = dialog.getByRole("button", { name: "Delete forever" });
   await expect(confirm).toBeDisabled();

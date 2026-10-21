@@ -173,6 +173,62 @@ describe("queue mode", () => {
     expect(past[0]!.label).toBe("Open buzzer for a new question");
   });
 
+  it("deleting the answering team moves the queue on, and undo doesn't bring it back", async () => {
+    const { admin, game, players } = await queueGame();
+    await admin.gameAdmin.startBuzzer();
+    for (const p of players) await p.player.gameUser.buzzIn();
+    await admin.gameAdmin.pauseBuzzer();
+
+    await admin.gameAdmin.removeTeam({ gameTeamId: players[0]!.teamId });
+
+    expect((await queueOf(game.id)).map((e) => e.status)).toEqual([
+      "skipped",
+      "answering",
+      "waiting",
+    ]);
+    expect(await states(game.id)).toMatchObject({
+      [players[1]!.teamId]: "selected",
+    });
+
+    // Undo the Close: the deleted team stays out of the line.
+    await admin.gameAdmin.buzzer.undo();
+    expect((await queueOf(game.id)).map((e) => e.status)).toEqual([
+      "skipped",
+      "answering",
+      "waiting",
+    ]);
+  });
+
+  it("removing a player in an individual game takes them out of the queue", async () => {
+    const created = await createGame({ format: "individual" });
+    await created.admin.gameAdmin.buzzer.setMode({ mode: "queue" });
+    const ada = await joinAsGuest(created.game.code, "Ada");
+    const bo = await joinAsGuest(created.game.code, "Bo");
+    await created.admin.gameAdmin.startBuzzer();
+    await ada.player.gameUser.buzzIn();
+    await bo.player.gameUser.buzzIn();
+    // A host action after the buzzes, so its snapshot holds them.
+    await created.admin.gameAdmin.pauseBuzzer();
+    const [first] = await queueOf(created.game.id);
+
+    await created.admin.gameAdmin.roster.removePlayer({
+      gameUserId: first!.gameUserId,
+    });
+
+    expect((await queueOf(created.game.id)).map((e) => e.status)).toEqual([
+      "skipped",
+      "answering",
+    ]);
+
+    // Undoing the Close (whose snapshot has them answering) doesn't bring
+    // them back.
+    await created.admin.gameAdmin.buzzer.undo();
+    expect((await queueOf(created.game.id)).map((e) => e.status)).toEqual([
+      "skipped",
+      "answering",
+    ]);
+  });
+
   it("skip moves on with no lockout: the team can buzz again", async () => {
     const { admin, game, players } = await queueGame(2);
     await admin.gameAdmin.startBuzzer();

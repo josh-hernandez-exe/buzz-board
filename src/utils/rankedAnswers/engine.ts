@@ -9,7 +9,14 @@
  */
 import { err, ok, type Result } from "neverthrow";
 
-import { pointsFor, type Board, type Content } from "./content";
+import {
+  isFaceOffStyle,
+  pointsFor,
+  resolveRules,
+  type Board,
+  type Content,
+  type Rules,
+} from "./content";
 
 export type Phase =
   | "faceOff"
@@ -17,6 +24,7 @@ export type Phase =
   | "control"
   | "steal"
   | "turns"
+  | "race"
   | "allPlay"
   | "closed";
 
@@ -45,9 +53,13 @@ export type BoardState = {
   order: string[];
   turn: number;
   round: number;
-  /** Points each team earned on this board. */
+  /** Points each team earned on this board (after any miss penalties). */
   awarded: Record<string, number>;
   bankWinners: string[];
+  /** Buzz race: teams that can't answer right now. */
+  lockedOut?: string[];
+  /** Buzz race: misses per team on this board. */
+  teamStrikes?: Record<string, number>;
 };
 
 export type EngineState = {
@@ -71,6 +83,8 @@ export type Action =
   | { type: "answer"; answerId: string | null }
   | { type: "steal"; answers: Record<string, string | null> }
   | { type: "allPlayRound"; answers: Record<string, string | null> }
+  /** Buzz race: the team that buzzed, and its answer (null = wrong). */
+  | { type: "raceAnswer"; team: string; answerId: string | null }
   /** Host closes the board early, for example for time. */
   | { type: "closeBoard" }
   | { type: "revealRemaining" }
@@ -82,6 +96,7 @@ export type EngineError =
   | { kind: "boardAlreadyPlayed" }
   | { kind: "unknownAnswer" }
   | { kind: "unknownTeam"; team: string }
+  | { kind: "teamLockedOut"; team: string }
   | { kind: "badTeams" };
 
 export type Step = {
@@ -112,6 +127,26 @@ export function faceOffPair(teams: string[], n: number): string[] {
   return [teams[(2 * n) % teams.length]!, teams[(2 * n + 1) % teams.length]!];
 }
 
+/**
+ * Who may steal once the playing team has struck out: the face-off
+ * opponent, every other team, or nobody, by the rules.
+ */
+export function stealersOf(rules: Rules, b: BoardState): string[] {
+  const { stealBy } = resolveRules(rules);
+  if (stealBy === "none" || !b.control) return [];
+  const others = b.teams.filter((t) => t !== b.control);
+  if (stealBy === "everyone") return others;
+  const opponent = b.faceOffTeams.filter((t) => t !== b.control);
+  return opponent.length > 0 ? opponent : others.slice(0, 1);
+}
+
+/** The team answering now, in turn-based phases. */
+export function currentTurnTeam(b: BoardState): string | null {
+  return b.phase === "turns"
+    ? (b.order[b.turn % b.order.length] ?? null)
+    : null;
+}
+
 const rankOf = (board: Board, answerId: string | null) => {
   const i = board.answers.findIndex((a) => a.id === answerId);
   return i < 0 ? null : i + 1;
@@ -126,6 +161,7 @@ export function apply(
   action: Action,
 ): Result<Step, EngineError> {
   const { rules } = content;
+  const opts = resolveRules(rules);
   if (state.finished) return err({ kind: "wrongPhase", phase: "finished" });
   const scores: Record<string, number> = {};
   const award = (b: BoardState, team: string, points: number) => {
@@ -159,27 +195,42 @@ export function apply(
       return err({ kind: "badTeams" });
     }
     const n = state.mainStarted;
-    const faceOffStyle =
-      rules.playStyle === "classic" || rules.playStyle === "faceOffLadder";
+    const style = rules.playStyle;
+    const faceOffStyle = isFaceOffStyle(style);
+    const noFaceOff = faceOffStyle && opts.faceOffMethod === "none";
+    // Without a face-off, every team takes a turn playing, board by board;
+    // the next team in the rotation is its opponent.
+    const pair = !faceOffStyle
+      ? []
+      : noFaceOff
+        ? rotate(teams, n).slice(0, 2)
+        : faceOffPair(teams, n);
+    const turnStyle = style === "roundRobin" || style === "passAlong";
     const next: BoardState = {
       boardId: board.id,
       teams,
-      phase: faceOffStyle
-        ? "faceOff"
-        : rules.playStyle === "roundRobin"
-          ? "turns"
-          : "allPlay",
+      phase: noFaceOff
+        ? "control"
+        : faceOffStyle
+          ? "faceOff"
+          : turnStyle
+            ? "turns"
+            : style === "buzzRace"
+              ? "race"
+              : "allPlay",
       revealed: [],
       strikes: 0,
       bank: 0,
-      faceOffTeams: faceOffStyle ? faceOffPair(teams, n) : [],
-      faceOffWinner: null,
-      control: null,
-      order: rules.playStyle === "roundRobin" ? rotate(teams, n) : [...teams],
+      faceOffTeams: pair,
+      faceOffWinner: noFaceOff ? pair[0]! : null,
+      control: noFaceOff ? pair[0]! : null,
+      order: turnStyle ? rotate(teams, n) : [...teams],
       turn: 0,
       round: 0,
       awarded: {},
       bankWinners: [],
+      lockedOut: [],
+      teamStrikes: {},
     };
     return ok({
       state: {
@@ -219,9 +270,24 @@ export function apply(
       ? err({ kind: "unknownAnswer" as const })
       : null;
   const resolveBank = (winners: string[]) => {
-    b.bankWinners = winners;
+    b.bankWinners = b.bank > 0 ? winners : [];
     for (const t of winners) award(b, t, b.bank);
     b.phase = "closed";
+  };
+  const direct = opts.scoring === "direct";
+  /** A row found while a team holds the board: banked, or scored at once. */
+  const bankOrAward = (rank: number, team: string | null) => {
+    const p = points(rank);
+    if (direct && team) {
+      reveal(rank, [team], p);
+      award(b, team, p);
+    } else {
+      reveal(rank, [], p);
+      b.bank += p;
+    }
+  };
+  const penalize = (team: string) => {
+    if (scoring && opts.missPenalty > 0) award(b, team, -opts.missPenalty);
   };
 
   switch (action.type) {
@@ -258,16 +324,18 @@ export function apply(
               : second.team
             : null;
       }
-      for (const r of ranks) {
-        if (r !== null && isHidden(b, r)) {
-          const p = points(r);
-          reveal(r, [], p);
-          b.bank += p;
-        }
-      }
+      action.answers.forEach((a, i) => {
+        const r = ranks[i] ?? null;
+        if (r !== null && isHidden(b, r)) bankOrAward(r, a.team);
+      });
       if (winner) {
         b.faceOffWinner = winner;
-        b.phase = "playOrPass";
+        if (opts.allowPass) {
+          b.phase = "playOrPass";
+        } else {
+          b.control = winner;
+          b.phase = "control";
+        }
       }
       if (allFound()) resolveBank(winner ? [winner] : []);
       return done(b);
@@ -289,35 +357,36 @@ export function apply(
       const found = rank !== null && isHidden(b, rank);
       if (b.phase === "control") {
         if (found) {
-          const p = points(rank);
-          reveal(rank, [], p);
-          b.bank += p;
+          bankOrAward(rank, b.control);
           if (allFound()) resolveBank([b.control!]);
         } else {
           b.strikes++;
-          if (b.strikes >= rules.strikes) b.phase = "steal";
+          penalize(b.control!);
+          if (b.strikes >= rules.strikes) {
+            if (stealersOf(rules, b).length > 0) b.phase = "steal";
+            else resolveBank([b.control!]);
+          }
         }
         return done(b);
       }
-      // Round robin: the current team's one answer.
+      // Round robin: the current team's one answer. Pass-along: the team
+      // keeps going until it misses.
       const team = b.order[b.turn % b.order.length]!;
       if (found) {
         const p = points(rank);
         reveal(rank, [team], p);
         award(b, team, p);
+      } else {
+        penalize(team);
       }
-      b.turn++;
+      if (rules.playStyle !== "passAlong" || !found) b.turn++;
       if (allFound() || b.turn >= b.order.length * rules.turnCycles) {
         b.phase = "closed";
       }
       return done(b);
     }
     case "steal": {
-      const stealers = b.teams.filter((t) =>
-        rules.playStyle === "classic"
-          ? b.faceOffTeams.includes(t) && t !== b.control
-          : t !== b.control,
-      );
+      const stealers = stealersOf(rules, b);
       const wrong =
         needPhase("steal") ??
         checkTeams(Object.keys(action.answers), stealers) ??
@@ -340,7 +409,14 @@ export function apply(
         reveal(rank, finders, p);
         for (const t of finders) award(b, t, p);
       }
-      resolveBank(hits.filter((h) => h.rank === best).map((h) => h.team));
+      if (direct || opts.stealReward === "rowOnly") {
+        // The stealers had their rows; the playing team keeps any bank.
+        resolveBank([b.control!]);
+      } else if (opts.stealWinner === "allCorrect") {
+        resolveBank([...new Set(hits.map((h) => h.team))]);
+      } else {
+        resolveBank(hits.filter((h) => h.rank === best).map((h) => h.team));
+      }
       return done(b);
     }
     case "allPlayRound": {
@@ -357,11 +433,57 @@ export function apply(
       }
       for (const [rank, teams] of [...finders].sort((x, y) => x[0] - y[0])) {
         const p = points(rank);
-        reveal(rank, teams, p);
-        for (const t of teams) award(b, t, p);
+        const each =
+          teams.length === 1 || opts.sharedAnswers === "full"
+            ? p
+            : opts.sharedAnswers === "split"
+              ? Math.floor(p / teams.length)
+              : 0;
+        reveal(rank, teams, each);
+        for (const t of teams) award(b, t, each);
       }
       b.round++;
       if (allFound() || b.round >= rules.allPlayRounds) b.phase = "closed";
+      return done(b);
+    }
+    case "raceAnswer": {
+      const wrong =
+        needPhase("race") ??
+        checkTeams([action.team], b.teams) ??
+        checkAnswers([action.answerId]);
+      if (wrong) return wrong;
+      const locked = b.lockedOut ?? [];
+      if (locked.includes(action.team)) {
+        return err({ kind: "teamLockedOut", team: action.team });
+      }
+      const rank = rankOf(board, action.answerId);
+      if (rank !== null && isHidden(b, rank)) {
+        const p = points(rank);
+        reveal(rank, [action.team], p);
+        award(b, action.team, p);
+        // A find gives everyone waiting out another go.
+        if (opts.raceLockout === "untilNextFind") b.lockedOut = [];
+        if (allFound()) b.phase = "closed";
+        return done(b);
+      }
+      penalize(action.team);
+      const misses = (b.teamStrikes?.[action.team] ?? 0) + 1;
+      b.teamStrikes = { ...b.teamStrikes, [action.team]: misses };
+      if (
+        opts.raceLockout === "untilNextFind" ||
+        (opts.raceLockout === "afterStrikes" && misses >= rules.strikes)
+      ) {
+        b.lockedOut = [...locked, action.team];
+      }
+      if (b.teams.every((t) => b.lockedOut?.includes(t))) {
+        if (opts.raceLockout === "afterStrikes") {
+          // Everyone has struck out of this board.
+          b.phase = "closed";
+        } else {
+          // Nobody could find another: everyone gets another go.
+          b.lockedOut = [];
+        }
+      }
       return done(b);
     }
     case "closeBoard": {
