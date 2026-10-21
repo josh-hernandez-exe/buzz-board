@@ -60,6 +60,8 @@ bun run load -- --profile smoke-10 --dry-run        # plan, estimates and ceilin
 bun run load -- --profile mixed-100 --start-server  # starts `next start` on :3300
 ```
 
+`--buzzer-mode queue` runs the same workload with queued buzzing. Every round, the coordinator marks the first team in line wrong and the next one right, and the `oneWinnerPerWindow` invariant becomes "the line kept its rules": one team answering, unique places, and one place per team.
+
 Options: `--target` (default `http://localhost:3300`; use it without `--start-server` for a server you started), `--seed`, `--hold-scale 0.1` for a shorter trial (recorded in the report), `--keep` to leave the run's game in the database, and `--out` (default `load-results/`, which git ignores).
 
 ### Interlocks

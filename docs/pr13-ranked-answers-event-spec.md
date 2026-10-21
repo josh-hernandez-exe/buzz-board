@@ -160,7 +160,7 @@ Real boards aren't in this repository and must never be committed. Two sources w
 
 Run it with the synthetic pack, an owner, a co-host, a moderator, and at least six people on phones in three or more teams. For each step, record who did it, the clicks or taps, the time taken, errors, and anything someone had to ask about.
 
-1. **Prepare (W13):** select the mode and the synthetic pack, run preflight, read the warnings, and start. _Not possible until PR21–PR22: record as "pending build"._
+1. **Prepare (W13):** select the mode and the synthetic pack, run preflight, read the warnings, and start. Now possible: the mode is built ([ranked-answers-mode.md](./ranked-answers-mode.md)). The full event checklist, and a rehearsal that also covers queued buzzing, Category Grid and keyboard shortcuts, is in [event-readiness.md](./event-readiness.md).
 2. **Join (W05):** everyone joins by code, gets a team, and confirms captains. Check team chat privacy: team A can't see team B's channel.
 3. **Practice board:** read the prefix, set game chat to staff-only, and take the practice board through all outcomes (accept, miss, duplicate, timeout, pass).
 4. **Main boards (W14):** play two boards. Confirm the starter rotates, the leftovers are revealed for 0, and the scores match a paper tally.

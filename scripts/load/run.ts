@@ -60,6 +60,8 @@ const { values: args } = parseArgs({
     "allow-remote": { type: "boolean", default: false },
     "acknowledge-costs": { type: "boolean", default: false },
     "operator-approval": { type: "string" },
+    /** "queue": every buzz lines up; the host judges wrong then right. */
+    "buzzer-mode": { type: "string", default: "first" },
   },
   allowPositionals: true,
 });
@@ -76,6 +78,11 @@ const profile: Profile =
     ? PROFILES[args.profile]
     : withHoldScale(PROFILES[args.profile], holdScale);
 const seed = Number(args.seed);
+const queueMode = args["buzzer-mode"] === "queue";
+if (!["first", "queue"].includes(args["buzzer-mode"])) {
+  console.error("--buzzer-mode is first or queue");
+  process.exit(2);
+}
 const estimate = estimateWorkload(profile);
 const ceilings: Ceilings = ceilingsFor(estimate);
 const targetCheck = checkTarget({
@@ -91,6 +98,7 @@ const targetCheck = checkTarget({
 
 const plan = {
   profile: profile.name,
+  buzzerMode: queueMode ? "queue" : "first",
   holdScale,
   seed,
   target: args.target,
@@ -210,6 +218,7 @@ async function seedGame() {
       code,
       format: "team",
       chatEnabled: true,
+      buzzerMode: queueMode ? "queue" : "first",
       createdById: owner.user.id,
       scoreboard: { create: {} },
       gameAdmins: {
@@ -324,6 +333,7 @@ const sent = new Map<
 >();
 const acceptedRequestIds = new Set<string>();
 const windowWins = new Map<number, number>();
+const queueStats = { rounds: 0, entries: 0, correct: 0, ruleViolations: 0 };
 let currentWindow = 0;
 
 // ---------------------------------------------------------------- bots
@@ -739,6 +749,58 @@ async function main() {
     }
   };
 
+  /**
+   * Queue mode: check the line's rules, mark the first team wrong (the next
+   * answers) and the next one right, then score it like a first-buzz win.
+   */
+  const judgeQueueRound = async () => {
+    const g = await db.game.findUniqueOrThrow({ where: { id: game.id } });
+    const entries = await db.buzzQueueEntry.findMany({
+      where: { gameId: game.id, window: g.buzzerWindow },
+      orderBy: { position: "asc" },
+    });
+    queueStats.rounds++;
+    queueStats.entries += entries.length;
+    const active = entries.filter(
+      (e) => e.status === "waiting" || e.status === "answering",
+    );
+    if (
+      entries.filter((e) => e.status === "answering").length > 1 ||
+      new Set(entries.map((e) => e.position)).size !== entries.length ||
+      new Set(active.map((e) => e.gameTeamId)).size !== active.length ||
+      (active.length > 0 && active[0]!.status !== "answering")
+    ) {
+      queueStats.ruleViolations++;
+    }
+    const judge = (entryId: string, verdict: "correct" | "wrong") =>
+      control(
+        () => owner.mutation("gameAdmin.buzzer.judge", { entryId, verdict }),
+        `judge ${verdict}`,
+      );
+    let answering = active[0];
+    if (answering && active.length > 1) {
+      await judge(answering.id, "wrong");
+      answering = active[1];
+    }
+    if (!answering) return;
+    await judge(answering.id, "correct");
+    const scored = await control(
+      () =>
+        owner.mutation("gameAdmin.addScore", {
+          requestId: `load${runId}q${g.buzzerWindow}`,
+          changes: { [answering.gameTeamId]: 1 },
+        }),
+      "addScore",
+    );
+    if (scored !== undefined) {
+      queueStats.correct++;
+      expectedScores.set(
+        answering.gameTeamId,
+        (expectedScores.get(answering.gameTeamId) ?? 0) + 1,
+      );
+    }
+  };
+
   // Buzzer rounds every 10 seconds while bots are connected.
   const probes = new Set<string>();
   const coordinator = (async () => {
@@ -760,10 +822,15 @@ async function main() {
         () => owner.mutation("gameAdmin.pauseBuzzer"),
         "pauseBuzzer",
       );
-      const claim = await db.buzzClaim.findFirst({
-        where: { gameId: game.id, window: { gt: lastWindow } },
-        orderBy: { window: "desc" },
-      });
+      if (queueMode) {
+        await judgeQueueRound();
+      }
+      const claim = queueMode
+        ? null
+        : await db.buzzClaim.findFirst({
+            where: { gameId: game.id, window: { gt: lastWindow } },
+            orderBy: { window: "desc" },
+          });
       if (claim) {
         lastWindow = claim.window;
         const scored = await control(
@@ -976,7 +1043,9 @@ async function main() {
   const allSynthetic = await db.chatMessage.count({
     where: { gameId: game.id },
   });
-  const claims = await db.buzzClaim.count({ where: { gameId: game.id } });
+  const claims = queueMode
+    ? await db.buzzQueueEntry.count({ where: { gameId: game.id } })
+    : await db.buzzClaim.count({ where: { gameId: game.id } });
   const finalState = await display.query<{
     gameTeams: { id: string; name: string; score: number }[];
   }>("public.currentGameState", { gameId: game.id });
@@ -998,7 +1067,11 @@ async function main() {
   const invariants = {
     acceptedMessagesStored: stored === acceptedRequestIds.size,
     noUnexpectedMessages: allSynthetic === acceptedRequestIds.size,
-    oneWinnerPerWindow: multiWinWindows === 0,
+    // First-buzz: one winner per window. Queue: the line kept its rules
+    // (one answering, unique places, one place per team) every round.
+    oneWinnerPerWindow: queueMode
+      ? queueStats.ruleViolations === 0
+      : multiWinWindows === 0,
     winsMatchClaims: metrics.buzzes.won === claims,
     scoresReconcile: scoreMismatches.length === 0,
     noPrivateLeaks: metrics.privacyProbes.leaked === 0,
@@ -1063,7 +1136,12 @@ async function main() {
       requests: totalRequests,
       bytesReceived: counters.bytes,
       sends: metrics.sends,
-      buzzes: { ...metrics.buzzes, windows: currentWindow, claims },
+      buzzes: {
+        ...metrics.buzzes,
+        windows: currentWindow,
+        claims,
+        ...(queueMode ? { queue: queueStats } : {}),
+      },
       pulses: metrics.pulses,
       streamReopens: metrics.streamReopens,
       fetches: metrics.fetches,
