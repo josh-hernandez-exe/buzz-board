@@ -71,14 +71,14 @@ export function GameAdminTeamControl({
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div>
               <h4 className="font-medium">Team Switching</h4>
-              <p className="text-sm text-gray-600">
+              <p className="text-muted-foreground text-sm">
                 {isTeamsFrozen
                   ? "Team switching is currently disabled"
                   : "Players can switch teams freely"}
               </p>
             </div>
             <div className="flex items-center space-x-3">
-              <span className="text-sm font-medium text-gray-600">
+              <span className="text-muted-foreground text-sm font-medium">
                 {isTeamsFrozen ? "Off" : "On"}
               </span>
               <Switch
@@ -97,7 +97,7 @@ export function GameAdminTeamControl({
             <Button
               onClick={() => addTeamMutation.mutate()}
               disabled={addTeamMutation.isPending}
-              className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+              className="bg-primary text-primary-foreground hover:bg-primary-hover rounded-md px-4 py-2 font-semibold"
             >
               Add Team
             </Button>
@@ -137,7 +137,7 @@ export function GameAdminTeamControl({
             </Button>
             <Dialog>
               <DialogTrigger asChild>
-                <Button className="bg-red-500" disabled={!teamIdToDelete}>
+                <Button variant="destructive" disabled={!teamIdToDelete}>
                   Delete Team
                 </Button>
               </DialogTrigger>
@@ -159,7 +159,7 @@ export function GameAdminTeamControl({
                       });
                     }}
                     disabled={removeTeamMutation.isPending || !teamIdToDelete}
-                    className="rounded bg-red-500 px-4 py-2 text-white hover:bg-blue-600"
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-md px-4 py-2 font-semibold"
                   >
                     Delete Team
                   </Button>

@@ -130,7 +130,7 @@ export function JoinGameComponent({
       </div>
 
       {savedPlayer && (
-        <div className="flex flex-col gap-3 rounded-xl bg-white/10 p-4">
+        <div className="bg-surface-sunken flex flex-col gap-3 rounded-xl p-4">
           <p>
             Your account has a player in <strong>{savedPlayer.gameName}</strong>
             : <strong>{savedPlayer.nickname}</strong>
@@ -158,12 +158,12 @@ export function JoinGameComponent({
           </Button>
           <ErrorNotice
             error={resumeLinked.error}
-            className="text-sm text-red-300"
+            className="text-destructive text-sm"
           />
         </div>
       )}
       {savedPlayer ? null : resumable ? (
-        <div className="flex flex-col gap-3 rounded-xl bg-white/10 p-4">
+        <div className="bg-surface-sunken flex flex-col gap-3 rounded-xl p-4">
           <p>
             Welcome back to <strong>{resumable.gameName}</strong>. You played as{" "}
             <strong>{resumable.nickname}</strong>
@@ -209,10 +209,10 @@ export function JoinGameComponent({
               autoComplete="nickname"
               maxLength={NAME_LIMITS.maxDisplayName * 2}
               onChange={(e) => setNickname(e.target.value)}
-              className="rounded-lg bg-white/10 px-3 py-2 text-base text-white"
+              className="field px-3 py-2 text-base"
             />
           </label>
-          <p className="text-xs text-white/70">
+          <p className="text-muted-foreground text-xs">
             Shown to everyone in this game. No account needed.
           </p>
           <Button type="submit" disabled={join.isPending}>
@@ -221,7 +221,7 @@ export function JoinGameComponent({
         </form>
       )}
 
-      <ErrorNotice error={error} className="text-sm text-red-300" />
+      <ErrorNotice error={error} className="text-destructive text-sm" />
     </div>
   );
 }

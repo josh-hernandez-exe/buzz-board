@@ -83,7 +83,7 @@ export function Scoreboard({
             game={currentGameState.game}
             hideFields={["description", "name", "id", "format", "buzzerState"]}
             extraContent={
-              <div className="text-center text-sm text-gray-500">
+              <div className="text-muted-foreground text-center text-sm">
                 <p>
                   To join the game, go to the join URL and use the game code
                   provided.

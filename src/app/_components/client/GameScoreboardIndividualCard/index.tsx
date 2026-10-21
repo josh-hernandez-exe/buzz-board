@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from "@/app/_components/ui/card";
 
-
 import type {
   GameTeamFromPrivateState,
   GameUserFromPrivateState,
@@ -46,14 +45,16 @@ export function GameScoreboardIndividualCard({
   }
 
   const cardColor = cn({
-    "bg-white": gameTeam.buzzerState === BuzzerState.available,
-    "bg-green-500 text-white": gameTeam.buzzerState === BuzzerState.selected,
-    "bg-red-500 text-white": gameTeam.buzzerState === BuzzerState.rejected,
+    "bg-surface": gameTeam.buzzerState === BuzzerState.available,
+    "bg-success text-success-foreground":
+      gameTeam.buzzerState === BuzzerState.selected,
+    "bg-destructive text-destructive-foreground":
+      gameTeam.buzzerState === BuzzerState.rejected,
   });
 
   const icon =
     gameTeam.buzzerState === BuzzerState.rejected ? (
-      <X className="absolute inset-0 h-full w-full text-white opacity-30" />
+      <X className="text-foreground absolute inset-0 h-full w-full opacity-30" />
     ) : null;
 
   return (
@@ -71,7 +72,7 @@ export function GameScoreboardIndividualCard({
           <div className="text-5xl font-bold">{gameTeam.score}</div>
         </div>
       </CardContent>
-      <CardFooter className="text-sm text-gray-500">
+      <CardFooter className="text-muted-foreground text-sm">
         Player #{gameTeam.index}
       </CardFooter>
     </Card>

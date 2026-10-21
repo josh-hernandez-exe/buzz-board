@@ -53,7 +53,7 @@ export function HelpSearch({ entries }: { entries: HelpSearchEntry[] }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="For example: resume, joining closed, undo"
-        className="rounded-lg border px-3 py-2 text-base"
+        className="field px-3 py-2 text-base"
       />
       {query.trim() !== "" && (
         <div aria-live="polite">
@@ -71,18 +71,20 @@ export function HelpSearch({ entries }: { entries: HelpSearchEntry[] }) {
                 <li key={entry.id}>
                   <Link
                     href={`/help/${entry.id}`}
-                    className="font-semibold text-blue-700 underline"
+                    className="text-primary font-semibold underline"
                   >
                     {entry.title}
                   </Link>
-                  <p className="text-sm text-slate-700">{entry.summary}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {entry.summary}
+                  </p>
                   {headings.length > 0 && (
                     <ul className="mt-1 ml-4 list-disc text-sm">
                       {headings.map((h) => (
                         <li key={h.anchor}>
                           <Link
                             href={`/help/${entry.id}#${h.anchor}`}
-                            className="text-blue-700 underline"
+                            className="text-primary underline"
                           >
                             {h.text}
                           </Link>

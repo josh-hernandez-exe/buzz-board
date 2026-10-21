@@ -60,12 +60,12 @@ export function GameAdminInfo({
   gameTeams?.sort((a, b) => a.index - b.index);
 
   return (
-    <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
+    <div className="flex w-full flex-col gap-6">
       {/* Game sound effects for all teams */}
       <GameSoundEffects />
 
-      <div className="flex w-full max-w-[700px] flex-col gap-4">
-        <p className="text-center" data-testid="my-role">
+      <div className="flex w-full flex-col gap-4">
+        <p className="text-muted-foreground text-sm" data-testid="my-role">
           You&apos;re the <strong>{ROLE_LABEL[staffRole]}</strong> of this game.
           {!runsGame &&
             " You can rename, move and remove players. The owner and co-hosts run the buzzer and scores."}
@@ -75,7 +75,7 @@ export function GameAdminInfo({
       <Tabs
         value={activeTab}
         onValueChange={handleTabChange}
-        className="w-full max-w-[700px]"
+        className="w-full"
       >
         <TabsList className="flex h-auto w-full flex-wrap">
           {runsGame && (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Children, isValidElement, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { slugify } from "@/help/manifest";
 
@@ -36,13 +37,13 @@ const components: Components = {
   li: ({ children }) => <li className="my-1">{children}</li>,
   a: ({ href = "", children }) =>
     href.startsWith("/") ? (
-      <Link href={href} className="text-blue-700 underline">
+      <Link href={href} className="text-primary underline">
         {children}
       </Link>
     ) : (
       <a
         href={href}
-        className="text-blue-700 underline"
+        className="text-primary underline"
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -57,7 +58,7 @@ const components: Components = {
  */
 export function HelpMarkdown({ markdown }: { markdown: string }) {
   return (
-    <ReactMarkdown skipHtml components={components}>
+    <ReactMarkdown skipHtml remarkPlugins={[remarkGfm]} components={components}>
       {markdown}
     </ReactMarkdown>
   );

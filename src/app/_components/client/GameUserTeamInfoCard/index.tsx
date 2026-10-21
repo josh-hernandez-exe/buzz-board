@@ -1,5 +1,7 @@
 "use client";
 
+import { env } from "@/env";
+
 import {
   Card,
   CardContent,
@@ -59,11 +61,11 @@ export function GameUserTeamInfoCard({
     // If no team is assigned, we show a message indicating that the user is not part of any team.
     return (
       <div className="flex flex-col items-center justify-center p-8">
-        <div className="rounded-lg border border-red-500 bg-red-50 p-6 text-center">
-          <h3 className="mb-2 text-lg font-medium text-red-800">
+        <div className="border-destructive/40 bg-destructive-soft rounded-lg border p-6 text-center">
+          <h3 className="text-destructive mb-2 text-lg font-medium">
             No team assigned
           </h3>
-          <p className="text-red-700">
+          <p className="text-destructive">
             You are not currently assigned to any team. Please switch to the
             Team Switcher tab to select your team.
           </p>
@@ -77,14 +79,15 @@ export function GameUserTeamInfoCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Team Info</CardTitle>
-        <CardDescription>Team related information</CardDescription>
+        <CardTitle>Your team</CardTitle>
+        <CardDescription>Who you&apos;re playing with</CardDescription>
       </CardHeader>
       <CardContent>
-        <p>Team Name: {gameTeam?.name}</p>
-        <p>Team Index Number: {gameTeam?.index}</p>
-        <p>Team Id: {gameTeam?.id}</p>
-        <p>Number of Players on Team: {gameUsers.length}</p>
+        <p>
+          {gameTeam?.name} (team {gameTeam?.index}) · {gameUsers.length}{" "}
+          {gameUsers.length === 1 ? "player" : "players"}
+        </p>
+        {env.NEXT_PUBLIC_SHOW_DEBUG_INFO && <p>Team ID: {gameTeam?.id}</p>}
         <GameTeamUserTable
           data={gameUsers.map((gameUser) => {
             const image =

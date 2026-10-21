@@ -51,13 +51,13 @@ export default async function HelpArticlePage({
   return (
     <article className="flex flex-col gap-6">
       <p>
-        <Link href="/help" className="text-blue-700 underline">
+        <Link href="/help" className="text-primary underline">
           All help
         </Link>
       </p>
       <header>
         <h1 className="text-3xl font-extrabold">{article.title}</h1>
-        <p className="mt-2 text-slate-700">
+        <p className="text-muted-foreground mt-2">
           For{" "}
           {article.audiences
             .map((a) => HELP_AUDIENCES[a])
@@ -72,7 +72,7 @@ export default async function HelpArticlePage({
           <ul className="mt-2 ml-4 list-disc">
             {sections.map((h) => (
               <li key={h.anchor}>
-                <a href={`#${h.anchor}`} className="text-blue-700 underline">
+                <a href={`#${h.anchor}`} className="text-primary underline">
                   {h.text}
                 </a>
               </li>
@@ -95,7 +95,7 @@ export default async function HelpArticlePage({
               <li key={other.id}>
                 <Link
                   href={`/help/${other.id}`}
-                  className="text-blue-700 underline"
+                  className="text-primary underline"
                 >
                   {other.title}
                 </Link>

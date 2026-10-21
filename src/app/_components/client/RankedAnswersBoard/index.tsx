@@ -60,7 +60,7 @@ export function RankedAnswersBoard({
     return (
       <section
         aria-label="Ranked Answers board"
-        className="rounded-xl bg-blue-950/80 p-6 text-center text-white"
+        className="stage bg-stage text-stage-foreground rounded-2xl p-6 text-center shadow-lg"
       >
         <p className={large ? "text-3xl font-bold" : "text-lg font-semibold"}>
           {view.finished
@@ -79,16 +79,16 @@ export function RankedAnswersBoard({
     <section
       aria-label="Ranked Answers board"
       data-testid="ranked-board"
-      className="flex flex-col gap-3 rounded-xl bg-blue-950/80 p-4 text-white"
+      className="stage bg-stage text-stage-foreground border-stage-tile-border/40 flex flex-col gap-3 rounded-2xl border p-4 shadow-lg"
     >
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h2
           data-testid="ranked-prompt"
-          className={`font-extrabold ${large ? "text-4xl" : "text-xl"}`}
+          className={`font-extrabold ${large ? "text-5xl" : "text-xl"}`}
         >
           {board.prompt}
         </h2>
-        <span className="text-sm text-blue-200">
+        <span className="text-stage-muted text-sm">
           {board.role === "practice"
             ? "Practice board: no points"
             : board.role === "spare"
@@ -101,7 +101,7 @@ export function RankedAnswersBoard({
       <p
         role="status"
         data-testid="ranked-status"
-        className={`text-center font-bold text-yellow-300 ${large ? "text-3xl" : "text-lg"}`}
+        className={`font-display text-stage-highlight text-center font-extrabold ${large ? "text-3xl" : "text-lg"}`}
       >
         {boardStatus(board, names)}
       </p>
@@ -122,26 +122,28 @@ export function RankedAnswersBoard({
                   } ${
                     shown
                       ? row.leftover
-                        ? "border-blue-400 bg-blue-800 text-blue-100"
-                        : "border-yellow-300 bg-blue-600 font-bold"
-                      : "border-blue-400 bg-blue-900"
+                        ? "border-stage-tile-border bg-stage-tile text-stage-muted"
+                        : "border-stage-highlight bg-stage-tile-revealed font-bold"
+                      : "border-stage-tile-border bg-stage-tile"
                   }`}
                 >
                   <span className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-950 text-sm font-bold">
+                    <span className="bg-stage flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold">
                       {row.rank}
                     </span>
                     {shown ? (
                       <span>{row.text}</span>
                     ) : host ? (
-                      <span className="text-blue-300 italic">{host.text}</span>
+                      <span className="text-stage-muted italic">
+                        {host.text}
+                      </span>
                     ) : (
                       <span className="sr-only">Hidden answer</span>
                     )}
                   </span>
                   <span className="flex items-center gap-2">
                     {row.teams.length > 0 && (
-                      <span className="text-xs font-normal text-blue-100">
+                      <span className="text-stage-muted text-xs font-normal">
                         {list(row.teams, names)}
                       </span>
                     )}
@@ -149,7 +151,7 @@ export function RankedAnswersBoard({
                       {shown ? (
                         row.points
                       ) : host ? (
-                        <span className="text-blue-300">{host.points}</span>
+                        <span className="text-stage-muted">{host.points}</span>
                       ) : (
                         ""
                       )}
@@ -174,7 +176,9 @@ export function RankedAnswersBoard({
               <span
                 key={i}
                 className={`font-black ${large ? "text-5xl" : "text-2xl"} ${
-                  i < board.strikes ? "text-red-500" : "text-white/20"
+                  i < board.strikes
+                    ? "text-stage-strike"
+                    : "text-stage-muted/25"
                 }`}
               >
                 ✕

@@ -99,7 +99,7 @@ export function DeleteGameDialog({
           </span>
           <input
             aria-label="Game name to confirm deletion"
-            className="rounded-md border px-2 py-1 text-black"
+            className="field px-2 py-1"
             value={confirmName}
             onChange={(e) => setConfirmName(e.target.value)}
           />

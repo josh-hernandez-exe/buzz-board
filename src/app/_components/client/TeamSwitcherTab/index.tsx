@@ -37,11 +37,11 @@ export function TeamSwitcherTab({
   if (currentAssignment === "staff") {
     return (
       <div className="flex flex-col items-center justify-center p-8">
-        <div className="rounded-lg border border-yellow-500 bg-yellow-50 p-6 text-center">
-          <h3 className="mb-2 text-lg font-medium text-yellow-800">
+        <div className="border-warning bg-warning/30 rounded-lg border p-6 text-center">
+          <h3 className="text-warning-foreground mb-2 text-lg font-medium">
             Your host assigns teams
           </h3>
-          <p className="text-yellow-700">
+          <p className="text-warning-foreground">
             Ask your host if you need to be on a different team.
           </p>
         </div>
@@ -52,11 +52,11 @@ export function TeamSwitcherTab({
   if (isTeamsFrozen) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
-        <div className="rounded-lg border border-yellow-500 bg-yellow-50 p-6 text-center">
-          <h3 className="mb-2 text-lg font-medium text-yellow-800">
+        <div className="border-warning bg-warning/30 rounded-lg border p-6 text-center">
+          <h3 className="text-warning-foreground mb-2 text-lg font-medium">
             Team switching is currently disabled
           </h3>
-          <p className="text-yellow-700">
+          <p className="text-warning-foreground">
             The game administrator has temporarily frozen team assignments.
           </p>
         </div>

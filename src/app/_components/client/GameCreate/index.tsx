@@ -39,7 +39,7 @@ export function CreateGame() {
 
   return (
     <form
-      className="flex w-full max-w-sm flex-col gap-4 rounded-xl bg-white/10 p-4"
+      className="flex w-full max-w-sm flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault();
         if (!canSubmit) return;
@@ -58,7 +58,7 @@ export function CreateGame() {
           value={name}
           maxLength={NAME_LIMITS.maxGameName}
           onChange={(e) => setName(e.target.value)}
-          className="rounded-lg bg-white/10 px-3 py-2 text-base text-white"
+          className="field px-3 py-2 text-base"
         />
       </label>
 
@@ -115,14 +115,17 @@ export function CreateGame() {
               +
             </Button>
           </div>
-          <p className="text-xs text-white/70">
+          <p className="text-muted-foreground text-xs">
             New players are placed on the team with the fewest players. You can
             change this, and rename or add teams, from the host desk.
           </p>
         </div>
       )}
 
-      <ErrorNotice error={createGame.error} className="text-sm text-red-300" />
+      <ErrorNotice
+        error={createGame.error}
+        className="text-destructive text-sm"
+      />
 
       <Button type="submit" disabled={!canSubmit}>
         {createGame.isPending ? "Creating…" : "Create game"}

@@ -4,6 +4,9 @@ import { HydrateClient } from "@/trpc/server";
 import { helpHref } from "@/help/manifest";
 import Link from "next/link";
 
+import { AppHeader } from "@/app/_components/server/AppHeader";
+import { PageHeading, PageShell } from "@/app/_components/ui/page";
+
 export default async function JoinGamePage({
   searchParams,
 }: {
@@ -14,21 +17,22 @@ export default async function JoinGamePage({
 
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] px-4 text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <h1 className="mb-4 text-2xl font-bold">Join a Game</h1>
-          <JoinGameComponent
-            code={code as string | undefined}
-            signedIn={!!session?.user}
-          />
-          <Link
-            href={helpHref("join-and-resume")}
-            className="mt-6 text-sm text-white/80 underline"
-          >
-            Need help joining?
-          </Link>
-        </div>
-      </main>
+      <PageShell header={<AppHeader />} width="narrow" center>
+        <PageHeading
+          title="Join a game"
+          description="Enter the code your host shared, and pick a nickname."
+        />
+        <JoinGameComponent
+          code={code as string | undefined}
+          signedIn={!!session?.user}
+        />
+        <Link
+          href={helpHref("join-and-resume")}
+          className="text-muted-foreground text-sm underline"
+        >
+          Need help joining?
+        </Link>
+      </PageShell>
     </HydrateClient>
   );
 }

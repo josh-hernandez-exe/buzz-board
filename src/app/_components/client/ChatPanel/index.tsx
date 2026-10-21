@@ -57,7 +57,8 @@ export function ChatPanel({
   const channel = channels.find((c) => c.key === channelKey);
 
   if (statusQuery.error) return <ErrorNotice error={statusQuery.error} />;
-  if (!status) return <p className="text-sm text-gray-300">Loading chat…</p>;
+  if (!status)
+    return <p className="text-muted-foreground text-sm">Loading chat…</p>;
 
   const readOnly = pulse?.readOnly ?? status.readOnly;
   const muted = pulse ? pulse.muted : status.muted;
@@ -72,7 +73,7 @@ export function ChatPanel({
   return (
     <section
       aria-label="Chat"
-      className="flex w-full flex-col gap-3 rounded-lg bg-white/10 p-4 text-white"
+      className="bg-surface border-border flex w-full flex-col gap-3 rounded-xl border p-4 shadow-sm"
     >
       {canToggle && <ChatToggle enabled={enabled} />}
       {!enabled ? (
@@ -91,7 +92,7 @@ export function ChatPanel({
       ) : (
         <>
           {liveStatus === "connecting" && pulse && (
-            <p role="status" className="text-sm text-amber-300">
+            <p role="status" className="text-warning-foreground text-sm">
               Reconnecting… chat may be out of date.
             </p>
           )}
@@ -112,8 +113,8 @@ export function ChatPanel({
                 }}
                 className={`rounded-full px-3 py-1 text-sm ${
                   !showAll && c.key === channelKey
-                    ? "bg-white text-black"
-                    : "bg-white/10 hover:bg-white/20"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-surface-sunken hover:bg-muted"
                 }`}
               >
                 {c.label}
@@ -127,8 +128,8 @@ export function ChatPanel({
                 onClick={() => setShowAll(true)}
                 className={`rounded-full px-3 py-1 text-sm ${
                   showAll
-                    ? "bg-white text-black"
-                    : "bg-white/10 hover:bg-white/20"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-surface-sunken hover:bg-muted"
                 }`}
               >
                 All channels
@@ -231,7 +232,7 @@ function ChannelControls({
       <label className="flex items-center gap-2">
         Slow mode
         <select
-          className="rounded bg-white/10 px-2 py-1"
+          className="field px-2 py-1"
           value={slowModeSeconds}
           disabled={setPolicy.isPending}
           onChange={(e) =>
@@ -243,7 +244,7 @@ function ChannelControls({
         >
           {[...new Set<number>([...SLOW_MODE_CHOICES, slowModeSeconds])].map(
             (seconds) => (
-              <option key={seconds} value={seconds} className="text-black">
+              <option key={seconds} value={seconds} className="text-foreground">
                 {seconds === 0 ? "Off" : `${seconds} seconds`}
               </option>
             ),
@@ -307,14 +308,15 @@ function ChannelMessages({
 
   if (query.error) return <ErrorNotice error={query.error} />;
   const view = query.data;
-  if (!view) return <p className="text-sm text-gray-300">Loading messages…</p>;
+  if (!view)
+    return <p className="text-muted-foreground text-sm">Loading messages…</p>;
 
   return (
     <div className="flex flex-col gap-2">
       {view.pinned && (
         <div
           data-testid="chat-pinned"
-          className="rounded border border-yellow-300/60 bg-yellow-300/10 p-2 text-sm"
+          className="border-accent bg-accent/20 rounded border p-2 text-sm"
         >
           <span className="font-semibold">Pinned: </span>
           <MessageBody message={view.pinned} />
@@ -337,7 +339,7 @@ function ChannelMessages({
             Show older messages
           </Button>
         ) : (
-          <p className="text-xs text-gray-300">
+          <p className="text-muted-foreground text-xs">
             Only the newest {CHAT_LIMITS.recentWindow} messages are shown.
           </p>
         ))}
@@ -347,13 +349,13 @@ function ChannelMessages({
         className="flex max-h-96 flex-col gap-2 overflow-y-auto"
       >
         {view.messages.length === 0 && (
-          <li className="text-sm text-gray-300">No messages yet.</li>
+          <li className="text-muted-foreground text-sm">No messages yet.</li>
         )}
         {view.messages.map((message) => (
           <li
             key={message.id}
             data-testid="chat-message"
-            className={`rounded p-2 ${message.isOwn ? "bg-white/20" : "bg-black/20"}`}
+            className={`rounded p-2 ${message.isOwn ? "bg-muted" : "bg-surface-sunken"}`}
           >
             <Author message={message} channelKey={channelKey} />
             <MessageBody message={message} />
@@ -381,13 +383,13 @@ function Author({
 }) {
   const { author } = message;
   return (
-    <div className="flex flex-wrap items-baseline gap-2 text-xs text-gray-300">
-      <span className="font-semibold text-white">
+    <div className="text-muted-foreground flex flex-wrap items-baseline gap-2 text-xs">
+      <span className="text-foreground font-semibold">
         {author.name}
         {message.isOwn && " (you)"}
       </span>
       {author.roleLabel && (
-        <span className="rounded bg-purple-500/60 px-1 text-white">
+        <span className="bg-accent text-accent-foreground rounded px-1">
           {author.roleLabel}
         </span>
       )}
@@ -404,13 +406,15 @@ function Author({
 function MessageBody({ message }: { message: Message }) {
   if (message.state === "removed") {
     return (
-      <p className="text-sm text-gray-300 italic">
+      <p className="text-muted-foreground text-sm italic">
         Message removed by an organizer.
       </p>
     );
   }
   if (message.state === "expired") {
-    return <p className="text-sm text-gray-300 italic">Message expired.</p>;
+    return (
+      <p className="text-muted-foreground text-sm italic">Message expired.</p>
+    );
   }
   return (
     <p className="text-sm break-words whitespace-pre-wrap">{message.body}</p>
@@ -484,22 +488,23 @@ function ModerationActions({
 function AllChannels() {
   const recent = api.chat.moderation.recent.useQuery();
   if (recent.error) return <ErrorNotice error={recent.error} />;
-  if (!recent.data) return <p className="text-sm text-gray-300">Loading…</p>;
+  if (!recent.data)
+    return <p className="text-muted-foreground text-sm">Loading…</p>;
   return (
     <ol
       aria-label="All channels"
       className="flex max-h-96 flex-col gap-2 overflow-y-auto"
     >
       {recent.data.length === 0 && (
-        <li className="text-sm text-gray-300">No messages yet.</li>
+        <li className="text-muted-foreground text-sm">No messages yet.</li>
       )}
       {recent.data.map((message) => (
         <li
           key={message.id}
           data-testid="chat-message"
-          className="rounded bg-black/20 p-2"
+          className="bg-surface-sunken rounded p-2"
         >
-          <span className="rounded bg-white/20 px-1 text-xs">
+          <span className="bg-muted rounded px-1 text-xs">
             {message.channelLabel}
           </span>
           <Author message={message} />
@@ -589,7 +594,7 @@ function Composer({
 
   if (blocked) {
     return (
-      <p data-testid="chat-blocked" className="text-sm text-gray-300">
+      <p data-testid="chat-blocked" className="text-muted-foreground text-sm">
         {blocked}{" "}
         <a
           className="underline"
@@ -613,7 +618,7 @@ function Composer({
         value={text}
         rows={2}
         placeholder="Write a message"
-        className="w-full rounded bg-white/90 p-2 text-sm text-black"
+        className="field w-full p-2 text-sm"
         onChange={(e) => {
           setText(e.target.value);
           requestId.current = null;
@@ -624,7 +629,9 @@ function Composer({
         }}
       />
       <div className="flex items-center justify-between gap-2 text-xs">
-        <span className={tooLong ? "text-red-300" : "text-gray-300"}>
+        <span
+          className={tooLong ? "text-destructive" : "text-muted-foreground"}
+        >
           {tooLong
             ? `Too long by ${bytes - CHAT_LIMITS.maxMessageBytes} bytes`
             : slowModeSeconds > 0
@@ -639,7 +646,7 @@ function Composer({
           {send.isPending ? "Sending…" : "Send"}
         </Button>
       </div>
-      <ErrorNotice error={send.error} className="text-sm text-red-300" />
+      <ErrorNotice error={send.error} className="text-destructive text-sm" />
     </form>
   );
 }

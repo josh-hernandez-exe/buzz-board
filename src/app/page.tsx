@@ -1,10 +1,12 @@
-import Link from "next/link";
-
+import { AppHeader } from "@/app/_components/server/AppHeader";
+import {
+  LinkButton,
+  PageShell,
+  Panel,
+  Wordmark,
+} from "@/app/_components/ui/page";
 import { auth } from "@/server/auth";
 import { HydrateClient } from "@/trpc/server";
-
-const linkClass =
-  "w-full rounded-full bg-white/10 px-10 py-3 text-center font-semibold no-underline transition hover:bg-white/20";
 
 /** Join and Host are always offered, whether or not someone is signed in. */
 export default async function Home() {
@@ -12,40 +14,50 @@ export default async function Home() {
 
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] px-4 text-white">
-        <div className="flex w-full max-w-xs flex-col items-center gap-8 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight">Buzz-Board</h1>
-          <p className="text-center text-white/80">
-            Buzzers and a live scoreboard for trivia, quizzes and game nights.
+      <PageShell header={<AppHeader />} width="normal" center>
+        <section className="flex flex-col items-center gap-4 py-6 text-center">
+          <h1 className="text-5xl sm:text-6xl">
+            <Wordmark />
+          </h1>
+          <p className="text-muted-foreground max-w-md text-lg">
+            Buzzers, a live scoreboard and family-feud style boards for trivia,
+            quizzes and game nights.
           </p>
-          <nav className="flex w-full flex-col gap-3" aria-label="Get started">
-            <Link href="/join" className={linkClass}>
+        </section>
+        <div className="grid gap-4 sm:grid-cols-2" aria-label="Get started">
+          <Panel
+            title="Playing?"
+            description="No account needed: just a code and a nickname."
+          >
+            <LinkButton href="/join" size="lg" className="w-full">
               Join a game
-            </Link>
-            <Link
+            </LinkButton>
+          </Panel>
+          <Panel
+            title="Hosting?"
+            description="Sign in to create games and run them from your desk."
+          >
+            <LinkButton
               href={
                 session
                   ? "/dashboard"
                   : "/api/auth/signin?callbackUrl=/dashboard"
               }
-              className={linkClass}
+              size="lg"
+              variant="secondary"
+              className="w-full"
             >
-              Host a game
-            </Link>
-            <Link href="/help" className={linkClass}>
-              Help
-            </Link>
-            {session && (
-              <Link href="/api/auth/signout" className={linkClass}>
-                Sign out
-              </Link>
-            )}
-          </nav>
-          <p className="text-center text-sm text-white/70">
-            Players don&apos;t need an account. Hosts sign in to create games.
-          </p>
+              {session ? "Go to my games" : "Host a game"}
+            </LinkButton>
+          </Panel>
         </div>
-      </main>
+        <p className="text-muted-foreground text-center text-sm">
+          New here?{" "}
+          <LinkButton href="/help" variant="ghost" size="sm">
+            Read the guides
+          </LinkButton>
+        </p>
+      </PageShell>
     </HydrateClient>
   );
 }

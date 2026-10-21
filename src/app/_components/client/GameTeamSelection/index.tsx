@@ -146,7 +146,7 @@ export function GameTeamSelection({
                 </div>
                 <DrawerFooter>
                   {changeTeamMutation.error && (
-                    <div className="mb-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+                    <div className="border-destructive/40 bg-destructive-soft text-destructive mb-2 rounded-md border p-3 text-sm">
                       {changeTeamMutation.error.message}
                     </div>
                   )}

@@ -20,28 +20,30 @@ export function GameAdminBuzzerControl() {
 
   return (
     <GenericCard
-      title="Admin Buzzer Control"
-      description="Control the buzzer state"
+      title="Buzzer"
+      description="Open the buzzer for a question, pause it, or clear it for the next one."
       content={
-        <div>
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => startBuzzerMutation.mutate()}
             disabled={isPending}
-            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+            size="lg"
           >
             Start Buzzer
           </Button>
           <Button
             onClick={() => pauseBuzzerMutation.mutate()}
             disabled={isPending}
-            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+            size="lg"
+            variant="secondary"
           >
             Pause Buzzer
           </Button>
           <Button
             onClick={() => resetBuzzerMutation.mutate()}
             disabled={isPending}
-            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+            size="lg"
+            variant="outline"
           >
             Reset Buzzer
           </Button>

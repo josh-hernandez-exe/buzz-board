@@ -1,3 +1,4 @@
+import { MessagePage, PageShell } from "@/app/_components/ui/page";
 import { api, HydrateClient } from "@/trpc/server";
 
 import { PublicScoreboard } from "./PublicScoreboard";
@@ -11,12 +12,9 @@ export default async function GamePage({
 
   if (!gameId) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <h1 className="mb-4 text-2xl font-bold">Game Not Found</h1>
-          <p>No game identifier was given.</p>
-        </div>
-      </main>
+      <MessagePage title="Game not found">
+        <p className="text-muted-foreground">No game identifier was given.</p>
+      </MessagePage>
     );
   }
 
@@ -26,20 +24,19 @@ export default async function GamePage({
 
   if (!currentGameState) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <h1 className="mb-4 text-2xl font-bold">Game Not Found</h1>
-          <p>No game was found or not ready yet to be viewed.</p>
-        </div>
-      </main>
+      <MessagePage title="Game not found">
+        <p className="text-muted-foreground">
+          No game was found or not ready yet to be viewed.
+        </p>
+      </MessagePage>
     );
   }
 
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
+      <PageShell stage width="wide">
         <PublicScoreboard gameState={currentGameState} />
-      </main>
+      </PageShell>
     </HydrateClient>
   );
 }

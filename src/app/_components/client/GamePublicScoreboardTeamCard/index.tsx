@@ -37,14 +37,16 @@ export function GamePublicScoreboardTeamCard({
   }
 
   const cardColor = cn({
-    "bg-white": gameTeam.buzzerState === BuzzerState.available,
-    "bg-green-500 text-white": gameTeam.buzzerState === BuzzerState.selected,
-    "bg-red-500 text-white": gameTeam.buzzerState === BuzzerState.rejected,
+    "bg-surface": gameTeam.buzzerState === BuzzerState.available,
+    "bg-success text-success-foreground":
+      gameTeam.buzzerState === BuzzerState.selected,
+    "bg-destructive text-destructive-foreground":
+      gameTeam.buzzerState === BuzzerState.rejected,
   });
 
   const icon =
     gameTeam.buzzerState === BuzzerState.rejected ? (
-      <X className="bottom-0 left-0 h-16 w-16 text-white opacity-30" />
+      <X className="text-foreground bottom-0 left-0 h-16 w-16 opacity-30" />
     ) : null;
 
   return (

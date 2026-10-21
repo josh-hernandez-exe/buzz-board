@@ -1,3 +1,4 @@
+import { MessagePage, PageShell, SiteHeader } from "@/app/_components/ui/page";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { GameFormat } from "@prisma/client";
@@ -44,12 +45,9 @@ export default async function GameUserPage({
 
   if (!gameId) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <h1 className="mb-4 text-2xl font-bold">Game Not Found</h1>
-          <p>No game identifier was given.</p>
-        </div>
-      </main>
+      <MessagePage title="Game not found">
+        <p className="text-muted-foreground">No game identifier was given.</p>
+      </MessagePage>
     );
   }
 
@@ -59,12 +57,11 @@ export default async function GameUserPage({
 
   if (!gameUser) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <h1 className="mb-4 text-2xl font-bold">Unauthorized</h1>
-          <p>Game user not exist or you are not authorized.</p>
-        </div>
-      </main>
+      <MessagePage title="You're not in this game">
+        <p className="text-muted-foreground">
+          Join the game again with its code, or ask the host for help.
+        </p>
+      </MessagePage>
     );
   }
 
@@ -81,10 +78,13 @@ export default async function GameUserPage({
   return (
     <HydrateClient>
       <GameScope gameId={gameId} initialState={currentGameState}>
-        <main className="flex min-h-screen flex-col items-center bg-gradient-to-b from-[#2e026d] to-[#15162c] px-4 py-6 text-white">
+        <PageShell
+          header={<SiteHeader links={[{ href: "/help", label: "Help" }]} />}
+          width="narrow"
+        >
           {/* Game sound effects for the user's team */}
           <GameSoundEffects gameTeamId={gameUser.gameTeamId ?? undefined} />
-          <div className="flex w-full max-w-md flex-col items-center gap-6">
+          <div className="flex w-full flex-col items-center gap-6">
             <PlayerHeader
               gameUserId={gameUser.id}
               signedIn={!!session?.user}
@@ -126,7 +126,7 @@ export default async function GameUserPage({
               </TabsContent>
             </Tabs>
           </div>
-        </main>
+        </PageShell>
       </GameScope>
     </HydrateClient>
   );

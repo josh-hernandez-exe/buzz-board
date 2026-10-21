@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { CreateGame } from "@/app/_components/client/GameCreate";
@@ -6,6 +5,13 @@ import { UserGameView } from "@/app/_components/client/UserGameView";
 import { auth } from "@/server/auth";
 import { api, HydrateClient } from "@/trpc/server";
 import { helpHref } from "@/help/manifest";
+import { AppHeader } from "@/app/_components/server/AppHeader";
+import {
+  LinkButton,
+  PageHeading,
+  PageShell,
+  Panel,
+} from "@/app/_components/ui/page";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -16,43 +22,23 @@ export default async function DashboardPage() {
 
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center bg-gradient-to-b from-[#2e026d] to-[#15162c] px-4 py-8 text-white">
-        <div className="flex w-full max-w-3xl flex-col items-center gap-8">
-          <header className="flex w-full flex-wrap items-center justify-between gap-2">
-            <p>Signed in as {session.user?.name ?? "host"}</p>
-            <nav className="flex gap-2">
-              <Link
-                href="/join"
-                className="rounded-full bg-white/10 px-4 py-2 font-semibold hover:bg-white/20"
-              >
-                Join a game
-              </Link>
-              <Link
-                href={helpHref("host-quickstart")}
-                className="rounded-full bg-white/10 px-4 py-2 font-semibold hover:bg-white/20"
-              >
-                Host guide
-              </Link>
-              <Link
-                href="/api/auth/signout"
-                className="rounded-full bg-white/10 px-4 py-2 font-semibold hover:bg-white/20"
-              >
-                Sign out
-              </Link>
-            </nav>
-          </header>
-          <section className="flex w-full flex-col items-center gap-4">
-            <h1 className="text-3xl font-extrabold tracking-tight">
-              Create a game
-            </h1>
-            <CreateGame />
-          </section>
-          <section className="w-full overflow-x-auto">
-            <h2 className="mb-2 text-xl font-bold">Your games</h2>
-            <UserGameView games={games} />
-          </section>
-        </div>
-      </main>
+      <PageShell header={<AppHeader />} width="wide">
+        <PageHeading
+          title="My games"
+          description="Create a game, or open one you host or help run."
+          actions={
+            <LinkButton href={helpHref("host-quickstart")} variant="secondary">
+              Host guide
+            </LinkButton>
+          }
+        />
+        <Panel title="Create a game">
+          <CreateGame />
+        </Panel>
+        <Panel title="Your games">
+          <UserGameView games={games} />
+        </Panel>
+      </PageShell>
     </HydrateClient>
   );
 }

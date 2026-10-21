@@ -38,7 +38,7 @@ export function PlayerHeader({
   const team = data.gameTeams.find((t) => t.id === self?.gameTeamId);
 
   return (
-    <header className="flex w-full max-w-md flex-col gap-2 rounded-xl bg-white/10 p-4">
+    <header className="bg-surface-sunken flex w-full max-w-md flex-col gap-2 rounded-xl p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-xl font-bold">{game.name}</h1>
         <span className="font-mono text-sm tracking-widest">{game.code}</span>
@@ -60,7 +60,7 @@ export function PlayerHeader({
         .
       </p>
       {game.status === GameStatus.finished && (
-        <p role="status" className="rounded-md bg-white/20 px-3 py-2">
+        <p role="status" className="bg-muted rounded-md px-3 py-2">
           This game has finished. Final scores are on the scoreboard.
         </p>
       )}
@@ -68,12 +68,12 @@ export function PlayerHeader({
         href={helpHref("troubleshooting", "why-cant-i-buzz")}
         target="_blank"
         rel="noopener"
-        className="text-sm text-white/80 underline"
+        className="text-muted-foreground text-sm underline"
       >
         Help: what do the buzzer messages mean?
       </a>
       {isLinked ? (
-        <p className="text-sm text-white/80">
+        <p className="text-muted-foreground text-sm">
           Saved to your account: sign in on another device to get back in as
           yourself.
         </p>
@@ -89,22 +89,22 @@ export function PlayerHeader({
             >
               Save this player to my account
             </Button>
-            <span className="text-white/70">
+            <span className="text-muted-foreground">
               Lets you get back in on another device by signing in.
             </span>
             <ErrorNotice
               error={linkAccount.error}
-              className="text-sm text-red-300"
+              className="text-destructive text-sm"
             />
           </div>
         )
       )}
       <details className="text-sm">
-        <summary className="cursor-pointer text-white/80">
+        <summary className="text-muted-foreground cursor-pointer">
           Leave this room on this device
         </summary>
         <div className="mt-2 flex flex-col gap-2">
-          <p className="text-white/80">
+          <p className="text-muted-foreground">
             This browser forgets you in this game. Your name, team and points
             stay in the game. To return as yourself later, sign in (if you saved
             this player to your account) or ask your host for a recovery link.

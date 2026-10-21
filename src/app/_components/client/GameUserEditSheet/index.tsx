@@ -122,7 +122,10 @@ export function GameUserEditSheet() {
               onChange={(e) => setName(e.target.value)}
             />
             {nameLocked && (
-              <p id="player-name-locked" className="text-sm text-slate-600">
+              <p
+                id="player-name-locked"
+                className="text-muted-foreground text-sm"
+              >
                 {LOCKED_SELF}
               </p>
             )}
@@ -140,7 +143,10 @@ export function GameUserEditSheet() {
                 onChange={(e) => setTeamName(e.target.value)}
               />
               {teamLocked && (
-                <p id="team-name-locked" className="text-sm text-slate-600">
+                <p
+                  id="team-name-locked"
+                  className="text-muted-foreground text-sm"
+                >
                   {LOCKED_TEAM}
                 </p>
               )}

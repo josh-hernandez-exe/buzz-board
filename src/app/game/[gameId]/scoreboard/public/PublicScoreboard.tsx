@@ -62,7 +62,7 @@ function AudienceDisplay({
 
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold tracking-wide uppercase">
+          <span className="bg-muted rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase">
             Audience display
           </span>
           <h1 className="mt-2 text-3xl font-extrabold">{game.name}</h1>
@@ -95,7 +95,7 @@ function AudienceDisplay({
       {game.joinCode && (
         <section
           aria-label="How to join"
-          className="flex flex-wrap items-center justify-center gap-6 rounded-xl bg-white/10 p-4"
+          className="bg-surface-sunken flex flex-wrap items-center justify-center gap-6 rounded-xl p-4"
         >
           <div className="text-center">
             <p className="text-lg">
@@ -108,7 +108,7 @@ function AudienceDisplay({
               {game.joinCode}
             </p>
           </div>
-          <div className="rounded-lg bg-white p-2">
+          <div className="bg-qr rounded-lg p-2">
             <JoinQrCode code={game.joinCode} className="h-28 w-28" />
           </div>
         </section>
@@ -127,7 +127,7 @@ function AudienceDisplay({
         ))}
       </section>
       {gameTeams.length === 0 && (
-        <p className="text-center text-white/80">
+        <p className="text-muted-foreground text-center">
           Players will appear here as they join.
         </p>
       )}

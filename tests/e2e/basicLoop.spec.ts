@@ -66,7 +66,7 @@ test("host creates a game, a guest buzzes in and the display updates", async ({
     .toBe(true);
   await expect(player.getByText("Buzzer open: press now!")).toBeVisible();
   await buzzer.click();
-  await expect(card).toHaveClass(/bg-green-500/);
+  await expect(card).toHaveClass(/bg-success/);
   await expect(player.getByText("You buzzed in first!")).toBeVisible();
 
   // Host awards points to the selected player; the display updates live.

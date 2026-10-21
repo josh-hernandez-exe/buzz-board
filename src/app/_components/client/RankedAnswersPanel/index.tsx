@@ -27,8 +27,7 @@ import { sampleContent } from "@/utils/rankedAnswers/sample";
 
 type HostView = RouterOutputs["rankedAnswers"]["hostView"];
 
-const field =
-  "rounded border border-white/30 bg-white/90 px-2 py-1 text-sm text-black";
+const field = "field px-2 py-1 text-sm";
 
 /**
  * The host desk's Ranked Answers tab: set up boards, then run them. Only
@@ -51,9 +50,9 @@ export function RankedAnswersPanel() {
   return (
     <section
       aria-label="Ranked Answers"
-      className="flex w-full flex-col gap-4 rounded-lg bg-white/10 p-4 text-white"
+      className="bg-surface border-border flex w-full flex-col gap-4 rounded-xl border p-4 shadow-sm"
     >
-      <p className="text-sm text-white/80">
+      <p className="text-muted-foreground text-sm">
         <strong>Ranked Answers</strong>: teams guess the answers on a board,
         family-feud style. Points go straight onto the scoreboard.{" "}
         <a
@@ -126,7 +125,7 @@ function Editor({ view }: { view: HostView }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <fieldset className="flex flex-col gap-3 rounded border border-white/20 p-3">
+      <fieldset className="border-border flex flex-col gap-3 rounded border p-3">
         <legend className="px-1 font-semibold">Rules</legend>
         <label className="flex flex-col gap-1 text-sm">
           Play style ({teamCount} teams in this game; suggested:{" "}
@@ -144,7 +143,7 @@ function Editor({ view }: { view: HostView }) {
               </option>
             ))}
           </select>
-          <span className="text-white/70">
+          <span className="text-muted-foreground">
             {STYLE_DESCRIPTION[draft.rules.playStyle]}
             {(teamCount < min || teamCount > max) &&
               ` This style needs ${min === max ? min : `${min}–${max}`} teams.`}
@@ -216,7 +215,7 @@ function Editor({ view }: { view: HostView }) {
       <div className="flex flex-col gap-3">
         <h3 className="font-semibold">Boards ({draft.boards.length})</h3>
         {draft.boards.length === 0 && (
-          <p className="text-sm text-white/80">
+          <p className="text-muted-foreground text-sm">
             No boards yet. Add one, or load the sample to see how it works.
           </p>
         )}
@@ -287,7 +286,7 @@ function Editor({ view }: { view: HostView }) {
         </Button>
         <Button
           variant="default"
-          className="bg-green-600 hover:bg-green-700"
+          className="bg-success text-success-foreground hover:bg-success/90"
           disabled={dirty || check.blocking.length > 0 || start.isPending}
           title={
             dirty
@@ -309,12 +308,14 @@ function Editor({ view }: { view: HostView }) {
           Start Ranked Answers
         </Button>
         {dirty && (
-          <span className="text-sm text-amber-300">Unsaved changes</span>
+          <span className="text-warning-foreground text-sm">
+            Unsaved changes
+          </span>
         )}
       </div>
       <ErrorNotice
         error={save.error ?? start.error}
-        className="text-sm text-red-300"
+        className="text-destructive text-sm"
       />
     </div>
   );
@@ -404,7 +405,7 @@ function BoardEditor({
   return (
     <fieldset
       data-testid="board-editor"
-      className="flex flex-col gap-2 rounded border border-white/20 p-3"
+      className="border-border flex flex-col gap-2 rounded border p-3"
     >
       <legend className="px-1 text-sm font-semibold">Board {index + 1}</legend>
       <div className="flex flex-wrap items-end gap-2">
@@ -519,7 +520,7 @@ function BoardEditor({
                 }
               />
             ) : (
-              <span className="w-20 text-sm text-white/70">
+              <span className="text-muted-foreground w-20 text-sm">
                 {pointsFor(rules, board, i + 1)} pts
               </span>
             )}
@@ -602,7 +603,7 @@ function JsonBox({
   const [problem, setProblem] = useState<string | null>(null);
   return (
     <div className="flex flex-col gap-2 text-sm">
-      <p className="text-white/80">
+      <p className="text-muted-foreground">
         Copy this to keep a backup or edit it elsewhere. Paste boards here and
         choose Import to replace the current ones.
       </p>
@@ -645,7 +646,7 @@ function JsonBox({
           Show current boards
         </Button>
       </div>
-      {problem && <p className="text-red-300">{problem}</p>}
+      {problem && <p className="text-destructive">{problem}</p>}
     </div>
   );
 }
@@ -656,13 +657,13 @@ function Preflight({
   check: { blocking: string[]; warnings: string[] };
 }) {
   if (check.blocking.length === 0 && check.warnings.length === 0) {
-    return <p className="text-sm text-green-300">Ready to start.</p>;
+    return <p className="text-success text-sm">Ready to start.</p>;
   }
   return (
     <div data-testid="preflight" className="flex flex-col gap-2 text-sm">
       {check.blocking.length > 0 && (
         <div>
-          <p className="font-semibold text-red-300">Fix before starting</p>
+          <p className="text-destructive font-semibold">Fix before starting</p>
           <ul className="list-disc pl-5">
             {check.blocking.map((p) => (
               <li key={p}>{p}</li>
@@ -672,7 +673,7 @@ function Preflight({
       )}
       {check.warnings.length > 0 && (
         <div>
-          <p className="font-semibold text-amber-300">Worth knowing</p>
+          <p className="text-warning-foreground font-semibold">Worth knowing</p>
           <ul className="list-disc pl-5">
             {check.warnings.map((p) => (
               <li key={p}>{p}</li>
@@ -743,7 +744,7 @@ function Controls({ view }: { view: HostView }) {
         />
       )}
       {boardContent && board && board.phase !== "closed" && (
-        <p className="text-xs text-white/70">
+        <p className="text-muted-foreground text-xs">
           Answers in <em>italics</em> are hidden from players. Also accept:{" "}
           {hidden
             .filter((a) => a.aliases.length > 0)
@@ -787,11 +788,11 @@ function Controls({ view }: { view: HostView }) {
 
       <ErrorNotice
         error={act.error ?? undo.error ?? end.error}
-        className="text-sm text-red-300"
+        className="text-destructive text-sm"
       />
 
       {running && (
-        <div className="flex flex-wrap gap-2 border-t border-white/20 pt-3">
+        <div className="border-border flex flex-wrap gap-2 border-t pt-3">
           <Button
             variant="secondary"
             disabled={!view.canUndo || busy}
@@ -822,7 +823,7 @@ function Controls({ view }: { view: HostView }) {
         </div>
       )}
       {running && (
-        <p className="text-xs text-white/70">
+        <p className="text-muted-foreground text-xs">
           Undo takes back the points of the last action. Answers already shown
           stay shown, for 0 points.
         </p>
@@ -1022,7 +1023,7 @@ function PhaseControls({
         <Button
           key={a.id}
           disabled={disabled}
-          className="bg-blue-600 hover:bg-blue-700"
+          className="bg-info text-primary-foreground hover:bg-info/90"
           onClick={() => onPick(a.id)}
         >
           #{a.rank} {a.text}

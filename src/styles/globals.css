@@ -3,90 +3,122 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-}
-
-li {
-  margin-left: 10px;
-  list-style-type: circle;
-}
-
-/* Help pages choose list styles on <ul>/<ol>; the global rule above is
-   unlayered, so it would otherwise override Tailwind's list utilities. */
-.help-content li {
-  margin-left: 0;
-  list-style-type: inherit;
-}
+/*
+ * Buzz Board design tokens
+ * ========================
+ * Every colour in the app comes from here. Components use the semantic
+ * names (bg-surface, text-muted-foreground, bg-primary, bg-stage-tile...),
+ * never raw palette classes like bg-blue-600 or text-white, so restyling the
+ * app means editing this file only. tests/unit/designTokens.test.ts enforces
+ * that. See docs/design-system.md.
+ *
+ * Two themes:
+ * - The app theme (default): warm "game night" paper and ink, a buzzer-red
+ *   primary and a gold accent. Used by desks, the dashboard and Help.
+ * - The stage theme (.stage): a dark game-show look for the board and the
+ *   audience display, which are often projected or screen-shared.
+ */
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  /* Brand palette: change these to restyle everything. */
+  --brand-paper: oklch(0.975 0.012 85);
+  --brand-paper-deep: oklch(0.94 0.02 80);
+  --brand-ink: oklch(0.24 0.045 265);
+  --brand-ink-soft: oklch(0.45 0.035 265);
+  --brand-buzzer: oklch(0.56 0.2 30);
+  --brand-buzzer-deep: oklch(0.48 0.19 30);
+  --brand-gold: oklch(0.84 0.15 85);
+  --brand-teal: oklch(0.5 0.1 190);
+  --brand-navy: oklch(0.2 0.06 265);
+  --brand-navy-tile: oklch(0.33 0.11 262);
+  --brand-sky: oklch(0.55 0.15 255);
+
+  --radius: 0.75rem;
+
+  /* Semantic tokens (shadcn names, plus surface, success, warning, stage). */
+  --background: var(--brand-paper);
+  --foreground: var(--brand-ink);
+  --surface: oklch(1 0 0);
+  --surface-foreground: var(--brand-ink);
+  --surface-sunken: var(--brand-paper-deep);
+  --card: var(--surface);
+  --card-foreground: var(--brand-ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--brand-ink);
+  --primary: var(--brand-buzzer);
+  --primary-hover: var(--brand-buzzer-deep);
+  --primary-foreground: oklch(0.99 0.005 85);
+  --secondary: var(--brand-paper-deep);
+  --secondary-foreground: var(--brand-ink);
+  --muted: var(--brand-paper-deep);
+  --muted-foreground: var(--brand-ink-soft);
+  --accent: var(--brand-gold);
+  --accent-foreground: var(--brand-ink);
+  --success: var(--brand-teal);
+  --success-foreground: oklch(0.99 0.005 85);
+  --success-soft: oklch(0.93 0.04 190);
+  --warning: oklch(0.88 0.12 85);
+  --warning-foreground: oklch(0.32 0.07 70);
+  --destructive: oklch(0.53 0.21 27);
+  --destructive-foreground: oklch(0.99 0.005 85);
+  --destructive-soft: oklch(0.94 0.04 27);
+  --info: var(--brand-sky);
+  --border: oklch(0.87 0.02 80);
+  --input: oklch(0.82 0.025 80);
+  --ring: var(--brand-buzzer);
+
+  /* The stage: game board and audience display. */
+  --stage: var(--brand-navy);
+  --stage-foreground: oklch(0.97 0.01 85);
+  --stage-muted: oklch(0.78 0.04 255);
+  --stage-tile: var(--brand-navy-tile);
+  --stage-tile-border: oklch(0.55 0.12 255);
+  --stage-tile-revealed: var(--brand-sky);
+  --stage-highlight: var(--brand-gold);
+  --stage-strike: oklch(0.62 0.22 27);
+
+  /* QR codes need a white quiet zone to scan, in either theme. */
+  --qr: oklch(1 0 0);
+
+  --chart-1: var(--brand-buzzer);
+  --chart-2: var(--brand-teal);
+  --chart-3: var(--brand-sky);
+  --chart-4: var(--brand-gold);
+  --chart-5: oklch(0.6 0.15 320);
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--brand-ink);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 }
 
-.dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+/* Anything inside .stage uses the dark game-show colours. */
+.stage {
+  --background: var(--stage);
+  --foreground: var(--stage-foreground);
+  --surface: oklch(0.27 0.07 265);
+  --surface-foreground: var(--stage-foreground);
+  --surface-sunken: oklch(0.17 0.05 265);
+  --card: var(--surface);
+  --card-foreground: var(--stage-foreground);
+  --secondary: oklch(0.32 0.07 265);
+  --secondary-foreground: var(--stage-foreground);
+  --muted: oklch(0.3 0.06 265);
+  --muted-foreground: var(--stage-muted);
+  --border: oklch(0.4 0.07 262);
+  --input: oklch(0.45 0.07 262);
+  color: var(--foreground);
+}
+
+@theme {
+  --font-sans:
+    var(--font-body), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display:
+    var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
 @theme inline {
@@ -96,11 +128,15 @@ li {
   --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-surface-sunken: var(--surface-sunken);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -108,10 +144,27 @@ li {
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-info: var(--info);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-stage: var(--stage);
+  --color-stage-foreground: var(--stage-foreground);
+  --color-stage-muted: var(--stage-muted);
+  --color-stage-tile: var(--stage-tile);
+  --color-stage-tile-border: var(--stage-tile-border);
+  --color-stage-tile-revealed: var(--stage-tile-revealed);
+  --color-stage-highlight: var(--stage-highlight);
+  --color-stage-strike: var(--stage-strike);
+  --color-qr: var(--qr);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -132,6 +185,48 @@ li {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--primary);
+  }
+  :focus-visible {
+    @apply outline-ring outline-2 outline-offset-2;
+  }
+  /* Lists are unstyled unless a component asks for bullets. */
+  ul,
+  ol {
+    list-style: none;
+  }
+}
+
+/* Every text input, select and textarea: `field` plus padding and size. */
+@utility field {
+  @apply border-input bg-surface text-foreground placeholder:text-muted-foreground rounded-lg border disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+/* Help articles are long-form prose with real lists. */
+.help-content ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.help-content ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.help-content table {
+  @apply my-4 w-full border-collapse text-sm;
+}
+.help-content th,
+.help-content td {
+  @apply border-border border px-3 py-2 text-left align-top;
+}
+.help-content th {
+  @apply bg-surface-sunken font-bold;
 }

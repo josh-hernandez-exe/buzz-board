@@ -22,9 +22,9 @@ type DeleteMutation = {
 };
 
 const STATUS_STYLE: Record<DashboardGame["status"], string> = {
-  lobby: "bg-amber-100 text-amber-900",
-  running: "bg-green-100 text-green-800",
-  finished: "bg-gray-200 text-gray-800",
+  lobby: "bg-warning text-warning-foreground",
+  running: "bg-success-soft text-success",
+  finished: "bg-muted text-muted-foreground",
 };
 
 export function columnGenerator({
@@ -41,7 +41,7 @@ export function columnGenerator({
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-semibold">{row.original.name}</span>
-          <span className="text-xs text-gray-300">
+          <span className="text-muted-foreground text-xs">
             {row.original.format === GameFormat.team
               ? `${row.original.numTeams} teams`
               : "Individual"}{" "}
@@ -98,7 +98,7 @@ export function columnGenerator({
         return (
           <div className="flex items-center gap-2">
             <Link
-              className="rounded bg-white/10 px-3 py-1 font-semibold hover:bg-white/20"
+              className="bg-surface-sunken hover:bg-muted rounded px-3 py-1 font-semibold"
               href={`/game/${game.id}/admin`}
               onNavigate={() => onSelectClick(game.id)}
               aria-label={`Open ${game.name}`}

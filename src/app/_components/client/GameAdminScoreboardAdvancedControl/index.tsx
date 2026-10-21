@@ -69,8 +69,8 @@ export function GameAdminScoreboardAdvancedControl({
 
   return (
     <GenericCard
-      title="Admin Scoreboard Advanced Controls"
-      description="Update the score for a team"
+      title="Scores"
+      description="Tick teams, enter points, then add, subtract or set them."
       content={
         <div>
           <DataTable
@@ -93,79 +93,82 @@ export function GameAdminScoreboardAdvancedControl({
             aria-label="Score"
             value={scoreText}
             onChange={(e) => setScoreText(e.target.value)}
-            className="mb-4 rounded border border-gray-300 p-2"
+            className="field mb-2 p-2"
           />
-          <Button
-            onClick={() => {
-              if (isScoreReady) {
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => {
+                if (isScoreReady) {
+                  reset();
+                  addScoreMutation.mutate({
+                    requestId: newRequestId(),
+                    changes: changesFor(score),
+                  });
+                }
+              }}
+              disabled={!isScoreReady}
+            >
+              Add
+            </Button>
+            <Button
+              onClick={() => {
+                if (isScoreReady) {
+                  reset();
+                  addScoreMutation.mutate({
+                    requestId: newRequestId(),
+                    changes: changesFor(-score),
+                  });
+                }
+              }}
+              disabled={!isScoreReady}
+              variant="secondary"
+            >
+              Subtract
+            </Button>
+            <Button
+              onClick={() => {
+                if (isScoreReady) {
+                  reset();
+                  setScoreMutation.mutate({
+                    requestId: newRequestId(),
+                    changes: changesFor(score),
+                  });
+                }
+              }}
+              disabled={!isScoreReady}
+              variant="secondary"
+            >
+              Set
+            </Button>
+            <Button
+              onClick={() => {
                 reset();
-                addScoreMutation.mutate({
-                  requestId: newRequestId(),
-                  changes: changesFor(score),
-                });
-              }
-            }}
-            disabled={!isScoreReady}
-            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-          >
-            Add
-          </Button>
-          <Button
-            onClick={() => {
-              if (isScoreReady) {
+                undoScoreMutation.mutate({ requestId: newRequestId() });
+              }}
+              disabled={isSaving}
+              variant="outline"
+            >
+              Undo
+            </Button>
+            <Button
+              onClick={() => {
                 reset();
-                addScoreMutation.mutate({
-                  requestId: newRequestId(),
-                  changes: changesFor(-score),
-                });
-              }
-            }}
-            disabled={!isScoreReady}
-            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-          >
-            Subtract
-          </Button>
-          <Button
-            onClick={() => {
-              if (isScoreReady) {
-                reset();
-                setScoreMutation.mutate({
-                  requestId: newRequestId(),
-                  changes: changesFor(score),
-                });
-              }
-            }}
-            disabled={!isScoreReady}
-            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-          >
-            Set
-          </Button>
-          <Button
-            onClick={() => {
-              reset();
-              undoScoreMutation.mutate({ requestId: newRequestId() });
-            }}
-            disabled={isSaving}
-            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-          >
-            Undo
-          </Button>
-          <Button
-            onClick={() => {
-              reset();
-              redoScoreMutation.mutate({ requestId: newRequestId() });
-            }}
-            disabled={isSaving}
-            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-          >
-            Redo
-          </Button>
+                redoScoreMutation.mutate({ requestId: newRequestId() });
+              }}
+              disabled={isSaving}
+              variant="outline"
+            >
+              Redo
+            </Button>
+          </div>
           {disabledReason && (
-            <p className="mt-2 text-sm text-gray-600">{disabledReason}</p>
+            <p className="text-muted-foreground mt-2 text-sm">
+              {disabledReason}
+            </p>
           )}
           <ErrorNotice
             error={lastError}
-            className="mt-2 text-sm text-red-600"
+            className="text-destructive mt-2 text-sm"
           />
         </div>
       }

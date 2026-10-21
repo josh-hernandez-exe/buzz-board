@@ -40,7 +40,7 @@ export function AcceptInvite({
   }
   if (alreadyAccepted) {
     return (
-      <p role="alert" className="rounded-md bg-white/20 p-3">
+      <p role="alert" className="bg-muted rounded-md p-3">
         You accepted this invitation earlier, but you&apos;re no longer a helper
         in this game. Ask the host for a new link if that&apos;s a mistake.
       </p>
@@ -50,7 +50,7 @@ export function AcceptInvite({
   return (
     <div className="flex flex-col gap-3">
       {currentRole && (
-        <p className="text-sm text-white/80">
+        <p className="text-muted-foreground text-sm">
           You&apos;re already a {ROLE_LABEL[currentRole]} here. Accepting never
           lowers your role.
         </p>
@@ -61,7 +61,7 @@ export function AcceptInvite({
       >
         {accept.isPending ? "Accepting…" : `Accept as ${accountName}`}
       </Button>
-      <ErrorNotice error={accept.error} className="text-sm text-red-300" />
+      <ErrorNotice error={accept.error} className="text-destructive text-sm" />
     </div>
   );
 }

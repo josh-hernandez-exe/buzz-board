@@ -83,7 +83,7 @@ export function HelpersPanel() {
                   {owner.name}
                   {owner.userId === myUserId && " (you)"}
                 </span>
-                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">
+                <span className="bg-muted rounded-full px-2 py-0.5 text-xs">
                   {ROLE_LABEL.owner}
                 </span>
               </li>
@@ -101,7 +101,7 @@ export function HelpersPanel() {
                     <span className="flex items-center gap-2">
                       <select
                         aria-label={`Role for ${helper.name}`}
-                        className="rounded-md border px-2 py-1 text-sm"
+                        className="field px-2 py-1 text-sm"
                         value={helper.role}
                         disabled={setRole.isPending}
                         onChange={(e) =>
@@ -129,7 +129,7 @@ export function HelpersPanel() {
                       </Button>
                     </span>
                   ) : (
-                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">
+                    <span className="bg-muted rounded-full px-2 py-0.5 text-xs">
                       {ROLE_LABEL[helper.role]}
                     </span>
                   )}
@@ -175,7 +175,7 @@ export function HelpersPanel() {
                 Create invitation link
               </Button>
               {inviteUrl && (
-                <div className="flex flex-col gap-2 rounded-md bg-slate-100 p-3 text-sm">
+                <div className="bg-surface-sunken flex flex-col gap-2 rounded-md p-3 text-sm">
                   <label htmlFor="invite-url" className="font-medium">
                     Send this link privately. It works once and expires in{" "}
                     {INVITE_LIFETIME_HOURS} hours.
@@ -185,7 +185,7 @@ export function HelpersPanel() {
                     readOnly
                     value={inviteUrl}
                     onFocus={(e) => e.currentTarget.select()}
-                    className="rounded border px-2 py-1 font-mono text-xs"
+                    className="field px-2 py-1 font-mono text-xs"
                   />
                   <Button
                     variant="secondary"

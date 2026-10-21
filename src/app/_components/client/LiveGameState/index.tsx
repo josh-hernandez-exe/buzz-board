@@ -114,7 +114,7 @@ export function LiveConnectionNotice({
     return (
       <div
         role="status"
-        className="fixed inset-x-0 top-0 z-50 bg-gray-900 px-4 py-3 text-center text-sm font-medium text-white"
+        className="bg-foreground text-background fixed inset-x-0 top-0 z-50 px-4 py-3 text-center text-sm font-medium"
       >
         {error.message}{" "}
         <Link className="underline" href="/">
@@ -135,7 +135,7 @@ export function LiveConnectionNotice({
   return (
     <div
       role="status"
-      className="fixed inset-x-0 top-0 z-50 bg-amber-500 px-4 py-2 text-center text-sm font-medium text-black"
+      className="bg-warning text-warning-foreground fixed inset-x-0 top-0 z-50 px-4 py-2 text-center text-sm font-medium"
     >
       {message}
     </div>

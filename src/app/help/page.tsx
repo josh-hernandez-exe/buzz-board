@@ -16,7 +16,7 @@ export default function HelpHome() {
     <div className="flex flex-col gap-10">
       <section>
         <h1 className="text-3xl font-extrabold">Help</h1>
-        <p className="mt-2 text-slate-700">
+        <p className="text-muted-foreground mt-2">
           Guides for playing and hosting Buzz-Board games. No account needed to
           read them.
         </p>
@@ -25,7 +25,7 @@ export default function HelpHome() {
             <Link
               key={audience}
               href={`/help/for/${audience}`}
-              className="rounded-full bg-[#2e026d] px-4 py-2 font-semibold text-white"
+              className="bg-primary text-primary-foreground hover:bg-primary-hover rounded-full px-4 py-2 font-semibold"
             >
               Help for {HELP_AUDIENCES[audience].toLowerCase()}
             </Link>
@@ -52,11 +52,11 @@ export default function HelpHome() {
             <li key={article.id}>
               <Link
                 href={`/help/${article.id}`}
-                className="font-semibold text-blue-700 underline"
+                className="text-primary font-semibold underline"
               >
                 {article.title}
               </Link>
-              <p className="text-sm text-slate-700">{article.summary}</p>
+              <p className="text-muted-foreground text-sm">{article.summary}</p>
             </li>
           ))}
         </ul>
@@ -74,7 +74,7 @@ export default function HelpHome() {
                 <li key={`${article.id}#${h.anchor}`}>
                   <Link
                     href={`/help/${article.id}#${h.anchor}`}
-                    className="text-blue-700 underline"
+                    className="text-primary underline"
                   >
                     {h.text}
                   </Link>

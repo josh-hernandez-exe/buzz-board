@@ -156,7 +156,7 @@ export function FactPanels({ panels }: { panels: readonly HelpFactPanel[] }) {
   return (
     <aside
       aria-labelledby="facts-heading"
-      className="rounded-xl border bg-slate-50 p-4 text-sm"
+      className="bg-surface-sunken rounded-xl border p-4 text-sm"
     >
       <h2 id="facts-heading" className="mb-2 font-bold">
         Rules at a glance
@@ -168,7 +168,7 @@ export function FactPanels({ panels }: { panels: readonly HelpFactPanel[] }) {
             {FACTS[panel].facts.map((fact) => (
               <div key={fact.label} className="py-1">
                 <dt className="font-medium">{fact.label}</dt>
-                <dd className="text-slate-700">{fact.value}</dd>
+                <dd className="text-muted-foreground">{fact.value}</dd>
               </div>
             ))}
           </dl>

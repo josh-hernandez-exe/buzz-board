@@ -12,7 +12,7 @@ export type NoticeError =
  */
 export function ErrorNotice({
   error,
-  className = "text-sm text-red-600",
+  className = "text-sm text-destructive",
 }: {
   error: NoticeError | string;
   className?: string;

@@ -40,6 +40,7 @@ CI runs the same commands (`.github/workflows/ci.yml`). [tests/README.md](./test
 - **Live updates** are published after commit with `emitUpdatedGameState`. Never put private data in Redis messages: they only say which game changed.
 - **Public rules and limits** live in `src/utils/gameRules.ts`. Import them instead of repeating numbers in code, UI copy or Help.
 - **UI** follows the folder layout in `.github/copilot-instructions.md`. Pages and controls must work at 360 px wide and with a keyboard.
+- **Styling** uses the design tokens and page building blocks described in [docs/design-system.md](./docs/design-system.md): `bg-surface` and `text-muted-foreground`, not `bg-white` or `text-gray-500`. A unit test rejects raw palette colours in `src/app`.
 
 ## Help and documentation
 

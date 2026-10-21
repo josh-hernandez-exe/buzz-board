@@ -8,10 +8,10 @@ import { newRequestId } from "@/utils/requestId";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 
 const TONE_CLASS = {
-  ready: "bg-green-600 hover:bg-green-700",
-  won: "bg-amber-500",
-  waiting: "bg-slate-500",
-  blocked: "bg-slate-500",
+  ready: "bg-primary text-primary-foreground hover:bg-primary-hover",
+  won: "bg-accent text-accent-foreground",
+  waiting: "bg-muted text-muted-foreground",
+  blocked: "bg-muted text-muted-foreground",
 } as const;
 
 /**
@@ -37,7 +37,7 @@ export function GameBuzzerTab({ gameUserId }: { gameUserId: string }) {
         }}
         disabled={disabled}
         aria-describedby="buzzer-status"
-        className={`h-40 w-full text-2xl text-white ${TONE_CLASS[status.tone]}`}
+        className={`font-display h-40 w-full rounded-2xl text-3xl shadow-lg ${TONE_CLASS[status.tone]}`}
       >
         {buzzIn.isPending ? "Sending…" : "Buzz"}
       </Button>
@@ -50,7 +50,7 @@ export function GameBuzzerTab({ gameUserId }: { gameUserId: string }) {
       </p>
       <ErrorNotice
         error={buzzIn.error}
-        className="text-center text-sm text-red-300"
+        className="text-destructive text-center text-sm"
       />
     </div>
   );

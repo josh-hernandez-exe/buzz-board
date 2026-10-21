@@ -1,5 +1,7 @@
 "use client";
 
+import { env } from "@/env";
+
 import type { Prisma } from "@prisma/client";
 
 import {
@@ -44,14 +46,16 @@ export function GameUserInfoCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Player Info</CardTitle>
-        <CardDescription>Player related information</CardDescription>
+        <CardTitle>You</CardTitle>
+        <CardDescription>How you appear in this game</CardDescription>
       </CardHeader>
       <CardContent>
         <GameUserAvatar image={gameUser?.user?.image} index={gameUser?.index} />
-        <p>Player Name: {gameUser?.name}</p>
-        <p>Player Index Number: {gameSelfInfo.data?.index}</p>
-        <p>Player Id: {gameSelfInfo.data?.id}</p>
+        <p>Name: {gameUser?.name}</p>
+        <p>Player number: {gameSelfInfo.data?.index}</p>
+        {env.NEXT_PUBLIC_SHOW_DEBUG_INFO && (
+          <p>Player ID: {gameSelfInfo.data?.id}</p>
+        )}
       </CardContent>
       <CardFooter>
         <GameUserEditSheet />

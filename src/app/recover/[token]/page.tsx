@@ -3,6 +3,8 @@ import { type Metadata } from "next";
 import { RecoverPlayer } from "@/app/_components/client/RecoverPlayer";
 import { previewRecovery } from "@/server/identity/identityService";
 import { HydrateClient } from "@/trpc/server";
+import { AppHeader } from "@/app/_components/server/AppHeader";
+import { PageShell, Panel } from "@/app/_components/ui/page";
 
 export const metadata: Metadata = {
   title: "Get back into your game · Buzz-Board",
@@ -33,8 +35,8 @@ export default async function RecoverPage({
 
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] px-4 text-white">
-        <div className="flex w-full max-w-md flex-col gap-4 rounded-xl bg-white/10 p-6">
+      <PageShell header={<AppHeader />} width="narrow" center>
+        <Panel className="gap-4 p-6">
           {!recovery ? (
             <>
               <h1 className="text-2xl font-bold">Link not found</h1>
@@ -47,7 +49,7 @@ export default async function RecoverPage({
                 <span className="break-words">{recovery.gameName}</span>
               </h1>
               {recovery.status !== "valid" || !recovery.nickname ? (
-                <p role="alert" className="rounded-md bg-white/20 p-3">
+                <p role="alert" className="bg-warning/40 rounded-md p-3">
                   {recovery.status === "valid"
                     ? STATUS_MESSAGE.revoked
                     : STATUS_MESSAGE[recovery.status]}{" "}
@@ -65,8 +67,8 @@ export default async function RecoverPage({
               )}
             </>
           )}
-        </div>
-      </main>
+        </Panel>
+      </PageShell>
     </HydrateClient>
   );
 }

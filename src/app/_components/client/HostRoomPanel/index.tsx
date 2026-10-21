@@ -100,10 +100,10 @@ export function HostRoomPanel({ staffRole }: { staffRole: StaffRoleName }) {
             data-testid="game-status"
             className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
               finished
-                ? "bg-gray-200 text-gray-800"
+                ? "bg-muted text-muted-foreground"
                 : game.status === GameStatus.running
-                  ? "bg-green-100 text-green-800"
-                  : "bg-amber-100 text-amber-900"
+                  ? "bg-success-soft text-success"
+                  : "bg-warning text-warning-foreground"
             }`}
           >
             {STATUS_LABEL[game.status]}
@@ -141,7 +141,7 @@ export function HostRoomPanel({ staffRole }: { staffRole: StaffRoleName }) {
                   </a>
                 </Button>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-muted-foreground text-sm">
                 Screen-share the audience display, not this host desk. It shows
                 scores and buzzes, never controls.{" "}
                 <a
@@ -159,7 +159,9 @@ export function HostRoomPanel({ staffRole }: { staffRole: StaffRoleName }) {
             </div>
             <div className="flex flex-col items-center">
               <JoinQrCode code={game.code} />
-              <span className="text-xs text-gray-600">Scan to join</span>
+              <span className="text-muted-foreground text-xs">
+                Scan to join
+              </span>
             </div>
           </section>
 
@@ -191,7 +193,7 @@ export function HostRoomPanel({ staffRole }: { staffRole: StaffRoleName }) {
                 <label className="flex flex-col gap-1 text-sm">
                   Team assignment for new players
                   <select
-                    className="rounded-md border px-2 py-1"
+                    className="field px-2 py-1"
                     value={game.teamAssignment}
                     disabled={finished || setTeamAssignment.isPending}
                     onChange={(e) =>

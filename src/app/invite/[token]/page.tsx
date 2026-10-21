@@ -7,6 +7,9 @@ import { previewStaffInvite } from "@/server/staff/staffService";
 import { HydrateClient } from "@/trpc/server";
 import { helpHref } from "@/help/manifest";
 import { ROLE_LABEL, ROLE_SUMMARY } from "@/utils/capabilities";
+import { AppHeader } from "@/app/_components/server/AppHeader";
+import { PageShell, Panel } from "@/app/_components/ui/page";
+import { buttonVariants } from "@/app/_components/ui/button";
 
 export const metadata: Metadata = {
   title: "Helper invitation · Buzz-Board",
@@ -38,8 +41,8 @@ export default async function InvitePage({
 
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] px-4 text-white">
-        <div className="flex w-full max-w-md flex-col gap-4 rounded-xl bg-white/10 p-6">
+      <PageShell header={<AppHeader />} width="narrow" center>
+        <Panel className="gap-4 p-6">
           {!invite ? (
             <>
               <h1 className="text-2xl font-bold">Invitation not found</h1>
@@ -57,10 +60,12 @@ export default async function InvitePage({
                 You&apos;re invited as a{" "}
                 <strong>{ROLE_LABEL[invite.role]}</strong>.
               </p>
-              <p className="text-white/80">{ROLE_SUMMARY[invite.role]}</p>
+              <p className="text-muted-foreground">
+                {ROLE_SUMMARY[invite.role]}
+              </p>
 
               {invite.status !== "valid" && !invite.usedBySelf ? (
-                <p role="alert" className="rounded-md bg-white/20 p-3">
+                <p role="alert" className="bg-warning/40 rounded-md p-3">
                   {STATUS_MESSAGE[invite.status]} Ask the host for a new link.
                 </p>
               ) : !session ? (
@@ -68,7 +73,7 @@ export default async function InvitePage({
                   <p>Sign in with the account you&apos;ll use to help.</p>
                   <Link
                     href={`/api/auth/signin?callbackUrl=${encodeURIComponent(`/invite/${token}`)}`}
-                    className="rounded-full bg-white px-6 py-3 text-center font-semibold text-[#2e026d]"
+                    className={buttonVariants({ size: "lg" })}
                   >
                     Sign in to accept
                   </Link>
@@ -82,7 +87,7 @@ export default async function InvitePage({
                   alreadyAccepted={invite.usedBySelf}
                 />
               )}
-              <p className="text-xs text-white/70">
+              <p className="text-muted-foreground text-xs">
                 Anyone with this link can accept it until it&apos;s used or
                 expires, so don&apos;t share it publicly.{" "}
                 <Link
@@ -97,8 +102,8 @@ export default async function InvitePage({
               </p>
             </>
           )}
-        </div>
-      </main>
+        </Panel>
+      </PageShell>
     </HydrateClient>
   );
 }

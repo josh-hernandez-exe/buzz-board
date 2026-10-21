@@ -32,7 +32,7 @@ export function RecoverPlayer({
       >
         {redeem.isPending ? "Getting you back in…" : `Continue as ${nickname}`}
       </Button>
-      <ErrorNotice error={redeem.error} className="text-sm text-red-300" />
+      <ErrorNotice error={redeem.error} className="text-destructive text-sm" />
     </div>
   );
 }

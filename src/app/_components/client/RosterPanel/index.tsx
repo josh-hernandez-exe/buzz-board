@@ -96,7 +96,7 @@ function RenameDialog({
           <label className="flex flex-col gap-1 text-sm">
             New name
             <input
-              className="rounded-md border px-2 py-1 text-base"
+              className="field px-2 py-1 text-base"
               value={name}
               maxLength={NAME_LIMITS.maxDisplayName * 2}
               onChange={(e) => setName(e.target.value)}
@@ -212,7 +212,7 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
                   <span>
                     {team.index}. {team.name}
                     {!team.allowMemberRename && (
-                      <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs">
+                      <span className="bg-muted ml-2 rounded-full px-2 py-0.5 text-xs">
                         Name locked
                       </span>
                     )}
@@ -263,7 +263,7 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
               Find a player
               <input
                 type="search"
-                className="rounded-md border px-2 py-1 text-base"
+                className="field px-2 py-1 text-base"
                 placeholder="Name or player number"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -271,7 +271,7 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
             </label>
             <ErrorNotice error={move.error ?? remove.error ?? recovery.error} />
             {recoveryUrl && recovery.data && (
-              <div className="flex flex-col gap-2 rounded-md bg-slate-100 p-3 text-sm">
+              <div className="bg-surface-sunken flex flex-col gap-2 rounded-md p-3 text-sm">
                 <label htmlFor="recovery-url" className="font-medium">
                   Send this link privately to {recovery.data.nickname}. It works
                   once, for {RECOVERY_LINK_LIFETIME_MINUTES} minutes, and signs
@@ -282,7 +282,7 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
                   readOnly
                   value={recoveryUrl}
                   onFocus={(e) => e.currentTarget.select()}
-                  className="rounded border px-2 py-1 font-mono text-xs"
+                  className="field px-2 py-1 font-mono text-xs"
                 />
               </div>
             )}
@@ -295,17 +295,17 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{player.name}</span>
-                    <span className="text-xs text-slate-600">
+                    <span className="text-muted-foreground text-xs">
                       #{player.index}
                       {isTeamGame && ` · ${teamName(player.gameTeamId)}`}
                     </span>
                     {!player.allowSelfRename && (
-                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">
+                      <span className="bg-muted rounded-full px-2 py-0.5 text-xs">
                         Name locked
                       </span>
                     )}
                     {player.isLinked && (
-                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">
+                      <span className="bg-muted rounded-full px-2 py-0.5 text-xs">
                         Saved to account
                       </span>
                     )}
@@ -330,7 +330,7 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
                     {isTeamGame && (
                       <select
                         aria-label={`Team for ${player.name}`}
-                        className="rounded-md border px-2 py-1 text-sm"
+                        className="field px-2 py-1 text-sm"
                         value={player.gameTeamId ?? ""}
                         disabled={move.isPending}
                         onChange={(e) =>
@@ -402,13 +402,13 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
                 </li>
               ))}
               {players.length === 0 && (
-                <li className="ml-0 py-2 text-slate-600">
+                <li className="text-muted-foreground ml-0 py-2">
                   {query ? "No players match." : "No players have joined yet."}
                 </li>
               )}
             </ul>
             {!!roster.data?.removedCount && (
-              <p className="text-sm text-slate-600">
+              <p className="text-muted-foreground text-sm">
                 {roster.data.removedCount} removed{" "}
                 {roster.data.removedCount === 1 ? "player" : "players"} not
                 shown.

@@ -1,3 +1,5 @@
+import { MessagePage, PageShell } from "@/app/_components/ui/page";
+import { AppHeader } from "@/app/_components/server/AppHeader";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { gameApi, HydrateClient } from "@/trpc/server";
@@ -22,12 +24,9 @@ export default async function GamePage({
 
   if (!gameId) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <h1 className="mb-4 text-2xl font-bold">Game Not Found</h1>
-          <p>No game identifier was given.</p>
-        </div>
-      </main>
+      <MessagePage title="Game not found">
+        <p className="text-muted-foreground">No game identifier was given.</p>
+      </MessagePage>
     );
   }
   const isGameAdminAuthed = gameSession?.gameAdmin?.gameId === gameId;
@@ -45,23 +44,20 @@ export default async function GamePage({
 
   if (!currentGameState) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <h1 className="mb-4 text-2xl font-bold">Game Not Found</h1>
-          <p>No game was found or not ready yet to be viewed.</p>
-        </div>
-      </main>
+      <MessagePage title="Game not found">
+        <p className="text-muted-foreground">
+          No game was found or not ready yet to be viewed.
+        </p>
+      </MessagePage>
     );
   }
 
   return (
     <HydrateClient>
       <GameScope gameId={gameId} initialState={currentGameState}>
-        <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-          <div className="flex min-h-screen flex-col items-center justify-center">
-            <Scoreboard gameState={currentGameState} />
-          </div>
-        </main>
+        <PageShell header={<AppHeader />} width="wide">
+          <Scoreboard gameState={currentGameState} />
+        </PageShell>
       </GameScope>
     </HydrateClient>
   );

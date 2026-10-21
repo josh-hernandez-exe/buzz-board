@@ -43,7 +43,7 @@ export default async function HelpForAudience({
   return (
     <div className="flex flex-col gap-6">
       <p>
-        <Link href="/help" className="text-blue-700 underline">
+        <Link href="/help" className="text-primary underline">
           All help
         </Link>
       </p>
@@ -55,12 +55,12 @@ export default async function HelpForAudience({
           <h2 id={`a-${article.id}`} className="text-xl font-bold">
             <Link
               href={`/help/${article.id}`}
-              className="text-blue-700 underline"
+              className="text-primary underline"
             >
               {article.title}
             </Link>
           </h2>
-          <p className="text-slate-700">{article.summary}</p>
+          <p className="text-muted-foreground">{article.summary}</p>
           <ul className="mt-2 ml-4 list-disc">
             {article.headings
               .filter((h) => h.level === 2)
@@ -68,7 +68,7 @@ export default async function HelpForAudience({
                 <li key={h.anchor}>
                   <Link
                     href={`/help/${article.id}#${h.anchor}`}
-                    className="text-blue-700 underline"
+                    className="text-primary underline"
                   >
                     {h.text}
                   </Link>

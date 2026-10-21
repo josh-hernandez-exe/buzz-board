@@ -73,22 +73,27 @@ export function GameBasicInfoCard({
 
     switch (field) {
       case "name":
-        gameInfoContent.push(<p>Game Name: {game?.name}</p>);
+        gameInfoContent.push(<p key="name">Game: {game?.name}</p>);
         break;
       case "id":
-        gameInfoContent.push(<p>Game Id: {game?.id}</p>);
+        if (env.NEXT_PUBLIC_SHOW_DEBUG_INFO) {
+          gameInfoContent.push(<p key="id">Game ID: {game?.id}</p>);
+        }
         break;
       case "code":
-        gameInfoContent.push(<p>Game Code: {game?.code}</p>);
+        gameInfoContent.push(<p key="code">Join code: {game?.code}</p>);
         break;
       case "format":
-        gameInfoContent.push(<p>Game Format: {game?.format}</p>);
+        gameInfoContent.push(
+          <p key="format">
+            Format: {game?.format === "team" ? "Teams" : "Individual players"}
+          </p>,
+        );
         break;
       case "buzzerState":
         gameInfoContent.push(
-          <p>
-            Game Buzzer State :{" "}
-            {game.isBuzzerListening ? "Listening" : "Not Listening"}
+          <p key="buzzer">
+            Buzzer: {game.isBuzzerListening ? "open" : "closed"}
           </p>,
         );
         break;
@@ -102,7 +107,7 @@ export function GameBasicInfoCard({
       <CardHeader>
         <CardTitle>Game Info</CardTitle>
         {!hideFields.includes("description") && (
-          <CardDescription>Game related information</CardDescription>
+          <CardDescription>About this game</CardDescription>
         )}
       </CardHeader>
       <CardContent>
