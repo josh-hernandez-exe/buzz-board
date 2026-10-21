@@ -1,13 +1,28 @@
 "use client";
 
-import type { JSX } from "react";
-import { api } from "@/trpc/react";
-
 import { GameFormat } from "@prisma/client";
-import { GameUserAvatar } from "@/app/_components/client/GameUserAvatar";
-import { GenericCard } from "@/app/_components/GenericCard";
-import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 
+import { GameUserAvatar } from "@/app/_components/client/GameUserAvatar";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
+import { Panel, StatusPill, type Tone } from "@/app/_components/ui/page";
+import { api } from "@/trpc/react";
+import type { PrivateGameState } from "@/types";
+import { cn } from "@/app/_lib/utils";
+
+type Entry = PrivateGameState["buzzQueue"][number];
+
+const QUEUE_STATUS: Record<Entry["status"], [string, Tone]> = {
+  answering: ["Answering", "info"],
+  waiting: ["Waiting", "neutral"],
+  correct: ["Correct", "success"],
+  wrong: ["Wrong", "danger"],
+  skipped: ["Skipped", "neutral"],
+};
+
+/**
+ * Who has buzzed: the winner in first-buzz mode, or the whole queue in
+ * queue mode, with the viewer's own buzz and team called out.
+ */
 export function GameWhoBuzzedIn({
   gameUserId: initialSelfUserId,
 }: {
@@ -16,59 +31,89 @@ export function GameWhoBuzzedIn({
   const gameSelfInfo = api.gameUser.getSelfInfo.useQuery(undefined, {
     enabled: !!initialSelfUserId,
   });
-  const { data: gameState } = useLiveGameState();
+  const { data: state } = useLiveGameState();
+  if (!state) return null;
+
   const selfTeamId = gameSelfInfo.data?.gameTeamId;
-  const selfGameUserId = gameSelfInfo.data?.id ?? initialSelfUserId;
+  const selfId = gameSelfInfo.data?.id ?? initialSelfUserId;
+  const { game, buzzWinner: winner } = state;
+  const isTeamGame = game.format === GameFormat.team;
+  const teamName = (id: string) =>
+    state.gameTeams.find((t) => t.id === id)?.name ?? "a removed team";
 
-  const winner = gameState?.buzzWinner;
-  const winnerUser = winner?.gameUserId
-    ? gameState?.gameUsers[winner.gameUserId]
-    : undefined;
-  const winnerTeam = winner
-    ? gameState?.gameTeams.find((team) => team.id === winner.gameTeamId)
-    : undefined;
+  /** "You", "Ada from your team", "Ada from Owls", "Owls" or "Bo". */
+  const who = (teamId: string, userId: string | null) => {
+    const player = userId ? state.gameUsers[userId]?.name : undefined;
+    if (userId && userId === selfId) return "You";
+    if (!player) return teamName(teamId);
+    if (!isTeamGame) return player;
+    if (teamId === selfTeamId) return `${player} from your team`;
+    return `${player} from ${teamName(teamId)}`;
+  };
 
-  let content: JSX.Element;
-
-  if (gameState) {
-    const { game } = gameState;
-    if (winner && winner.gameUserId === selfGameUserId) {
-      content = <p>You have buzzed in!</p>;
-    } else if (winner) {
-      const teamName = winnerTeam?.name ?? "a removed team";
-      const playerName = winnerUser?.name;
-      let message: string;
-      if (!playerName) {
-        message = `[${teamName}] has buzzed in.`;
-      } else if (
-        game.format === GameFormat.team &&
-        winner.gameTeamId === selfTeamId
-      ) {
-        message = `[${playerName}] from your team has buzzed in.`;
-      } else if (game.format === GameFormat.team) {
-        message = `[${playerName}] from [${teamName}] has buzzed in.`;
-      } else {
-        message = `[${playerName}] has buzzed in.`;
-      }
-      content = (
-        <div className="flex items-center space-x-2">
-          {winnerUser && (
-            <GameUserAvatar
-              image={winnerUser.image ?? undefined}
-              index={winnerUser.index}
-            />
-          )}
-          <p>{message}</p>
-        </div>
-      );
-    } else if (game.isBuzzerListening) {
-      content = <p>Buzzer is listening and no one has buzzed in yet.</p>;
-    } else {
-      content = <p>Buzzer is not listening.</p>;
-    }
-  } else {
-    content = <></>;
+  if (game.buzzerMode === "queue" && state.buzzQueue.length > 0) {
+    return (
+      <Panel aria-label="Buzz queue" title="Buzz queue">
+        <ol className="flex flex-col gap-1.5">
+          {state.buzzQueue.map((entry) => {
+            const [label, tone] = QUEUE_STATUS[entry.status];
+            const mine = isTeamGame
+              ? entry.gameTeamId === selfTeamId
+              : entry.gameUserId === selfId;
+            return (
+              <li
+                key={entry.id}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border px-2 py-1.5",
+                  entry.status === "answering"
+                    ? "border-info bg-accent-soft"
+                    : "border-border",
+                  entry.status === "skipped" && "opacity-60",
+                  mine && "ring-info ring-2",
+                )}
+              >
+                <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold">
+                  {entry.position}
+                </span>
+                <span className="min-w-0 flex-1 font-semibold break-words">
+                  {who(entry.gameTeamId, entry.gameUserId)}
+                </span>
+                <StatusPill tone={tone}>{label}</StatusPill>
+              </li>
+            );
+          })}
+        </ol>
+      </Panel>
+    );
   }
 
-  return <GenericCard content={content} />;
+  let content;
+  if (winner) {
+    const winnerUser = winner.gameUserId
+      ? state.gameUsers[winner.gameUserId]
+      : undefined;
+    const name = who(winner.gameTeamId, winner.gameUserId);
+    content = (
+      <div className="flex items-center gap-3">
+        {winnerUser && (
+          <GameUserAvatar
+            image={winnerUser.image ?? undefined}
+            index={winnerUser.index}
+          />
+        )}
+        <p className="text-lg font-semibold">
+          {name === "You" ? "You buzzed in!" : `${name} buzzed in.`}
+        </p>
+      </div>
+    );
+  } else {
+    content = (
+      <p className="text-muted-foreground">
+        {game.isBuzzerListening
+          ? "Buzzer open. Nobody has buzzed yet."
+          : "Buzzer closed."}
+      </p>
+    );
+  }
+  return <Panel aria-label="Buzzes">{content}</Panel>;
 }

@@ -1,131 +1,74 @@
 "use client";
 
 import type { JSX } from "react";
-import { useEffect, useRef } from "react";
 
-import * as QRCode from "qrcode";
-
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/app/_components/ui/card";
-
-import type { PrivateGameState } from "@/types";
-
-import { logger } from "@/logger";
-
+import { JoinQrCode, joinUrl } from "@/app/_components/client/JoinQrCode";
+import { Panel } from "@/app/_components/ui/page";
 import { env } from "@/env";
+import type { PrivateGameState } from "@/types";
+import { STATUS_LABEL } from "@/utils/gameRules";
 
-type hidableFields =
-  | "name"
-  | "id"
-  | "code"
-  | "format"
-  | "buzzerState"
-  | "description";
+type HidableField = "name" | "id" | "code" | "format" | "buzzerState" | "qr";
 
+/** The game's basics: format, buzzing, status, and how to join. */
 export function GameBasicInfoCard({
   game,
   hideFields = [],
   extraContent,
 }: {
   game: PrivateGameState["game"];
-  hideFields?: hidableFields[];
+  hideFields?: HidableField[];
   extraContent?: JSX.Element;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const gameInfoContent: JSX.Element[] = [];
-
-  useEffect(() => {
-    const joinUrl = `${env.NEXT_PUBLIC_QRCODE_BASE_URL}/join?code=${game.code}`;
-    if (canvasRef.current) {
-      QRCode.toCanvas(
-        canvasRef.current,
-        joinUrl,
-        {
-          errorCorrectionLevel: "L",
-        },
-        (error) => {
-          if (error) {
-            logger.error("Error generating QR code", error);
-          } else {
-            logger.info("QR code generated successfully");
-          }
-        },
-      );
-    }
-  }, [game.code]);
-
-  for (const field of [
-    "name",
-    "id",
-    "code",
-    "format",
-    "buzzerState",
-  ] as hidableFields[]) {
-    if (hideFields.includes(field)) {
-      continue;
-    }
-
-    switch (field) {
-      case "name":
-        gameInfoContent.push(<p key="name">Game: {game?.name}</p>);
-        break;
-      case "id":
-        if (env.NEXT_PUBLIC_SHOW_DEBUG_INFO) {
-          gameInfoContent.push(<p key="id">Game ID: {game?.id}</p>);
-        }
-        break;
-      case "code":
-        gameInfoContent.push(<p key="code">Join code: {game?.code}</p>);
-        break;
-      case "format":
-        gameInfoContent.push(
-          <p key="format">
-            Format: {game?.format === "team" ? "Teams" : "Individual players"}
-          </p>,
-        );
-        break;
-      case "buzzerState":
-        gameInfoContent.push(
-          <p key="buzzer">
-            Buzzer: {game.isBuzzerListening ? "open" : "closed"}
-          </p>,
-        );
-        break;
-      default:
-        break;
-    }
-  }
+  const show = (field: HidableField) => !hideFields.includes(field);
+  const rows: [string, string][] = [];
+  if (show("name")) rows.push(["Game", game.name]);
+  if (show("format"))
+    rows.push([
+      "Players compete",
+      game.format === "team" ? "As teams" : "Individually",
+    ]);
+  rows.push([
+    "Buzzing",
+    game.buzzerMode === "queue"
+      ? "Queue: everyone lines up"
+      : "First buzz wins",
+  ]);
+  if (show("buzzerState"))
+    rows.push(["Buzzer", game.isBuzzerListening ? "Open" : "Closed"]);
+  rows.push(["Status", STATUS_LABEL[game.status]]);
+  if (show("code")) rows.push(["Join code", game.code]);
+  if (show("id") && env.NEXT_PUBLIC_SHOW_DEBUG_INFO)
+    rows.push(["Game ID", game.id]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Game Info</CardTitle>
-        {!hideFields.includes("description") && (
-          <CardDescription>About this game</CardDescription>
-        )}
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="col-span-1">
-            {gameInfoContent}
-            {extraContent}
-          </div>
-          <div className="col-span-1">
-            <p className="text-center text-sm">
-              Scan the QR code to join the game
-            </p>
-            <div className="flex items-center justify-center">
-              <canvas className="h-32 w-32" ref={canvasRef} />
+    <Panel title="About this game">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <dl className="grid flex-1 grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          {rows.map(([label, value]) => (
+            <div key={label} className="contents">
+              <dt className="text-muted-foreground">{label}</dt>
+              <dd className="font-semibold break-words">{value}</dd>
             </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+          ))}
+        </dl>
+        {show("qr") && (
+          <figure className="flex flex-col items-center gap-1">
+            <div className="bg-qr rounded-lg p-1.5">
+              <JoinQrCode code={game.code} className="h-28 w-28" />
+            </div>
+            <figcaption className="text-muted-foreground text-xs">
+              Scan to join
+            </figcaption>
+          </figure>
+        )}
+      </div>
+      {show("code") && (
+        <p className="text-muted-foreground text-sm break-all">
+          Join link: {joinUrl(game.code)}
+        </p>
+      )}
+      {extraContent}
+    </Panel>
   );
 }

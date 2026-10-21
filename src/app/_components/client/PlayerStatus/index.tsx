@@ -38,9 +38,9 @@ export function PlayerHeader({
   const team = data.gameTeams.find((t) => t.id === self?.gameTeamId);
 
   return (
-    <header className="bg-surface-sunken flex w-full max-w-md flex-col gap-2 rounded-xl p-4">
+    <header className="bg-surface border-border flex w-full flex-col gap-2 rounded-xl border p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-xl font-bold">{game.name}</h1>
+        <h1 className="font-display text-xl font-extrabold break-words">{game.name}</h1>
         <span className="font-mono text-sm tracking-widest">{game.code}</span>
       </div>
       <p data-testid="player-identity">

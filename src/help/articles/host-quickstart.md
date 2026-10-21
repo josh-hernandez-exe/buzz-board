@@ -4,15 +4,28 @@ Buzz-Board runs buzzers and a live scoreboard. Present your questions however yo
 
 1. Choose **Host a game** on the home page and sign in.
 2. Give the game a name, choose whether players compete **as teams** or **individually**, and pick how many teams to start with.
-3. Select **Create game**. You'll go straight to the host desk.
+3. Choose how buzzing works: **First buzz wins** or **Queue**. You can change this later between questions. See [Buzzing modes and undo](/help/buzzing).
+4. Select **Create game**. You'll go straight to the host desk.
 
 New games start in the **lobby**. Players can join and pick names before you begin.
 
+## What's on the host desk?
+
+The bar at the top always shows the game's name and status, the join code, **Copy join link** and **Open audience display**. Below it are tabs:
+
+| Tab | What it's for |
+| --- | --- |
+| **Play** | The buzzer and scores: everything you need during a question. |
+| **Ranked Answers** | Family-feud style boards. See [Ranked Answers](/help/ranked-answers). |
+| **Players** | Teams (add, delete, lock switching) and every player (rename, move, remove). |
+| **Chat** | Turn chat on and moderate it. See [Chat](/help/chat). |
+| **Room** | The QR code, who may join, helpers, and finishing, duplicating or deleting the game. |
+
 ## How do players join?
 
-The **Share** section at the top of the host desk shows the join code, a **Copy join link** button and a QR code. Players open the link or scan the code, choose a nickname and join. They don't need an account.
+Players open the join link (or go to the home page and type the join code), choose a nickname and join. They don't need an account. The **Room** tab also has a QR code they can scan.
 
-Use **New players can join** to stop or allow new players. Players who are already in can still return while joining is closed.
+Use **New players can join** in the **Room** tab to stop or allow new players. Players who are already in can still return while joining is closed.
 
 ## What should I screen-share?
 
@@ -20,16 +33,21 @@ Select **Open audience display** and share that window, not the host desk. The a
 
 ## How do I run the buzzer?
 
-- **Start Buzzer** opens the buzzer. The first press wins, and the buzzer closes automatically. Starting the buzzer for the first time moves the game from the lobby to **Live**.
-- Press **Start Buzzer** again to give everyone else another chance. The team that already answered is locked out for the rest of that round.
-- **Pause Buzzer** closes it without choosing anyone.
-- **Reset Buzzer** clears every team's buzzer for a new question.
+Everything is on the **Play** tab. The large line at the top of the **Buzzer** panel always says what's happening, and the buttons change to match.
+
+- **Open buzzer** lets players buzz. Opening it for the first time moves the game from the lobby to **Live**.
+- When someone buzzes, select **Award N to Team** to give them points in one tap, or use **+** and **−** next to any team in **Scores**.
+- **Wrong: let others buzz** reopens the buzzer for everyone else. The team that answered sits out the rest of the question.
+- **Close buzzer** stops new buzzes without choosing anyone.
+- **Next question** clears everything for a fresh question.
+
+In **Queue** mode, every buzz lines up in order and you mark each answer **Correct**, **Wrong** or **Skip**. Pressed the wrong button? **Undo** reverses the last buzzer action and says which one. See [Buzzing modes and undo](/help/buzzing).
 
 Every player's buzzer says whether it is open, closed or locked, so players always know why they can't press it.
 
 ## How do I finish the game?
 
-Select **Finish game…** in the **Game** section and confirm. The buzzer closes, nobody new can join, and players can no longer change names or teams. Scores stay visible.
+Open the **Room** tab, select **Finish game…** and confirm. The buzzer closes, nobody new can join, and players can no longer change names or teams. Scores stay visible.
 
 If you notice a mistake, select **Reopen to correct results** shortly afterwards (see Rules at a glance). Reopening keeps the buzzer closed until you open it.
 

@@ -1,32 +1,31 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
-import { GameAdminTeamControl } from "@/app/_components/client/GameAdminTeamControl";
-import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
-import { GameAdminBuzzerControl } from "@/app/_components/client/GameAdminBuzzerControl";
-import { GameAdminScoreboardAdvancedControl } from "@/app/_components/client/GameAdminScoreboardAdvancedControl";
-import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
+import { BuzzerPanel } from "@/app/_components/client/BuzzerPanel";
+import { ChatPanel } from "@/app/_components/client/ChatPanel";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
-import { RosterPanel } from "@/app/_components/client/RosterPanel";
 import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
-import { Skeleton } from "@/app/_components/ui/skeleton";
-
+import { HelpersPanel } from "@/app/_components/client/HelpersPanel";
+import { HostGameBar } from "@/app/_components/client/HostGameBar";
+import { HostRoomPanel } from "@/app/_components/client/HostRoomPanel";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
+import { RankedAnswersPanel } from "@/app/_components/client/RankedAnswersPanel";
+import { RosterPanel } from "@/app/_components/client/RosterPanel";
+import { ScoresPanel } from "@/app/_components/client/ScoresPanel";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/app/_components/ui/tabs";
-
 import type { PrivateGameState } from "@/types";
-import { useLiveGameState } from "@/app/_components/client/LiveGameState";
-import { HostRoomPanel } from "@/app/_components/client/HostRoomPanel";
-import { HelpersPanel } from "@/app/_components/client/HelpersPanel";
-import { ChatPanel } from "@/app/_components/client/ChatPanel";
-import { RankedAnswersPanel } from "@/app/_components/client/RankedAnswersPanel";
-import { ROLE_LABEL, can, type StaffRoleName } from "@/utils/capabilities";
+import { can, type StaffRoleName } from "@/utils/capabilities";
 
+/**
+ * The host desk. Play holds everything needed mid-question; the other tabs
+ * are for setting up and looking after the room.
+ */
 export function GameAdminInfo({
   gameState: initialGameState,
   staffRole,
@@ -35,134 +34,54 @@ export function GameAdminInfo({
   staffRole: StaffRoleName;
 }) {
   const runsGame = can(staffRole, "runGame");
-  const [activeTab, setActiveTab] = useState(
-    runsGame ? "quick-controls" : "player-management",
-  );
-  const [isPending, startTransition] = useTransition();
-
-  const handleTabChange = (value: string) => {
-    startTransition(() => {
-      setActiveTab(value);
-    });
-  };
-
-  const gameStateSub = useLiveGameState();
-
-  const currentGameState: PrivateGameState =
-    gameStateSub.data ?? initialGameState;
-
-  if (!currentGameState) {
-    return undefined;
-  }
-
-  const { game, gameTeams } = currentGameState;
-
-  gameTeams?.sort((a, b) => a.index - b.index);
+  const [activeTab, setActiveTab] = useState(runsGame ? "play" : "players");
+  const { data } = useLiveGameState();
+  const state = data ?? initialGameState;
 
   return (
-    <div className="flex w-full flex-col gap-6">
-      {/* Game sound effects for all teams */}
+    <div className="flex w-full flex-col gap-4">
       <GameSoundEffects />
-
-      <div className="flex w-full flex-col gap-4">
-        <p className="text-muted-foreground text-sm" data-testid="my-role">
-          You&apos;re the <strong>{ROLE_LABEL[staffRole]}</strong> of this game.
-          {!runsGame &&
-            " You can rename, move and remove players. The owner and co-hosts run the buzzer and scores."}
-        </p>
-        <HostRoomPanel staffRole={staffRole} />
-      </div>
-      <Tabs
-        value={activeTab}
-        onValueChange={handleTabChange}
-        className="w-full"
-      >
-        <TabsList className="flex h-auto w-full flex-wrap">
-          {runsGame && (
-            <TabsTrigger value="quick-controls">Game Controls</TabsTrigger>
-          )}
-          {runsGame && (
-            <TabsTrigger value="team-management">Team Management</TabsTrigger>
-          )}
+      <HostGameBar staffRole={staffRole} />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start">
+          {runsGame && <TabsTrigger value="play">Play</TabsTrigger>}
           {runsGame && (
             <TabsTrigger value="ranked-answers">Ranked Answers</TabsTrigger>
           )}
-          <TabsTrigger value="player-management">Player Management</TabsTrigger>
+          <TabsTrigger value="players">Players</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
-          <TabsTrigger value="helpers">Helpers</TabsTrigger>
-          <TabsTrigger value="information">Information</TabsTrigger>
+          <TabsTrigger value="room">Room</TabsTrigger>
         </TabsList>
-        <TabsContent value="quick-controls">
-          {isPending ? (
-            <Skeleton className="h-[400px] w-full" />
-          ) : (
-            <>
-              <GameWhoBuzzedIn />
-              <GameAdminBuzzerControl />
-              <GameAdminScoreboardAdvancedControl
-                gameTeams={gameTeams.map(
-                  ({ gameUsers: _gameUsers, ...gameTeam }) => gameTeam,
-                )}
-              />
-            </>
-          )}
-        </TabsContent>
-        <TabsContent value="team-management">
-          {isPending ? (
-            <Skeleton className="h-[400px] w-full" />
-          ) : (
-            <>
-              <GameAdminTeamControl gameTeams={gameTeams} />
-              {gameTeams.map((gameTeam) => {
-                const users = gameTeam.gameUsers.map(
-                  (userId) => currentGameState.gameUsers[userId]!,
-                );
-                return (
-                  <GameTeamSummaryCard
-                    key={gameTeam.id}
-                    gameTeam={gameTeam}
-                    gameUsers={users}
-                    score={gameTeam.score}
-                  />
-                );
-              })}
-            </>
-          )}
-        </TabsContent>
-        <TabsContent value="ranked-answers">
-          {isPending ? (
-            <Skeleton className="h-[400px] w-full" />
-          ) : (
-            runsGame && <RankedAnswersPanel />
-          )}
-        </TabsContent>
-        <TabsContent value="player-management">
-          {isPending ? (
-            <Skeleton className="h-[400px] w-full" />
-          ) : (
-            <RosterPanel staffRole={staffRole} />
-          )}
+        {runsGame && (
+          <TabsContent value="play">
+            <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+              <BuzzerPanel />
+              <ScoresPanel />
+            </div>
+          </TabsContent>
+        )}
+        {runsGame && (
+          <TabsContent value="ranked-answers">
+            <RankedAnswersPanel />
+          </TabsContent>
+        )}
+        <TabsContent value="players" className="flex flex-col gap-4">
+          <RosterPanel staffRole={staffRole} />
         </TabsContent>
         <TabsContent value="chat">
-          {isPending ? (
-            <Skeleton className="h-[400px] w-full" />
-          ) : (
-            <ChatPanel as="staff" staffRole={staffRole} />
-          )}
+          <ChatPanel as="staff" staffRole={staffRole} />
         </TabsContent>
-        <TabsContent value="helpers">
-          {isPending ? (
-            <Skeleton className="h-[400px] w-full" />
-          ) : (
-            <HelpersPanel />
-          )}
-        </TabsContent>
-        <TabsContent value="information">
-          {isPending ? (
-            <Skeleton className="h-[400px] w-full" />
-          ) : (
-            <GameBasicInfoCard game={game} />
-          )}
+        <TabsContent value="room">
+          <div className="grid items-start gap-4 lg:grid-cols-2">
+            <HostRoomPanel staffRole={staffRole} />
+            <div className="flex flex-col gap-4">
+              <HelpersPanel />
+              <GameBasicInfoCard
+                game={state.game}
+                hideFields={["qr", "code"]}
+              />
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

@@ -35,7 +35,7 @@ test("each page opens exactly one live stream", async ({
   const adminStreams = trackStreams(admin);
   await admin.reload();
   await expect(
-    admin.getByRole("button", { name: "Start Buzzer" }),
+    admin.getByRole("button", { name: "Open buzzer" }),
   ).toBeVisible();
 
   const playerContext = await browser.newContext();
@@ -51,7 +51,9 @@ test("each page opens exactly one live stream", async ({
   const display = await displayContext.newPage();
   const displayStreams = trackStreams(display);
   await display.goto(`/game/${game.id}/scoreboard/public`);
-  await expect(display.getByText("Team 1: Team 1")).toBeVisible();
+  await expect(
+    display.getByTestId("display-team").filter({ hasText: "Team 1" }),
+  ).toBeVisible();
 
   // Let every component mount and any late subscriptions start.
   await admin.waitForTimeout(3_000);
@@ -88,10 +90,10 @@ test("two admin tabs for one game can both act", async ({
     (await db.game.findUniqueOrThrow({ where: { id: game.id } }))
       .isBuzzerListening;
 
-  await tabs[1]!.getByRole("button", { name: "Start Buzzer" }).click();
+  await tabs[1]!.getByRole("button", { name: "Open buzzer" }).click();
   await expect.poll(listening, { timeout: 10_000 }).toBe(true);
   // The other tab sees the change live and can act on it.
-  await tabs[0]!.getByRole("button", { name: "Pause Buzzer" }).click();
+  await tabs[0]!.getByRole("button", { name: "Close buzzer" }).click();
   await expect.poll(listening, { timeout: 10_000 }).toBe(false);
 
   await context.close();

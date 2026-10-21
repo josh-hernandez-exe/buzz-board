@@ -308,9 +308,7 @@ function Editor({ view }: { view: HostView }) {
           Start Ranked Answers
         </Button>
         {dirty && (
-          <span className="text-warning-foreground text-sm">
-            Unsaved changes
-          </span>
+          <span className="text-warning-text text-sm">Unsaved changes</span>
         )}
       </div>
       <ErrorNotice
@@ -673,7 +671,7 @@ function Preflight({
       )}
       {check.warnings.length > 0 && (
         <div>
-          <p className="text-warning-foreground font-semibold">Worth knowing</p>
+          <p className="text-warning-text font-semibold">Worth knowing</p>
           <ul className="list-disc pl-5">
             {check.warnings.map((p) => (
               <li key={p}>{p}</li>
@@ -830,8 +828,7 @@ function Controls({ view }: { view: HostView }) {
       )}
       {view.status === "ended" && (
         <p className="text-sm">
-          Ranked Answers has ended. Use the Game Controls tab for buzzers and
-          scores.
+          Ranked Answers has ended. Use the Play tab for buzzers and scores.
         </p>
       )}
     </div>
@@ -1023,7 +1020,7 @@ function PhaseControls({
         <Button
           key={a.id}
           disabled={disabled}
-          className="bg-info text-primary-foreground hover:bg-info/90"
+          className="bg-info text-info-foreground hover:bg-info/90"
           onClick={() => onPick(a.id)}
         >
           #{a.rank} {a.text}

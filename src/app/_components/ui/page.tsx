@@ -3,6 +3,8 @@ import { type ReactNode } from "react";
 
 import { cn } from "@/app/_lib/utils";
 import { buttonVariants } from "@/app/_components/ui/button";
+import { HeaderMenu } from "@/app/_components/client/HeaderMenu";
+import { ThemeToggle } from "@/app/_components/client/ThemeToggle";
 
 /**
  * Page-level building blocks. Pages compose these instead of repeating
@@ -14,6 +16,8 @@ const WIDTH = {
   narrow: "max-w-md",
   normal: "max-w-3xl",
   wide: "max-w-5xl",
+  /** Projected or screen-shared views, such as the audience display. */
+  full: "max-w-7xl",
 } as const;
 
 /** The brand wordmark: a buzzer dot and the name. */
@@ -50,27 +54,39 @@ export function SiteHeader({
 }) {
   return (
     <header className="border-border bg-surface/80 sticky top-0 z-40 border-b backdrop-blur">
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+      <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-4 py-2.5">
         <Link href="/" aria-label="Buzz Board home" className="text-lg">
           <Wordmark />
         </Link>
-        <nav
-          aria-label="Site"
-          className="flex flex-1 flex-wrap items-center justify-end gap-1"
-        >
+        <div className="ml-auto flex items-center gap-1">
           {note && (
-            <span className="text-muted-foreground mr-2 text-sm">{note}</span>
+            <span className="text-muted-foreground mr-2 hidden text-sm lg:inline">
+              {note}
+            </span>
           )}
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={buttonVariants({ variant: "ghost", size: "sm" })}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+          <ThemeToggle />
+          {links.length > 0 && (
+            <>
+              <nav
+                aria-label="Site"
+                className="hidden items-center gap-1 lg:flex"
+              >
+                {links.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={buttonVariants({ variant: "ghost", size: "sm" })}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+              <div className="lg:hidden">
+                <HeaderMenu links={links} note={note} />
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );
@@ -166,7 +182,7 @@ export function Panel({
       )}
       {...rest}
     >
-      {(title ?? actions) && (
+      {(title ?? description ?? actions) && (
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="flex flex-col gap-0.5">
             {title && <h2 className="text-lg font-bold">{title}</h2>}
@@ -221,9 +237,9 @@ export function StatusPill({
 const NOTICE: Record<Tone, string> = {
   neutral: "bg-muted text-foreground",
   success: "bg-success-soft text-foreground border-success/40",
-  warning: "bg-warning/40 text-foreground border-warning",
+  warning: "bg-warning-soft text-foreground border-warning",
   danger: "bg-destructive-soft text-foreground border-destructive/40",
-  info: "bg-accent/30 text-foreground border-accent",
+  info: "bg-accent-soft text-foreground border-accent",
 };
 
 /** A block of explanatory or status text. */

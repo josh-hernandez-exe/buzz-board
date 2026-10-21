@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-import { GameFormat } from "@prisma/client";
+import { BuzzerMode, GameFormat } from "@prisma/client";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/app/_components/ui/button";
@@ -15,14 +15,15 @@ import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 const { minTeams: MIN_TEAMS, maxTeams: MAX_TEAMS } = GAME_LIMITS;
 
 /**
- * One short form: name, format and (for team games) team count. Chat, modes
- * and content are not part of creating a basic game.
+ * One short form: name, format, (for team games) team count and how buzzing
+ * works. Chat, modes and content are set up later from the host desk.
  */
 export function CreateGame() {
   const router = useRouter();
   const [name, setName] = useState("Trivia night");
   const [format, setFormat] = useState<GameFormat>(GameFormat.team);
   const [teamCount, setTeamCount] = useState<number>(GAME_LIMITS.defaultTeams);
+  const [buzzerMode, setBuzzerMode] = useState<BuzzerMode>(BuzzerMode.first);
   // One ID per attempt: a double-click or a retried request after a slow
   // response returns the same game instead of creating a second room.
   const requestId = useRef(newRequestId());
@@ -47,6 +48,7 @@ export function CreateGame() {
           name: trimmed,
           format,
           teamCount: format === GameFormat.team ? teamCount : undefined,
+          buzzerMode,
           requestId: requestId.current,
         });
       }}
@@ -121,6 +123,42 @@ export function CreateGame() {
           </p>
         </div>
       )}
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium">Buzzing</legend>
+        {(
+          [
+            [
+              BuzzerMode.first,
+              "First buzz wins",
+              "The fastest buzz answers. Reopen the buzzer if they're wrong.",
+            ],
+            [
+              BuzzerMode.queue,
+              "Queue",
+              "Every buzz lines up in order. Mark answers right or wrong and the next in line answers.",
+            ],
+          ] as const
+        ).map(([value, label, hint]) => (
+          <label key={value} className="flex items-start gap-2">
+            <input
+              type="radio"
+              name="buzzerMode"
+              value={value}
+              className="mt-1"
+              checked={buzzerMode === value}
+              onChange={() => setBuzzerMode(value)}
+            />
+            <span className="flex flex-col">
+              {label}
+              <span className="text-muted-foreground text-xs">{hint}</span>
+            </span>
+          </label>
+        ))}
+        <p className="text-muted-foreground text-xs">
+          You can switch between questions from the host desk.
+        </p>
+      </fieldset>
 
       <ErrorNotice
         error={createGame.error}

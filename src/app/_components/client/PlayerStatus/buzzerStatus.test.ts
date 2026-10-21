@@ -10,6 +10,7 @@ function state(
     buzzWinner?: PrivateGameState["buzzWinner"];
     rejected?: string[];
     selfTeam?: string | null;
+    queue?: PrivateGameState["buzzQueue"];
   } = {},
 ): PrivateGameState {
   const rejected = new Set(overrides.rejected ?? []);
@@ -26,6 +27,7 @@ function state(
       joiningOpen: true,
       teamAssignment: "auto",
       chatEnabled: false,
+      buzzerMode: "first",
       ...overrides.game,
     },
     gameTeams: ["t1", "t2"].map((id, i) => ({
@@ -69,9 +71,17 @@ function state(
       },
     },
     buzzWinner: overrides.buzzWinner ?? null,
+    buzzQueue: overrides.queue ?? [],
     mode: null,
   };
 }
+
+const entry = (
+  position: number,
+  gameUserId: string,
+  gameTeamId: string,
+  status: PrivateGameState["buzzQueue"][number]["status"],
+) => ({ id: `e${position}`, position, gameUserId, gameTeamId, status });
 
 describe("buzzerStatus", () => {
   it("is ready only while the buzzer is open", () => {
@@ -141,5 +151,64 @@ describe("buzzerStatus", () => {
         "me",
       ),
     ).toMatchObject({ canBuzz: false, tone: "blocked" });
+  });
+
+  describe("queue mode", () => {
+    const queue = (q: PrivateGameState["buzzQueue"], listening = true) =>
+      state({
+        game: { buzzerMode: "queue", isBuzzerListening: listening },
+        queue: q,
+      });
+
+    it("invites a buzz to join the queue", () => {
+      expect(buzzerStatus(queue([]), "me")).toMatchObject({
+        canBuzz: true,
+        message: "Buzzer open: press to join the queue!",
+      });
+    });
+
+    it("says who is answering, and the player's place in line", () => {
+      expect(
+        buzzerStatus(queue([entry(1, "me", "t1", "answering")]), "me").message,
+      ).toBe("You're answering!");
+      expect(
+        buzzerStatus(queue([entry(1, "mate", "t1", "answering")]), "me")
+          .message,
+      ).toBe("Your team is answering (Cy buzzed)!");
+      expect(
+        buzzerStatus(
+          queue([
+            entry(1, "rival", "t2", "answering"),
+            entry(2, "me", "t1", "waiting"),
+          ]),
+          "me",
+        ),
+      ).toMatchObject({ canBuzz: false, message: "You're next in line." });
+      expect(
+        buzzerStatus(
+          queue([
+            entry(1, "x", "t3", "wrong"),
+            entry(2, "rival", "t2", "answering"),
+            entry(3, "y", "t4", "waiting"),
+            entry(4, "mate", "t1", "waiting"),
+          ]),
+          "me",
+        ).message,
+      ).toBe("Your team is 3rd in line (Cy buzzed).");
+    });
+
+    it("explains a lockout, a win, and another team's win", () => {
+      expect(
+        buzzerStatus(queue([entry(1, "me", "t1", "wrong")]), "me").message,
+      ).toBe("Not this time: your team sits out until the next question.");
+      expect(
+        buzzerStatus(queue([entry(1, "me", "t1", "correct")], false), "me")
+          .message,
+      ).toBe("Correct! Well done.");
+      expect(
+        buzzerStatus(queue([entry(1, "rival", "t2", "correct")], false), "me")
+          .message,
+      ).toBe("Foxes got it.");
+    });
   });
 });

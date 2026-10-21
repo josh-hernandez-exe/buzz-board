@@ -1,4 +1,5 @@
 import {
+  BuzzerMode,
   GameFormat,
   GameStatus,
   Prisma,
@@ -72,6 +73,7 @@ async function insertGame(data: {
   teamNames: string[];
   settings?: Prisma.InputJsonValue;
   teamAssignment?: TeamAssignment;
+  buzzerMode?: BuzzerMode;
   requestId?: string;
 }): Promise<Created> {
   if (data.requestId) {
@@ -89,6 +91,7 @@ async function insertGame(data: {
             format: data.format,
             settings: data.settings ?? {},
             teamAssignment: data.teamAssignment,
+            buzzerMode: data.buzzerMode,
             creationRequestId: data.requestId,
             createdById: data.ownerId,
             gameAdmins: { create: { userId: data.ownerId } },
@@ -130,12 +133,14 @@ export async function createGame({
   name,
   format,
   teamCount = GAME_LIMITS.defaultTeams,
+  buzzerMode,
   requestId,
 }: {
   ownerId: string;
   name: string;
   format: GameFormat;
   teamCount?: number;
+  buzzerMode?: BuzzerMode;
   requestId?: string;
 }): Promise<Result<Created, GameServiceError>> {
   if (requestId) {
@@ -165,6 +170,7 @@ export async function createGame({
         format === GameFormat.team
           ? Array.from({ length: teamCount }, (_, i) => `Team ${i + 1}`)
           : [],
+      buzzerMode,
       requestId,
     }),
   );
@@ -200,6 +206,7 @@ export async function duplicateGame({
       format: source.format,
       settings: source.settings ?? {},
       teamAssignment: source.teamAssignment,
+      buzzerMode: source.buzzerMode,
       teamNames:
         source.format === GameFormat.team
           ? source.gameTeams.map((team) => team.name)

@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+
 import { JoinQrCode, joinUrl } from "@/app/_components/client/JoinQrCode";
 
 import { GameFormat, GameStatus, TeamAssignment } from "@prisma/client";
 import { useRouter } from "next/navigation";
 
-import { GenericCard } from "@/app/_components/GenericCard";
+import { Panel } from "@/app/_components/ui/page";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { Button } from "@/app/_components/ui/button";
 import {
@@ -23,37 +24,15 @@ import {
 import { Switch } from "@/app/_components/ui/switch";
 import { api } from "@/trpc/react";
 import { newRequestId } from "@/utils/requestId";
-import { ASSIGNMENT_LABEL, GAME_LIMITS, STATUS_LABEL } from "@/utils/gameRules";
+import { ASSIGNMENT_LABEL, GAME_LIMITS } from "@/utils/gameRules";
 import { can, type StaffRoleName } from "@/utils/capabilities";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { helpHref } from "@/help/manifest";
 import { DeleteGameDialog } from "@/app/_components/client/DeleteGameDialog";
 
-function CopyButton({ text, label }: { text: string; label: string }) {
-  const [copied, setCopied] = useState<boolean | "failed">(false);
-  return (
-    <Button
-      variant="secondary"
-      onClick={() => {
-        navigator.clipboard.writeText(text).then(
-          () => setCopied(true),
-          () => setCopied("failed"),
-        );
-        setTimeout(() => setCopied(false), 2_000);
-      }}
-    >
-      {copied === true
-        ? "Copied"
-        : copied === "failed"
-          ? "Copy failed: select the link"
-          : label}
-    </Button>
-  );
-}
-
 /**
- * The host desk's room overview: how to share it, who may join, and the
- * game's lifecycle. Shown to every host/co-host; delete is owner-only.
+ * The host desk's room settings: the QR code, who may join, and the game's
+ * lifecycle. Moderators see only the sharing part; delete is owner-only.
  */
 export function HostRoomPanel({ staffRole }: { staffRole: StaffRoleName }) {
   const isOwner = can(staffRole, "deleteGame");
@@ -92,224 +71,187 @@ export function HostRoomPanel({ staffRole }: { staffRole: StaffRoleName }) {
     now - new Date(game.finishedAt).getTime() <= GAME_LIMITS.reopenWindowMs;
 
   return (
-    <GenericCard
-      title={
-        <span className="flex flex-wrap items-center gap-2">
-          {game.name}
-          <span
-            data-testid="game-status"
-            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-              finished
-                ? "bg-muted text-muted-foreground"
-                : game.status === GameStatus.running
-                  ? "bg-success-soft text-success"
-                  : "bg-warning text-warning-foreground"
-            }`}
-          >
-            {STATUS_LABEL[game.status]}
-          </span>
-        </span>
-      }
-      content={
-        <div className="flex flex-col gap-6">
+    <Panel aria-label="Room" title="Room">
+      <div className="flex flex-col gap-6">
+        <section
+          aria-labelledby="share-heading"
+          className="flex flex-col gap-4 sm:flex-row"
+        >
+          <div className="flex flex-1 flex-col gap-2">
+            <h3 id="share-heading" className="font-semibold">
+              Invite players
+            </h3>
+            <p className="text-sm">
+              Players open{" "}
+              <span className="font-mono break-all">{joinUrl(game.code)}</span>{" "}
+              or scan the code. Everyone can also go to the home page and type
+              the join code <strong className="font-mono">{game.code}</strong>.
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Screen-share the audience display, not this host desk. It shows
+              scores and buzzes, never controls.{" "}
+              <a
+                href={helpHref(
+                  "scoreboards-and-display",
+                  "what-is-the-audience-display",
+                )}
+                target="_blank"
+                rel="noopener"
+                className="underline"
+              >
+                About the display
+              </a>
+            </p>
+          </div>
+          <div className="flex flex-col items-center">
+            <JoinQrCode code={game.code} />
+            <span className="text-muted-foreground text-xs">Scan to join</span>
+          </div>
+        </section>
+
+        {runsGame && (
           <section
-            aria-labelledby="share-heading"
-            className="flex flex-col gap-4 sm:flex-row"
+            aria-labelledby="joining-heading"
+            className="flex flex-col gap-3"
           >
-            <div className="flex flex-1 flex-col gap-2">
-              <h3 id="share-heading" className="font-semibold">
-                Share
-              </h3>
-              <p>
-                Join code{" "}
-                <strong
-                  data-testid="join-code"
-                  className="font-mono text-2xl tracking-widest"
-                >
-                  {game.code}
-                </strong>
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <CopyButton text={joinUrl(game.code)} label="Copy join link" />
-                <Button variant="secondary" asChild>
-                  <a
-                    href={`/game/${game.id}/scoreboard/public`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open audience display
-                  </a>
-                </Button>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                Screen-share the audience display, not this host desk. It shows
-                scores and buzzes, never controls.{" "}
-                <a
-                  href={helpHref(
-                    "scoreboards-and-display",
-                    "what-is-the-audience-display",
-                  )}
-                  target="_blank"
-                  rel="noopener"
-                  className="underline"
-                >
-                  About the display
-                </a>
-              </p>
-            </div>
-            <div className="flex flex-col items-center">
-              <JoinQrCode code={game.code} />
-              <span className="text-muted-foreground text-xs">
-                Scan to join
-              </span>
-            </div>
-          </section>
-
-          {runsGame && (
-            <section
-              aria-labelledby="joining-heading"
-              className="flex flex-col gap-3"
-            >
-              <h3 id="joining-heading" className="font-semibold">
-                Players ({playerCount})
-              </h3>
-              <div className="flex items-center justify-between gap-4">
-                <label htmlFor="joining-open" className="text-sm">
-                  {game.joiningOpen
-                    ? "New players can join"
-                    : "Joining is closed; players already in can still return"}
-                </label>
-                <Switch
-                  id="joining-open"
-                  aria-label="Allow new players to join"
-                  checked={game.joiningOpen}
-                  disabled={finished || setJoiningOpen.isPending}
-                  onCheckedChange={(open: boolean) =>
-                    setJoiningOpen.mutate({ open })
-                  }
-                />
-              </div>
-              {game.format === GameFormat.team && (
-                <label className="flex flex-col gap-1 text-sm">
-                  Team assignment for new players
-                  <select
-                    className="field px-2 py-1"
-                    value={game.teamAssignment}
-                    disabled={finished || setTeamAssignment.isPending}
-                    onChange={(e) =>
-                      setTeamAssignment.mutate({
-                        teamAssignment: e.target.value as TeamAssignment,
-                      })
-                    }
-                  >
-                    {Object.values(TeamAssignment).map((value) => (
-                      <option key={value} value={value}>
-                        {ASSIGNMENT_LABEL[value]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <ErrorNotice
-                error={setJoiningOpen.error ?? setTeamAssignment.error}
+            <h3 id="joining-heading" className="font-semibold">
+              Players ({playerCount})
+            </h3>
+            <div className="flex items-center justify-between gap-4">
+              <label htmlFor="joining-open" className="text-sm">
+                {game.joiningOpen
+                  ? "New players can join"
+                  : "Joining is closed; players already in can still return"}
+              </label>
+              <Switch
+                id="joining-open"
+                aria-label="Allow new players to join"
+                checked={game.joiningOpen}
+                disabled={finished || setJoiningOpen.isPending}
+                onCheckedChange={(open: boolean) =>
+                  setJoiningOpen.mutate({ open })
+                }
               />
-            </section>
-          )}
-
-          {runsGame && (
-            <section
-              aria-labelledby="game-heading"
-              className="flex flex-col gap-3"
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <h3 id="game-heading" className="font-semibold">
-                  Game
-                </h3>
-                <a
-                  href={helpHref("host-quickstart")}
-                  target="_blank"
-                  rel="noopener"
-                  className="text-sm underline"
-                >
-                  Host guide
-                </a>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {!finished && (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline">Finish game…</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Finish this game?</DialogTitle>
-                        <DialogDescription>
-                          The buzzer closes, nobody new can join, and players
-                          can no longer change names or teams. Scores stay
-                          visible. You can reopen within 24 hours to correct
-                          results.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button variant="secondary">Keep playing</Button>
-                        </DialogClose>
-                        <DialogClose asChild>
-                          <Button onClick={() => finishGame.mutate()}>
-                            Finish game
-                          </Button>
-                        </DialogClose>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
-                {finished && (
-                  <Button
-                    variant="outline"
-                    disabled={!canReopen || reopenGame.isPending}
-                    title={
-                      canReopen
-                        ? undefined
-                        : "Games can only be reopened within 24 hours of finishing."
-                    }
-                    onClick={() => reopenGame.mutate()}
-                  >
-                    Reopen to correct results
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  disabled={duplicateGame.isPending}
-                  onClick={() =>
-                    duplicateGame.mutate({
-                      requestId: duplicateRequestId.current,
+            </div>
+            {game.format === GameFormat.team && (
+              <label className="flex flex-col gap-1 text-sm">
+                Team assignment for new players
+                <select
+                  className="field px-2 py-1"
+                  value={game.teamAssignment}
+                  disabled={finished || setTeamAssignment.isPending}
+                  onChange={(e) =>
+                    setTeamAssignment.mutate({
+                      teamAssignment: e.target.value as TeamAssignment,
                     })
                   }
                 >
-                  {duplicateGame.isPending ? "Duplicating…" : "Duplicate"}
+                  {Object.values(TeamAssignment).map((value) => (
+                    <option key={value} value={value}>
+                      {ASSIGNMENT_LABEL[value]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <ErrorNotice
+              error={setJoiningOpen.error ?? setTeamAssignment.error}
+            />
+          </section>
+        )}
+
+        {runsGame && (
+          <section
+            aria-labelledby="game-heading"
+            className="flex flex-col gap-3"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 id="game-heading" className="font-semibold">
+                Game
+              </h3>
+              <a
+                href={helpHref("host-quickstart")}
+                target="_blank"
+                rel="noopener"
+                className="text-sm underline"
+              >
+                Host guide
+              </a>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {!finished && (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">Finish game…</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Finish this game?</DialogTitle>
+                      <DialogDescription>
+                        The buzzer closes, nobody new can join, and players can
+                        no longer change names or teams. Scores stay visible.
+                        You can reopen within 24 hours to correct results.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button variant="secondary">Keep playing</Button>
+                      </DialogClose>
+                      <DialogClose asChild>
+                        <Button onClick={() => finishGame.mutate()}>
+                          Finish game
+                        </Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+              {finished && (
+                <Button
+                  variant="outline"
+                  disabled={!canReopen || reopenGame.isPending}
+                  title={
+                    canReopen
+                      ? undefined
+                      : "Games can only be reopened within 24 hours of finishing."
+                  }
+                  onClick={() => reopenGame.mutate()}
+                >
+                  Reopen to correct results
                 </Button>
-                {isOwner && (
-                  <DeleteGameDialog
-                    game={{
-                      name: game.name,
-                      status: game.status,
-                      playerCount,
-                    }}
-                    onDelete={(input) => deleteGame.mutate(input)}
-                    isPending={deleteGame.isPending}
-                    error={deleteGame.error}
-                  />
-                )}
-              </div>
-              <ErrorNotice
-                error={
-                  finishGame.error ?? reopenGame.error ?? duplicateGame.error
+              )}
+              <Button
+                variant="outline"
+                disabled={duplicateGame.isPending}
+                onClick={() =>
+                  duplicateGame.mutate({
+                    requestId: duplicateRequestId.current,
+                  })
                 }
-              />
-            </section>
-          )}
-        </div>
-      }
-    />
+              >
+                {duplicateGame.isPending ? "Duplicating…" : "Duplicate"}
+              </Button>
+              {isOwner && (
+                <DeleteGameDialog
+                  game={{
+                    name: game.name,
+                    status: game.status,
+                    playerCount,
+                  }}
+                  onDelete={(input) => deleteGame.mutate(input)}
+                  isPending={deleteGame.isPending}
+                  error={deleteGame.error}
+                />
+              )}
+            </div>
+            <ErrorNotice
+              error={
+                finishGame.error ?? reopenGame.error ?? duplicateGame.error
+              }
+            />
+          </section>
+        )}
+      </div>
+    </Panel>
   );
 }

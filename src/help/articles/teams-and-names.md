@@ -10,7 +10,7 @@ Hosts choose a **team assignment** setting in the host desk's **Players** sectio
 
 When the host allows it, open the **Team** tab and choose a team. Switching isn't possible when:
 
-- the host has turned **Team Switching** off,
+- the host has turned **Players can switch teams** off,
 - the host assigns teams,
 - the buzzer is open (wait for it to close), or
 - the game has finished.
@@ -19,7 +19,7 @@ The **Team** tab says which of these applies.
 
 ## How do hosts move players or change teams?
 
-Use the host desk's **Team Management** tab to add or delete teams, and **Player Management** to rename, move or remove players. Moves wait while the buzzer is open. Moving a player doesn't move their past points: points belong to the team that earned them. See [Managing players](/help/moderation).
+Use the host desk's **Players** tab: **Teams** at the top adds and deletes teams and controls switching, and the player list below renames, moves or removes players. Moves wait while the buzzer is open. Moving a player doesn't move their past points: points belong to the team that earned them. See [Managing players](/help/moderation).
 
 ## How do I change my name or my team's name?
 

@@ -51,7 +51,7 @@ export default async function HelpArticlePage({
   return (
     <article className="flex flex-col gap-6">
       <p>
-        <Link href="/help" className="text-primary underline">
+        <Link href="/help" className="text-link underline">
           All help
         </Link>
       </p>
@@ -72,7 +72,7 @@ export default async function HelpArticlePage({
           <ul className="mt-2 ml-4 list-disc">
             {sections.map((h) => (
               <li key={h.anchor}>
-                <a href={`#${h.anchor}`} className="text-primary underline">
+                <a href={`#${h.anchor}`} className="text-link underline">
                   {h.text}
                 </a>
               </li>
@@ -95,7 +95,7 @@ export default async function HelpArticlePage({
               <li key={other.id}>
                 <Link
                   href={`/help/${other.id}`}
-                  className="text-primary underline"
+                  className="text-link underline"
                 >
                   {other.title}
                 </Link>

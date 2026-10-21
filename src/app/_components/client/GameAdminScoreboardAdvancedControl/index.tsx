@@ -17,10 +17,13 @@ import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 
 export function GameAdminScoreboardAdvancedControl({
   gameTeams,
+  embedded = false,
 }: {
   gameTeams: Array<
     Pick<GameTeam, "id" | "name" | "index" | "buzzerState"> & { score: number }
   >;
+  /** Inside another panel: no card of its own, and no undo/redo buttons. */
+  embedded?: boolean;
 }) {
   logger.debug(`GameAdminScoreboardControl`);
   // Kept as text so "0", an empty field and a lone "-" are distinguishable.
@@ -67,79 +70,77 @@ export function GameAdminScoreboardAdvancedControl({
 
   const reset = () => mutations.forEach((m) => m.reset());
 
-  return (
-    <GenericCard
-      title="Scores"
-      description="Tick teams, enter points, then add, subtract or set them."
-      content={
-        <div>
-          <DataTable
-            columns={columns}
-            data={gameTeams.map((team) => {
-              return {
-                id: team.id,
-                name: team.name,
-                index: team.index,
-                buzzerState: team.buzzerState,
-                score: team.score,
-              };
-            })}
-            onChange={setSelectedGameTeams}
-          />
-          <Input
-            type="text"
-            inputMode="numeric"
-            placeholder="Enter Score"
-            aria-label="Score"
-            value={scoreText}
-            onChange={(e) => setScoreText(e.target.value)}
-            className="field mb-2 p-2"
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={() => {
-                if (isScoreReady) {
-                  reset();
-                  addScoreMutation.mutate({
-                    requestId: newRequestId(),
-                    changes: changesFor(score),
-                  });
-                }
-              }}
-              disabled={!isScoreReady}
-            >
-              Add
-            </Button>
-            <Button
-              onClick={() => {
-                if (isScoreReady) {
-                  reset();
-                  addScoreMutation.mutate({
-                    requestId: newRequestId(),
-                    changes: changesFor(-score),
-                  });
-                }
-              }}
-              disabled={!isScoreReady}
-              variant="secondary"
-            >
-              Subtract
-            </Button>
-            <Button
-              onClick={() => {
-                if (isScoreReady) {
-                  reset();
-                  setScoreMutation.mutate({
-                    requestId: newRequestId(),
-                    changes: changesFor(score),
-                  });
-                }
-              }}
-              disabled={!isScoreReady}
-              variant="secondary"
-            >
-              Set
-            </Button>
+  const content = (
+    <div>
+      <DataTable
+        columns={columns}
+        data={gameTeams.map((team) => {
+          return {
+            id: team.id,
+            name: team.name,
+            index: team.index,
+            buzzerState: team.buzzerState,
+            score: team.score,
+          };
+        })}
+        onChange={setSelectedGameTeams}
+      />
+      <Input
+        type="text"
+        inputMode="numeric"
+        placeholder="Enter Score"
+        aria-label="Score"
+        value={scoreText}
+        onChange={(e) => setScoreText(e.target.value)}
+        className="field mb-2 p-2"
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          onClick={() => {
+            if (isScoreReady) {
+              reset();
+              addScoreMutation.mutate({
+                requestId: newRequestId(),
+                changes: changesFor(score),
+              });
+            }
+          }}
+          disabled={!isScoreReady}
+        >
+          Add
+        </Button>
+        <Button
+          onClick={() => {
+            if (isScoreReady) {
+              reset();
+              addScoreMutation.mutate({
+                requestId: newRequestId(),
+                changes: changesFor(-score),
+              });
+            }
+          }}
+          disabled={!isScoreReady}
+          variant="secondary"
+        >
+          Subtract
+        </Button>
+        <Button
+          onClick={() => {
+            if (isScoreReady) {
+              reset();
+              setScoreMutation.mutate({
+                requestId: newRequestId(),
+                changes: changesFor(score),
+              });
+            }
+          }}
+          disabled={!isScoreReady}
+          variant="secondary"
+        >
+          Set
+        </Button>
+        {!embedded && (
+          <>
             <Button
               onClick={() => {
                 reset();
@@ -160,18 +161,24 @@ export function GameAdminScoreboardAdvancedControl({
             >
               Redo
             </Button>
-          </div>
-          {disabledReason && (
-            <p className="text-muted-foreground mt-2 text-sm">
-              {disabledReason}
-            </p>
-          )}
-          <ErrorNotice
-            error={lastError}
-            className="text-destructive mt-2 text-sm"
-          />
-        </div>
-      }
+          </>
+        )}
+      </div>
+      {disabledReason && (
+        <p className="text-muted-foreground mt-2 text-sm">{disabledReason}</p>
+      )}
+      <ErrorNotice
+        error={lastError}
+        className="text-destructive mt-2 text-sm"
+      />
+    </div>
+  );
+  if (embedded) return content;
+  return (
+    <GenericCard
+      title="Scores"
+      description="Tick teams, enter points, then add, subtract or set them."
+      content={content}
     />
   );
 }

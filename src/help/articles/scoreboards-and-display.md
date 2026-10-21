@@ -1,6 +1,6 @@
 ## What is the audience display?
 
-It's a read-only scoreboard for the people watching. It shows the game's name, the join code while joining is open, each team's score, and who buzzed in. It has no controls, so it's safe to screen-share in a meeting. Open it from the host desk with **Open audience display**.
+It's a read-only scoreboard for the people watching. It shows the game's name, the join code while joining is open, each team's score in large type, who buzzed in (or the whole queue, in queue mode), and a ★ next to the leader. It has no controls, so it's safe to screen-share in a meeting. Open it from the host desk with **Open audience display**.
 
 Anyone with the display's link can see it without signing in, so share the link only where the scores can be public.
 
@@ -10,17 +10,17 @@ Sound starts off so that every open copy of the display doesn't play at once. On
 
 ## How do I change scores?
 
-In the host desk's **Game Controls** tab, under **Admin Scoreboard Advanced Controls**:
+On the host desk's **Play** tab:
 
-1. Tick the teams to change, or use **Buzzer Selected** or **Buzzer Rejected** to pick them.
-2. Type a whole number. Negative numbers and zero work too.
-3. Choose **Add**, **Subtract** or **Set**. **Set** replaces the score, so **Set** with 0 resets it.
+- **Award N to Team** in the **Buzzer** panel gives points to whoever holds the buzz, in one tap.
+- In the **Scores** panel, set **Points per tap**, then use **+** or **−** next to any team.
+- For several teams at once, or to set an exact score, open **More score tools**. Tick the teams (or use **Buzzer Selected** or **Buzzer Rejected** to pick them), type a whole number, and choose **Add**, **Subtract** or **Set**. **Set** replaces the score, so **Set** with 0 resets it.
 
 Each click is saved once, even if your connection retries it. Scores have limits (see Rules at a glance).
 
 ## How do undo and redo work?
 
-**Undo** steps back through score changes one at a time, and **Redo** steps forward again in the same order. Making a new change after undoing clears the changes you could have redone. Undo and redo are only for scores: they don't change the buzzer or teams.
+**Undo** steps back through score changes one at a time, and **Redo** steps forward again in the same order. Making a new change after undoing clears the changes you could have redone. **Undo score** and **Redo** are only for scores: they don't change the buzzer or teams. The buzzer has its own undo; see [Buzzing modes and undo](/help/buzzing).
 
 ## Can two hosts change scores at the same time?
 

@@ -1,33 +1,21 @@
 "use client";
 
-import { useState } from "react";
 import { type GameTeam } from "@prisma/client";
 
-import { GenericCard } from "@/app/_components/GenericCard";
-
+import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { Button } from "@/app/_components/ui/button";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/app/_components/ui/drawer";
-
-import { Label } from "@/app/_components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/app/_components/ui/radio-group";
-
+import { Panel } from "@/app/_components/ui/page";
+import { cn } from "@/app/_lib/utils";
 import { api } from "@/trpc/react";
 
-import { logger } from "@/logger";
-import { useLiveGameState } from "@/app/_components/client/LiveGameState";
-
+/**
+ * Every team with who's on it; one tap joins a team. The player's current
+ * team is marked and can't be "joined" again.
+ */
 export function GameTeamSelection({
   initialGameTeamId,
-  gameTeams: initialGameteams,
+  gameTeams: initialGameTeams,
   onChange,
 }: {
   initialGameTeamId: GameTeam["id"] | undefined | null;
@@ -35,153 +23,87 @@ export function GameTeamSelection({
   onChange?: (gameTeamId: GameTeam["id"]) => void;
 }) {
   const utils = api.useUtils();
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const gameTeamInfo = api.gameUser.getSelfTeamInfo.useQuery();
-  const gameState = useLiveGameState();
-  const gameTeams = gameState?.data?.gameTeams ?? initialGameteams;
-
-  const curGameTeam =
-    gameTeamInfo.data ??
-    gameTeams.find((team) => team.id === initialGameTeamId);
-
-  const [selectedTeam, setSelectedTeam] = useState(curGameTeam);
-
-  const changeTeamMutation = api.gameUser.changeTeams.useMutation({
-    onSuccess: async (updatedGameUser) => {
+  const self = api.gameUser.getSelfInfo.useQuery();
+  const { data } = useLiveGameState();
+  const changeTeam = api.gameUser.changeTeams.useMutation({
+    onSuccess: (updated) => {
       void utils.gameUser.getSelfInfo.invalidate();
       void utils.gameUser.getSelfTeamInfo.invalidate();
-
-      const updatedGameTeam = gameTeams.find(
-        (team) => team.id === updatedGameUser.gameTeamId,
-      );
-      if (!updatedGameTeam) {
-        logger.error(
-          `GameTeamSelection: Failed to find updated game team with id ${updatedGameUser.gameTeamId}`,
-        );
-        return;
-      }
-
-      setIsDrawerOpen(false);
-      logger.info(
-        `GameTeamSelection: Successfully changed to team ${updatedGameTeam.name}`,
-      );
-      onChange?.(updatedGameTeam.id);
-    },
-    onError: (error) => {
-      logger.error(
-        `GameTeamSelection: Failed to change team: ${error.message}`,
-      );
-      // Keep drawer open so user can see the error
+      onChange?.(updated.gameTeamId);
     },
   });
 
-  if (!gameTeams || gameTeams.length === 0) {
-    return <div>No teams available</div>;
+  const selfId = self.data?.id;
+  const currentTeamId =
+    (selfId ? data?.gameUsers[selfId]?.gameTeamId : undefined) ??
+    self.data?.gameTeamId ??
+    initialGameTeamId;
+  const teams = [...(data?.gameTeams ?? initialGameTeams)].sort(
+    (a, b) => a.index - b.index,
+  );
+  const membersOf = (teamId: string) =>
+    Object.values(data?.gameUsers ?? {})
+      .filter((u) => u.gameTeamId === teamId)
+      .map((u) => u.name);
+  const current = teams.find((t) => t.id === currentTeamId);
+
+  if (teams.length === 0) {
+    return (
+      <Panel>
+        <p className="text-muted-foreground">
+          There are no teams yet. Your host will add some.
+        </p>
+      </Panel>
+    );
   }
 
-  gameTeams.sort((a, b) => a.index - b.index);
-
   return (
-    <div className="flex flex-col items-center justify-center">
-      <GenericCard
-        title={
-          <div className="flex items-center space-x-2">
-            {curGameTeam && (
-              <div className="flex items-center space-x-2">
-                <span>{curGameTeam.name}</span>
+    <Panel
+      title={current ? `You're on ${current.name}` : "Pick a team"}
+      description={
+        current
+          ? "Tap another team to switch."
+          : "Tap a team to join it. You can switch later while the buzzer is closed."
+      }
+    >
+      <ul className="flex flex-col gap-2">
+        {teams.map((team) => {
+          const mine = team.id === currentTeamId;
+          const members = membersOf(team.id);
+          const pending =
+            changeTeam.isPending &&
+            changeTeam.variables?.gameTeamId === team.id;
+          return (
+            <li
+              key={team.id}
+              className={cn(
+                "flex items-center gap-3 rounded-lg border-2 p-3",
+                mine ? "border-success bg-success-soft" : "border-border",
+              )}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="font-bold break-words">{team.name}</p>
+                <p className="text-muted-foreground text-sm break-words">
+                  {members.length === 0 ? "No players yet" : members.join(", ")}
+                </p>
               </div>
-            )}
-            {!curGameTeam && (
-              <div className="flex items-center space-x-2">
-                <span>Select your team</span>
-              </div>
-            )}
-          </div>
-        }
-        content={
-          <Drawer open={isDrawerOpen}>
-            <DrawerTrigger asChild>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsDrawerOpen(true);
-                }}
-              >
-                Change Team
-              </Button>
-            </DrawerTrigger>
-            <DrawerContent>
-              <div className="mx-auto w-full max-w-sm">
-                <DrawerHeader>
-                  <DrawerTitle>Select Team</DrawerTitle>
-                  <DrawerDescription>
-                    Select the team you want to join.
-                  </DrawerDescription>
-                </DrawerHeader>
-                <div className="p-4 pb-0">
-                  <RadioGroup
-                    // We want to ensure that the value prop is always defined
-                    value={selectedTeam?.id ?? ""}
-                    onValueChange={(value: GameTeam["id"]) => {
-                      const team = gameTeams.find((team) => team.id === value);
-                      if (team) {
-                        setSelectedTeam(team);
-                      }
-                    }}
-                  >
-                    {gameTeams.map((team) => (
-                      <div
-                        key={team.id}
-                        className="flex items-center space-x-2"
-                      >
-                        <RadioGroupItem
-                          value={team.id}
-                          id={team.id}
-                          className="h-6 w-6"
-                        />
-                        <Label htmlFor="r1">{team.name}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </div>
-                <DrawerFooter>
-                  {changeTeamMutation.error && (
-                    <div className="border-destructive/40 bg-destructive-soft text-destructive mb-2 rounded-md border p-3 text-sm">
-                      {changeTeamMutation.error.message}
-                    </div>
-                  )}
-                  <Button
-                    disabled={!selectedTeam || changeTeamMutation.isPending}
-                    onClick={() => {
-                      logger.info(
-                        `GameTeamSelection: Changing team to ${selectedTeam?.name}`,
-                      );
-                      if (selectedTeam) {
-                        changeTeamMutation.mutate({
-                          gameTeamId: selectedTeam.id,
-                        });
-                      }
-                    }}
-                  >
-                    {changeTeamMutation.isPending ? "Changing..." : "Submit"}
-                  </Button>
-                  <DrawerClose asChild>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setIsDrawerOpen(false);
-                        changeTeamMutation.reset(); // Clear any error when closing
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </DrawerClose>
-                </DrawerFooter>
-              </div>
-            </DrawerContent>
-          </Drawer>
-        }
-      />
-    </div>
+              {mine ? (
+                <span className="text-sm font-bold">Your team</span>
+              ) : (
+                <Button
+                  variant="secondary"
+                  disabled={changeTeam.isPending}
+                  aria-label={`Join ${team.name}`}
+                  onClick={() => changeTeam.mutate({ gameTeamId: team.id })}
+                >
+                  {pending ? "Joining…" : "Join"}
+                </Button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <ErrorNotice error={changeTeam.error} />
+    </Panel>
   );
 }

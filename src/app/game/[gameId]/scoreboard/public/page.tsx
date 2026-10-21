@@ -34,7 +34,7 @@ export default async function GamePage({
 
   return (
     <HydrateClient>
-      <PageShell stage width="wide">
+      <PageShell stage width="full">
         <PublicScoreboard gameState={currentGameState} />
       </PageShell>
     </HydrateClient>

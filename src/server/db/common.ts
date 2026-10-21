@@ -3,7 +3,7 @@ import { db } from "@/server/db";
 import type { Result } from "neverthrow";
 
 import { parseScoreMap } from "@/server/scores/scoreMath";
-import { getBuzzWinner } from "@/server/buzzer/buzzerService";
+import { getBuzzQueue, getBuzzWinner } from "@/server/buzzer/buzzerService";
 import { publicModeView } from "@/utils/rankedAnswers/projection";
 import { err, ok } from "neverthrow";
 
@@ -27,6 +27,7 @@ export async function getPublicGameState({
       name: true,
       format: true,
       isBuzzerListening: true,
+      buzzerMode: true,
       status: true,
       code: true,
       joiningOpen: true,
@@ -71,6 +72,7 @@ export async function getPublicGameState({
       name: game.name,
       format: game.format,
       isBuzzerListening: game.isBuzzerListening,
+      buzzerMode: game.buzzerMode,
       status: game.status,
       joinCode:
         game.joiningOpen && game.status !== "finished" ? game.code : null,
@@ -82,6 +84,11 @@ export async function getPublicGameState({
       buzzerState: gameTeam.buzzerState,
       numPlayers: gameTeam._count.gameUsers,
       score: scoreboardState[gameTeam.id] ?? 0,
+    })),
+    buzzQueue: (await getBuzzQueue(gameId)).map((e) => ({
+      position: e.position,
+      gameTeamId: e.gameTeamId,
+      status: e.status,
     })),
     mode: publicModeView(game.gameMode),
   };
@@ -99,6 +106,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       format: true,
       code: true,
       isBuzzerListening: true,
+      buzzerMode: true,
       settings: true,
       status: true,
       finishedAt: true,
@@ -164,6 +172,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
 
   const data: PrivateGameState = {
     buzzWinner,
+    buzzQueue: await getBuzzQueue(gameId),
     mode: publicModeView(game.gameMode),
     game: {
       id: game.id,
@@ -171,6 +180,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       code: game.code,
       format: game.format,
       isBuzzerListening: game.isBuzzerListening,
+      buzzerMode: game.buzzerMode,
       settings: game.settings as GameSettings,
       status: game.status,
       finishedAt: game.finishedAt,

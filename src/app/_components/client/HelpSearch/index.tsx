@@ -71,7 +71,7 @@ export function HelpSearch({ entries }: { entries: HelpSearchEntry[] }) {
                 <li key={entry.id}>
                   <Link
                     href={`/help/${entry.id}`}
-                    className="text-primary font-semibold underline"
+                    className="text-link font-semibold underline"
                   >
                     {entry.title}
                   </Link>
@@ -84,7 +84,7 @@ export function HelpSearch({ entries }: { entries: HelpSearchEntry[] }) {
                         <li key={h.anchor}>
                           <Link
                             href={`/help/${entry.id}#${h.anchor}`}
-                            className="text-primary underline"
+                            className="text-link underline"
                           >
                             {h.text}
                           </Link>

@@ -110,6 +110,14 @@ const ERROR_HELP: Partial<Record<ServiceError["kind"], string>> = {
   cannotMute: helpHref("chat", "how-do-i-moderate-chat"),
   preflightBlocked: helpHref("ranked-answers", "how-do-i-set-up-boards"),
   stepConflict: helpHref("ranked-answers", "running-a-board"),
+  queueEntryNotFound: helpHref("buzzing", "how-does-the-queue-work"),
+  queueEntryNotActive: helpHref("buzzing", "how-does-the-queue-work"),
+  buzzerOpenModeChange: helpHref(
+    "buzzing",
+    "can-i-change-the-buzzing-mode-during-a-game",
+  ),
+  nothingToUndoBuzzer: helpHref("buzzing", "how-do-undo-and-redo-work"),
+  nothingToRedoBuzzer: helpHref("buzzing", "how-do-undo-and-redo-work"),
 };
 
 /** "about 3 more minutes", from server time, so device clocks don't matter. */
@@ -479,6 +487,32 @@ function baseError(error: ServiceError): TRPCError {
       return new TRPCError({
         code: "PRECONDITION_FAILED",
         message: engineMessage(error.error),
+      });
+    case "queueEntryNotFound":
+      return new TRPCError({
+        code: "NOT_FOUND",
+        message: "That buzz isn't in the current question's queue any more.",
+      });
+    case "queueEntryNotActive":
+      return new TRPCError({
+        code: "CONFLICT",
+        message:
+          "That team isn't answering right now. The queue has been updated; check it and try again.",
+      });
+    case "buzzerOpenModeChange":
+      return new TRPCError({
+        code: "CONFLICT",
+        message: "Close the buzzer before switching how buzzing works.",
+      });
+    case "nothingToUndoBuzzer":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "There's no buzzer action to undo.",
+      });
+    case "nothingToRedoBuzzer":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "There's no buzzer action to redo.",
       });
     case "nothingToUndoInMode":
       return new TRPCError({

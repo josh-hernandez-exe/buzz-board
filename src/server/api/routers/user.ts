@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { GameFormat } from "@prisma/client";
+import { BuzzerMode, GameFormat } from "@prisma/client";
 import { z } from "zod";
 
 import { toTRPCError } from "@/server/api/errors";
@@ -39,6 +39,8 @@ export const userRouter = createTRPCRouter({
             .min(GAME_LIMITS.minTeams)
             .max(GAME_LIMITS.maxTeams)
             .optional(),
+          /** "queue": every buzz queues in order. Default: first buzz wins. */
+          buzzerMode: z.enum([BuzzerMode.first, BuzzerMode.queue]).optional(),
           requestId: z
             .string()
             .min(8)
@@ -53,6 +55,7 @@ export const userRouter = createTRPCRouter({
           name: input.name,
           format: input.format,
           teamCount: input.teamCount,
+          buzzerMode: input.buzzerMode,
           requestId: input.requestId,
         });
         if (result.isErr()) throw toTRPCError(result.error);

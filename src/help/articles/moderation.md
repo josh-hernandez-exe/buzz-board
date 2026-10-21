@@ -1,4 +1,4 @@
-Owners, co-hosts and moderators manage players from the host desk's **Player Management** tab. Use **Find a player** to search by name or player number. Players with the same name are told apart by their number and team.
+Owners, co-hosts and moderators manage players from the host desk's **Players** tab. Use **Find a player** to search by name or player number. Players with the same name are told apart by their number and team.
 
 ## How do I change an inappropriate name?
 

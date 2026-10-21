@@ -11,18 +11,11 @@ import { TeamSwitcherTab } from "@/app/_components/client/TeamSwitcherTab";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
 
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/app/_components/ui/tabs";
-
 import { logger } from "@/logger";
 import { InformationTab } from "./InformationTab";
 import { GameScope } from "@/app/_components/client/GameScope";
 import { PlayerHeader } from "@/app/_components/client/PlayerStatus";
-import { ChatPanel } from "@/app/_components/client/ChatPanel";
+import { PlayerTabs } from "@/app/_components/client/PlayerTabs";
 import { LiveRankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
 
 export default async function GameUserPage({
@@ -69,9 +62,7 @@ export default async function GameUserPage({
   const isTeamGame = game.format === GameFormat.team;
   const hasTeamAssigned = gameUser.gameTeamId !== null;
 
-  // Determine default tab:
-  // - For team games: default to team switcher if user has no team, otherwise buzzer
-  // - For individual games: default to buzzer
+  // Players without a team start on the team picker.
   const defaultTab =
     isTeamGame && !hasTeamAssigned ? "team-switcher" : "buzzer";
 
@@ -80,52 +71,42 @@ export default async function GameUserPage({
       <GameScope gameId={gameId} initialState={currentGameState}>
         <PageShell
           header={<SiteHeader links={[{ href: "/help", label: "Help" }]} />}
-          width="narrow"
+          width="wide"
         >
           {/* Game sound effects for the user's team */}
           <GameSoundEffects gameTeamId={gameUser.gameTeamId ?? undefined} />
-          <div className="flex w-full flex-col items-center gap-6">
-            <PlayerHeader
-              gameUserId={gameUser.id}
-              signedIn={!!session?.user}
-              linked={!!gameUser.user}
-            />
-            <Tabs defaultValue={defaultTab} className="w-full">
-              <TabsList
-                className={`grid w-full ${isTeamGame ? "grid-cols-4" : "grid-cols-3"}`}
-              >
-                <TabsTrigger value="buzzer">Buzzer</TabsTrigger>
-                {isTeamGame && (
-                  <TabsTrigger value="team-switcher">Team</TabsTrigger>
-                )}
-                <TabsTrigger value="chat">Chat</TabsTrigger>
-                <TabsTrigger value="information">Info</TabsTrigger>
-              </TabsList>
-              <TabsContent value="buzzer" className="flex flex-col gap-4">
+          <PlayerTabs
+            defaultTab={defaultTab}
+            header={
+              <PlayerHeader
+                gameUserId={gameUser.id}
+                signedIn={!!session?.user}
+                linked={!!gameUser.user}
+              />
+            }
+            buzzer={
+              <>
                 <LiveRankedAnswersBoard />
                 <GameBuzzerTab gameUserId={gameUser.id} />
                 <GameWhoBuzzedIn gameUserId={gameUser.id} />
-              </TabsContent>
-              {isTeamGame && (
-                <TabsContent value="team-switcher">
-                  <TeamSwitcherTab
-                    game={game}
-                    gameTeams={gameTeams}
-                    initialGameTeamId={gameUser.gameTeamId}
-                  />
-                </TabsContent>
-              )}
-              <TabsContent value="chat">
-                <ChatPanel as="player" />
-              </TabsContent>
-              <TabsContent value="information">
-                <InformationTab
-                  gameState={currentGameState}
-                  gameUser={gameUser}
+              </>
+            }
+            team={
+              isTeamGame ? (
+                <TeamSwitcherTab
+                  game={game}
+                  gameTeams={gameTeams}
+                  initialGameTeamId={gameUser.gameTeamId}
                 />
-              </TabsContent>
-            </Tabs>
-          </div>
+              ) : undefined
+            }
+            info={
+              <InformationTab
+                gameState={currentGameState}
+                gameUser={gameUser}
+              />
+            }
+          />
         </PageShell>
       </GameScope>
     </HydrateClient>

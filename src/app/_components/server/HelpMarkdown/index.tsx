@@ -37,13 +37,13 @@ const components: Components = {
   li: ({ children }) => <li className="my-1">{children}</li>,
   a: ({ href = "", children }) =>
     href.startsWith("/") ? (
-      <Link href={href} className="text-primary underline">
+      <Link href={href} className="text-link underline">
         {children}
       </Link>
     ) : (
       <a
         href={href}
-        className="text-primary underline"
+        className="text-link underline"
         target="_blank"
         rel="noopener noreferrer"
       >

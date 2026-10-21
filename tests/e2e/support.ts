@@ -53,7 +53,13 @@ export async function createGameForHost(
     name,
     format = "team",
     teams = 2,
-  }: { name: string; format?: "team" | "individual"; teams?: number },
+    buzzerMode = "first",
+  }: {
+    name: string;
+    format?: "team" | "individual";
+    teams?: number;
+    buzzerMode?: "first" | "queue";
+  },
 ) {
   const code = randomBytes(4)
     .toString("hex")
@@ -65,6 +71,7 @@ export async function createGameForHost(
       name,
       code,
       format,
+      buzzerMode,
       createdById: hostId,
       gameAdmins: { create: { userId: hostId } },
       scoreboard: { create: {} },

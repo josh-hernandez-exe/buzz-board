@@ -3,6 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DateTime } from "luxon";
 import Link from "next/link";
 
+import { buttonVariants } from "@/app/_components/ui/button";
 import { DeleteGameDialog } from "@/app/_components/client/DeleteGameDialog";
 import type { DashboardGame } from "@/types";
 import { ROLE_LABEL } from "@/utils/capabilities";
@@ -47,6 +48,16 @@ export function columnGenerator({
               : "Individual"}{" "}
             · {row.original.numPlayers}{" "}
             {row.original.numPlayers === 1 ? "player" : "players"}
+          </span>
+          <span className="mt-1 flex items-center gap-2 text-xs md:hidden">
+            <span
+              className={`rounded-full px-2 py-0.5 font-semibold whitespace-nowrap ${STATUS_STYLE[row.original.status]}`}
+            >
+              {STATUS_LABEL[row.original.status]}
+            </span>
+            {row.original.status !== "finished" && (
+              <span className="font-mono">{row.original.code}</span>
+            )}
           </span>
         </div>
       ),
@@ -96,9 +107,9 @@ export function columnGenerator({
         const pendingHere =
           deleteGame.isPending && deleteGame.variables?.gameId === game.id;
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
-              className="bg-surface-sunken hover:bg-muted rounded px-3 py-1 font-semibold"
+              className={buttonVariants({ variant: "secondary", size: "sm" })}
               href={`/game/${game.id}/admin`}
               onNavigate={() => onSelectClick(game.id)}
               aria-label={`Open ${game.name}`}

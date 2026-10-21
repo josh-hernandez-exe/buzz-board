@@ -1,3 +1,4 @@
+import type { BuzzQueueStatus } from "@prisma/client";
 import type { PublicModeView } from "@/utils/rankedAnswers/projection";
 import type { Prisma } from "@prisma/client";
 import type { Game, GameTeam, GameUser, User } from "@prisma/client";
@@ -103,6 +104,7 @@ export type PublicGameState = {
     name: Game["name"];
     format: Game["format"];
     isBuzzerListening: Game["isBuzzerListening"];
+    buzzerMode: Game["buzzerMode"];
     status: Game["status"];
     /** Only while new players may join; null otherwise. */
     joinCode: Game["code"] | null;
@@ -115,6 +117,8 @@ export type PublicGameState = {
     numPlayers: number;
     score: number;
   }>;
+  /** Queue mode: the current question's queue, in order (teams only). */
+  buzzQueue: { position: number; gameTeamId: string; status: BuzzQueueStatus }[];
   /** The running game mode's board, never including hidden answers. */
   mode: PublicModeView | null;
 };
@@ -129,6 +133,7 @@ export type PrivateGameState = {
     code: Game["code"];
     format: Game["format"];
     isBuzzerListening: Game["isBuzzerListening"];
+    buzzerMode: Game["buzzerMode"];
     settings: Game["settings"] & GameSettings;
     status: Game["status"];
     finishedAt: Game["finishedAt"];
@@ -167,6 +172,14 @@ export type PrivateGameState = {
     gameUserId: GameUser["id"] | null;
     gameTeamId: GameTeam["id"];
   } | null;
+  /** Queue mode: the current question's queue, in order. */
+  buzzQueue: {
+    id: string;
+    position: number;
+    gameTeamId: string;
+    gameUserId: string;
+    status: BuzzQueueStatus;
+  }[];
   /** The running game mode's board, never including hidden answers. */
   mode: PublicModeView | null;
 };

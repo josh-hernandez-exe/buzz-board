@@ -7,11 +7,15 @@ import { api } from "@/trpc/react";
 import { newRequestId } from "@/utils/requestId";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 
+// Disabled states stay fully opaque: each has its own look and a reason
+// underneath, so the buzzer never looks broken.
 const TONE_CLASS = {
   ready: "bg-primary text-primary-foreground hover:bg-primary-hover",
-  won: "bg-accent text-accent-foreground",
-  waiting: "bg-muted text-muted-foreground",
-  blocked: "bg-muted text-muted-foreground",
+  won: "bg-success text-success-foreground ring-success/40 ring-8 disabled:opacity-100",
+  waiting:
+    "bg-muted text-muted-foreground border-border border-2 disabled:opacity-100",
+  blocked:
+    "bg-muted text-muted-foreground border-border border-2 border-dashed disabled:opacity-100",
 } as const;
 
 /**

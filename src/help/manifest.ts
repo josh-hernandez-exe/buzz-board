@@ -50,6 +50,14 @@ export const HELP_ARTICLES = [
     facts: ["gameLimits", "gameStatus"],
   },
   {
+    id: "buzzing",
+    title: "Buzzing modes and undo",
+    summary:
+      "First buzz wins or a queue where everyone lines up, marking answers right or wrong, and undoing accidental presses.",
+    audiences: ["host", "player"],
+    facts: [],
+  },
+  {
     id: "helpers-and-roles",
     title: "Helpers: co-hosts and moderators",
     summary:

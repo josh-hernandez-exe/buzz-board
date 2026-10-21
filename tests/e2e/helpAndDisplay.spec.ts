@@ -105,7 +105,7 @@ test("the audience display shows the room safely, with sound off until turned on
     }),
   ).toBeVisible();
   // No host controls or internal identifiers.
-  for (const control of ["Start Buzzer", "Finish game…", "Add", "Delete…"]) {
+  for (const control of ["Open buzzer", "Finish game…", "Add", "Delete…"]) {
     await expect(display.getByRole("button", { name: control })).toHaveCount(0);
   }
   await expect(display.getByText(game.id)).toHaveCount(0);
@@ -118,14 +118,17 @@ test("the audience display shows the room safely, with sound off until turned on
   ).toHaveAttribute("aria-pressed", "true");
 
   // Closing joining hides the code live.
+  await desk.getByRole("tab", { name: "Room" }).click();
   await desk.getByLabel("Allow new players to join").click();
   await expect(display.getByTestId("display-join-code")).toHaveCount(0);
 
-  await desk.getByRole("button", { name: "Start Buzzer" }).click();
+  await desk.getByRole("tab", { name: "Play", exact: true }).click();
+  await desk.getByRole("button", { name: "Open buzzer" }).click();
   await expect(display.getByTestId("display-status")).toHaveText(
     "Buzzers are open!",
   );
 
+  await desk.getByRole("tab", { name: "Room" }).click();
   await desk.getByRole("button", { name: "Finish game…" }).click();
   await desk.getByRole("button", { name: "Finish game", exact: true }).click();
   await expect(display.getByTestId("display-status")).toHaveText(

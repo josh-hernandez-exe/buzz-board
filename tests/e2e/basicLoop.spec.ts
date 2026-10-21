@@ -29,9 +29,7 @@ test("host creates a game, a guest buzzes in and the display updates", async ({
   const game = await db.game.findFirstOrThrow({ where: { name: gameName } });
   expect(game.format).toBe("individual");
   await expect(host.getByTestId("join-code")).toHaveText(game.code);
-  await expect(
-    host.getByRole("button", { name: "Start Buzzer" }),
-  ).toBeVisible();
+  await expect(host.getByRole("button", { name: "Open buzzer" })).toBeVisible();
 
   // A guest joins from a shared link without an account.
   const playerContext = await browser.newContext();
@@ -48,15 +46,11 @@ test("host creates a game, a guest buzzes in and the display updates", async ({
   const displayContext = await browser.newContext();
   const display = await displayContext.newPage();
   await display.goto(`/game/${game.id}/scoreboard/public`);
-  const card = display
-    .locator("div")
-    .filter({ has: display.getByText("Team 1: Ada", { exact: true }) })
-    .filter({ hasText: "Score:" })
-    .last();
-  await expect(card).toContainText("Score: 0");
+  const card = display.getByTestId("display-team").filter({ hasText: "Ada" });
+  await expect(card.getByTestId("display-team-score")).toHaveText("0");
 
   // Host opens the buzzer; the guest buzzes; the display marks them selected.
-  await host.getByRole("button", { name: "Start Buzzer" }).click();
+  await host.getByRole("button", { name: "Open buzzer" }).click();
   await expect
     .poll(
       async () =>
@@ -66,14 +60,13 @@ test("host creates a game, a guest buzzes in and the display updates", async ({
     .toBe(true);
   await expect(player.getByText("Buzzer open: press now!")).toBeVisible();
   await buzzer.click();
-  await expect(card).toHaveClass(/bg-success/);
+  await expect(card).toHaveAttribute("data-buzzer-state", "selected");
   await expect(player.getByText("You buzzed in first!")).toBeVisible();
 
   // Host awards points to the selected player; the display updates live.
-  await host.getByRole("button", { name: "Buzzer Selected" }).click();
-  await host.getByPlaceholder("Enter Score").fill("5");
-  await host.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(card).toContainText("Score: 5");
+  await host.getByLabel("Points", { exact: true }).fill("5");
+  await host.getByRole("button", { name: "Award 5 to Ada" }).click();
+  await expect(card.getByTestId("display-team-score")).toHaveText("5");
 
   await Promise.all([
     hostContext.close(),

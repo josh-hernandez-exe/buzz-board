@@ -9,11 +9,21 @@ The message under your buzzer explains why:
 - **Waiting for your host to put you on a team.** In this game the host assigns teams.
 - **This game has finished.** Thanks for playing!
 
-When the buzzer is open, it turns green and says **Buzzer open: press now!**
+When the buzzer is open, it turns red and says **Buzzer open: press now!**
+
+In games that use a **queue**, the messages are a little different:
+
+- **Buzzer open: press to join the queue!** Press to get in line. Everyone who presses lines up in order.
+- **You're next in line.** or **You're 3rd in line.** Your buzz counted. Wait for your turn.
+- **You're answering!** It's your turn. Answer out loud.
+- **Not this time: your team sits out until the next question.** The host marked your answer wrong.
+- **Buzzer closed: the host is working through the queue.** No new buzzes for now. The teams in line still get their turn.
+
+See [Buzzing modes and undo](/help/buzzing).
 
 ## I pressed the buzzer. Did it count?
 
-Your page shows **You buzzed in first!** or **Your team buzzed in first!** when your buzz won. If someone else was faster, it shows who. A sound alone doesn't confirm anything. If an error appears under the buzzer, your press didn't count.
+Your page shows **You buzzed in first!** or **Your team buzzed in first!** when your buzz won, or your place in line in a queue game. If someone else was faster, it shows who. A sound alone doesn't confirm anything. If an error appears under the buzzer, your press didn't count.
 
 ## Joining is closed
 

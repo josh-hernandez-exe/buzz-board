@@ -14,7 +14,9 @@ import {
 } from "./support";
 
 async function openChat(page: Page) {
-  await page.getByRole("tab", { name: "Chat", exact: true }).click();
+  // Wide player screens show chat beside the tabs, without a Chat tab.
+  const tab = page.getByRole("tab", { name: "Chat", exact: true });
+  if (await tab.isVisible()) await tab.click();
   await expect(page.getByRole("region", { name: "Chat" })).toBeVisible();
 }
 
@@ -119,6 +121,7 @@ test("players chat live, team chat stays private, and the host moderates", async
 
   // The chat tab fits a 360px phone without sideways scrolling.
   await ben.page.setViewportSize({ width: 360, height: 740 });
+  await openChat(ben.page);
   await expect(ben.page.getByLabel("Message", { exact: true })).toBeVisible();
   expect(
     await ben.page.evaluate(

@@ -64,6 +64,7 @@ test("host creates, shares, closes joining, finishes and reopens a team game", a
   expect(new Set(teamsOfGuests.map((u) => u.gameTeamId)).size).toBe(2);
 
   // Close joining: a newcomer is told why; the host sees the change.
+  await host.getByRole("tab", { name: "Room" }).click();
   await host.getByLabel("Allow new players to join").click();
   await expect(
     host.getByText("Joining is closed; players already in can still return"),
@@ -80,10 +81,12 @@ test("host creates, shares, closes joining, finishes and reopens a team game", a
   ).toBeVisible();
 
   // Starting the buzzer starts the game.
-  await host.getByRole("button", { name: "Start Buzzer" }).click();
+  await host.getByRole("tab", { name: "Play", exact: true }).click();
+  await host.getByRole("button", { name: "Open buzzer" }).click();
   await expect(host.getByTestId("game-status")).toHaveText("Live");
 
   // Finish: players see it live and can no longer buzz.
+  await host.getByRole("tab", { name: "Room" }).click();
   await host.getByRole("button", { name: "Finish game…" }).click();
   await host.getByRole("button", { name: "Finish game", exact: true }).click();
   await expect(host.getByTestId("game-status")).toHaveText("Finished");
@@ -178,7 +181,7 @@ test("a guest joins and buzzes on a 360px phone without sideways scrolling", asy
 
   const buzzer = page.getByRole("button", { name: "Buzz" });
   await expect(buzzer).toBeDisabled();
-  await host.getByRole("button", { name: "Start Buzzer" }).click();
+  await host.getByRole("button", { name: "Open buzzer" }).click();
   await expect(buzzer).toBeEnabled();
   await buzzer.tap();
   await expect(page.getByText("You buzzed in first!")).toBeVisible();

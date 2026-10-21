@@ -32,3 +32,9 @@ Characterization tests describe today's behavior. A known defect is written with
 `tests/spike/` holds measurements, not pass/fail tests: stream counts per page (`RUN_SPIKES=1 bunx playwright test tests/spike`) and a two-instance fan-out run (`bun tests/spike/twoInstance.ts`, after a production build). Their reports go to `test-results/`; recorded results live in the `docs/pr0*-baseline.md` files.
 
 Storybook is not part of this stack; see the testing strategy in the [delivery plan](../docs/buzz-board-game-kit-delivery-plan.md).
+
+## Screenshots and hydration warnings
+
+A Playwright screenshot taken right after `page.goto`, before React has finished hydrating, can log "A tree hydrated but some attributes of the server rendered HTML didn't match" for an `<input>`. Playwright briefly changes inline styles while capturing (it hides text carets), and React sees the changed attribute. Real browsers never do this. Wait for something on the page (for example `await expect(page.getByRole("tab")).toBeVisible()`) before taking a screenshot.
+
+Under `next dev` only, a fresh page load in Playwright occasionally logs the same warning with every `useId` value different (for example a menu's `aria-controls`). That's the development server's streaming, not the app: the same pages loaded repeatedly against a production build (`next build` then `next start` on the e2e port, which Playwright then reuses) logged no hydration warnings at all.

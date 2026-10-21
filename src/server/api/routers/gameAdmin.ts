@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { GameFormat, TeamAssignment } from "@prisma/client";
+import { BuzzerMode, GameFormat, TeamAssignment } from "@prisma/client";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
@@ -46,6 +46,11 @@ import {
   openBuzzer,
   pauseBuzzer,
   resetBuzzer,
+  buzzerHistory,
+  undoBuzzer,
+  redoBuzzer,
+  judgeQueueEntry,
+  setBuzzerMode,
 } from "@/server/buzzer/buzzerService";
 import { type Result } from "neverthrow";
 
@@ -249,6 +254,37 @@ export const gameAdminRouter = createTRPCRouter({
   resetBuzzer: protectedGameAdminProcedure.mutation(async ({ ctx }) =>
     gameControl(ctx.gameSession.id, resetBuzzer),
   ),
+  /** Queue mode, buzzer history (undo/redo) and mode switching. */
+  buzzer: createTRPCRouter({
+    history: protectedGameAdminProcedure.query(({ ctx }) =>
+      buzzerHistory(ctx.gameSession.id),
+    ),
+    undo: protectedGameAdminProcedure.mutation(({ ctx }) =>
+      gameControl(ctx.gameSession.id, undoBuzzer),
+    ),
+    redo: protectedGameAdminProcedure.mutation(({ ctx }) =>
+      gameControl(ctx.gameSession.id, redoBuzzer),
+    ),
+    judge: protectedGameAdminProcedure
+      .input(
+        z.object({
+          entryId: z.string().min(1).max(64),
+          verdict: z.enum(["correct", "wrong", "skip"]),
+        }),
+      )
+      .mutation(({ ctx, input }) =>
+        gameControl(ctx.gameSession.id, (gameId) =>
+          judgeQueueEntry(gameId, input.entryId, input.verdict),
+        ),
+      ),
+    setMode: protectedGameAdminProcedure
+      .input(z.object({ mode: z.enum([BuzzerMode.first, BuzzerMode.queue]) }))
+      .mutation(({ ctx, input }) =>
+        gameControl(ctx.gameSession.id, (gameId) =>
+          setBuzzerMode(gameId, input.mode),
+        ),
+      ),
+  }),
   addScore: protectedGameAdminProcedure
     .input(scoreChangeInput)
     .mutation(async ({ ctx, input }) => {

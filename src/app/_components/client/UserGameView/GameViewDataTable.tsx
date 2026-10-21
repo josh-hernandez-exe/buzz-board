@@ -1,3 +1,4 @@
+import { cn } from "@/app/_lib/utils";
 import {
   flexRender,
   getCoreRowModel,
@@ -14,6 +15,12 @@ import {
 } from "@/app/_components/ui/table";
 
 import { type GameViewDataTableRow, columnGenerator } from "./gameViewColumns";
+
+// Secondary columns are hidden on phones; the Game cell repeats status and
+// code there instead.
+const WIDE_ONLY = new Set(["status", "code", "myRole", "createdAt"]);
+const wideOnly = (columnId: string) =>
+  WIDE_ONLY.has(columnId) ? "hidden md:table-cell" : undefined;
 
 export function GameTeamUserTable({
   data,
@@ -40,7 +47,13 @@ export function GameTeamUserTable({
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
                 return (
-                  <TableHead key={header.id} className="text-foreground">
+                  <TableHead
+                    key={header.id}
+                    className={cn(
+                      "text-foreground",
+                      wideOnly(header.column.id),
+                    )}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -61,7 +74,7 @@ export function GameTeamUserTable({
                 data-state={row.getIsSelected() && "selected"}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                  <TableCell key={cell.id} className={wideOnly(cell.column.id)}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}

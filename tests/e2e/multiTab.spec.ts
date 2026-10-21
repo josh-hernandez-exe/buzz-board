@@ -43,7 +43,7 @@ test("a reloaded host tab keeps controlling its own game", async ({
   await alphaTab.goto(`/game/${alpha.id}/admin`);
   await expect(alphaTab).toHaveURL(new RegExp(`/game/${alpha.id}/admin$`));
 
-  await alphaTab.getByRole("button", { name: "Start Buzzer" }).click();
+  await alphaTab.getByRole("button", { name: "Open buzzer" }).click();
   await expect
     .poll(async () =>
       (

@@ -52,7 +52,7 @@ export default function HelpHome() {
             <li key={article.id}>
               <Link
                 href={`/help/${article.id}`}
-                className="text-primary font-semibold underline"
+                className="text-link font-semibold underline"
               >
                 {article.title}
               </Link>
@@ -74,7 +74,7 @@ export default function HelpHome() {
                 <li key={`${article.id}#${h.anchor}`}>
                   <Link
                     href={`/help/${article.id}#${h.anchor}`}
-                    className="text-primary underline"
+                    className="text-link underline"
                   >
                     {h.text}
                   </Link>

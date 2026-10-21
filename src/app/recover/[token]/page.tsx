@@ -49,7 +49,7 @@ export default async function RecoverPage({
                 <span className="break-words">{recovery.gameName}</span>
               </h1>
               {recovery.status !== "valid" || !recovery.nickname ? (
-                <p role="alert" className="bg-warning/40 rounded-md p-3">
+                <p role="alert" className="bg-warning-soft rounded-md p-3">
                   {recovery.status === "valid"
                     ? STATUS_MESSAGE.revoked
                     : STATUS_MESSAGE[recovery.status]}{" "}

@@ -48,6 +48,9 @@ export function buzzerStatus(
   }
 
   const isTeamGame = game.format === GameFormat.team;
+  if (game.buzzerMode === "queue") {
+    return queueStatus(state, gameUserId, team.id, isTeamGame);
+  }
   if (buzzWinner?.gameTeamId === team.id) {
     return {
       canBuzz: false,
@@ -87,5 +90,98 @@ export function buzzerStatus(
     canBuzz: false,
     tone: "waiting",
     message: "Buzzer closed. Wait for the host to open it.",
+  };
+}
+
+const ordinal = (n: number) => {
+  const tens = n % 100;
+  const suffix =
+    tens >= 11 && tens <= 13
+      ? "th"
+      : (({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ??
+        "th");
+  return `${n}${suffix}`;
+};
+
+/** Queue mode: where this player's team is in the queue, if anywhere. */
+function queueStatus(
+  state: PrivateGameState,
+  gameUserId: string,
+  teamId: string,
+  isTeamGame: boolean,
+): BuzzerStatus {
+  const { game, buzzQueue } = state;
+  const name = (id: string) => state.gameUsers[id]?.name ?? "A teammate";
+  const teamName = (id: string) =>
+    state.gameTeams.find((t) => t.id === id)?.name ?? "Another team";
+  const mine = buzzQueue.filter((e) => e.gameTeamId === teamId);
+  const active = mine.find(
+    (e) => e.status === "answering" || e.status === "waiting",
+  );
+  const you = (e: { gameUserId: string }) => e.gameUserId === gameUserId;
+
+  if (mine.some((e) => e.status === "correct")) {
+    return { canBuzz: false, tone: "won", message: "Correct! Well done." };
+  }
+  if (active?.status === "answering") {
+    return {
+      canBuzz: false,
+      tone: "won",
+      message: you(active)
+        ? "You're answering!"
+        : isTeamGame
+          ? `Your team is answering (${name(active.gameUserId)} buzzed)!`
+          : "You're answering!",
+    };
+  }
+  if (mine.some((e) => e.status === "wrong")) {
+    return {
+      canBuzz: false,
+      tone: "blocked",
+      message: isTeamGame
+        ? "Not this time: your team sits out until the next question."
+        : "Not this time: you sit out until the next question.",
+    };
+  }
+  if (active) {
+    const place =
+      buzzQueue.filter(
+        (e) =>
+          (e.status === "answering" || e.status === "waiting") &&
+          e.position < active.position,
+      ).length + 1;
+    const who = you(active) || !isTeamGame ? "You're" : "Your team is";
+    const by =
+      isTeamGame && !you(active) ? ` (${name(active.gameUserId)} buzzed)` : "";
+    return {
+      canBuzz: false,
+      tone: "waiting",
+      message:
+        place === 2
+          ? `${who} next in line${by}.`
+          : `${who} ${ordinal(place)} in line${by}.`,
+    };
+  }
+  const winner = buzzQueue.find((e) => e.status === "correct");
+  if (winner) {
+    return {
+      canBuzz: false,
+      tone: "waiting",
+      message: `${teamName(winner.gameTeamId)} got it.`,
+    };
+  }
+  if (game.isBuzzerListening) {
+    return {
+      canBuzz: true,
+      tone: "ready",
+      message: "Buzzer open: press to join the queue!",
+    };
+  }
+  return {
+    canBuzz: false,
+    tone: "waiting",
+    message: buzzQueue.some((e) => e.status === "answering")
+      ? "Buzzer closed: the host is working through the queue."
+      : "Buzzer closed. Wait for the host to open it.",
   };
 }

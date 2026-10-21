@@ -41,6 +41,7 @@ function gameState(
       joiningOpen: true,
       teamAssignment: "auto",
       chatEnabled: false,
+      buzzerMode: "first",
     },
     gameTeams: [
       {
@@ -85,6 +86,7 @@ function gameState(
       },
     },
     buzzWinner: null,
+    buzzQueue: [],
     mode: null,
     ...rest,
   };
@@ -101,9 +103,7 @@ describe("GameWhoBuzzedIn", () => {
 
     render(<GameWhoBuzzedIn />);
 
-    expect(
-      screen.getByText("[Ada] from [Owls] has buzzed in."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Ada from Owls buzzed in.")).toBeInTheDocument();
   });
 
   it("tells the winner it was them", () => {
@@ -112,7 +112,7 @@ describe("GameWhoBuzzedIn", () => {
 
     render(<GameWhoBuzzedIn gameUserId="u1" />);
 
-    expect(screen.getByText("You have buzzed in!")).toBeInTheDocument();
+    expect(screen.getByText("You buzzed in!")).toBeInTheDocument();
   });
 
   it("tells teammates their team buzzed", () => {
@@ -122,7 +122,7 @@ describe("GameWhoBuzzedIn", () => {
     render(<GameWhoBuzzedIn gameUserId="u3" />);
 
     expect(
-      screen.getByText("[Ada] from your team has buzzed in."),
+      screen.getByText("Ada from your team buzzed in."),
     ).toBeInTheDocument();
   });
 
@@ -135,9 +135,7 @@ describe("GameWhoBuzzedIn", () => {
 
     render(<GameWhoBuzzedIn />);
 
-    expect(
-      screen.getByText("[Ada] from [Owls] has buzzed in."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Ada from Owls buzzed in.")).toBeInTheDocument();
   });
 
   it("shows only the team for a winner recorded before claims existed", () => {
@@ -145,7 +143,7 @@ describe("GameWhoBuzzedIn", () => {
 
     render(<GameWhoBuzzedIn />);
 
-    expect(screen.getByText("[Owls] has buzzed in.")).toBeInTheDocument();
+    expect(screen.getByText("Owls buzzed in.")).toBeInTheDocument();
   });
 
   it("omits the team in individual games", () => {
@@ -156,12 +154,12 @@ describe("GameWhoBuzzedIn", () => {
 
     render(<GameWhoBuzzedIn />);
 
-    expect(screen.getByText("[Bo] has buzzed in.")).toBeInTheDocument();
+    expect(screen.getByText("Bo buzzed in.")).toBeInTheDocument();
   });
 
   it.each([
-    [true, "Buzzer is listening and no one has buzzed in yet."],
-    [false, "Buzzer is not listening."],
+    [true, "Buzzer open. Nobody has buzzed yet."],
+    [false, "Buzzer closed."],
   ])(
     "shows the buzzer status when nobody has buzzed (listening: %s)",
     (listening, text) => {
@@ -172,4 +170,34 @@ describe("GameWhoBuzzedIn", () => {
       expect(screen.getByText(text)).toBeInTheDocument();
     },
   );
+
+  it("lists the queue in order and marks the viewer's team", () => {
+    state = gameState({
+      buzzWinner: null,
+      buzzQueue: [
+        {
+          id: "e1",
+          position: 1,
+          gameTeamId: "t2",
+          gameUserId: "u2",
+          status: "wrong",
+        },
+        {
+          id: "e2",
+          position: 2,
+          gameTeamId: "t1",
+          gameUserId: "u1",
+          status: "answering",
+        },
+      ],
+    });
+    state.game.buzzerMode = "queue";
+    self = { id: "u3", gameTeamId: "t1" };
+
+    render(<GameWhoBuzzedIn gameUserId="u3" />);
+
+    const items = screen.getAllByRole("listitem");
+    expect(items[0]).toHaveTextContent("Bo from FoxesWrong");
+    expect(items[1]).toHaveTextContent("Ada from your teamAnswering");
+  });
 });

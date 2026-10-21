@@ -59,13 +59,21 @@
   --success-soft: oklch(0.93 0.04 190);
   --warning: oklch(0.88 0.12 85);
   --warning-foreground: oklch(0.32 0.07 70);
+  --warning-soft: oklch(0.95 0.05 88);
+  /* Warning-coloured text on the page background (not on --warning). */
+  --warning-text: oklch(0.47 0.11 65);
   --destructive: oklch(0.53 0.21 27);
   --destructive-foreground: oklch(0.99 0.005 85);
   --destructive-soft: oklch(0.94 0.04 27);
   --info: var(--brand-sky);
+  --info-foreground: oklch(0.99 0.005 85);
+  --accent-soft: oklch(0.95 0.05 90);
   --border: oklch(0.87 0.02 80);
   --input: oklch(0.82 0.025 80);
   --ring: var(--brand-buzzer);
+  /* Links in running text, on the page or a surface. */
+  --link: var(--brand-buzzer-deep);
+  --overlay: oklch(0.2 0.03 265 / 50%);
 
   /* The stage: game board and audience display. */
   --stage: var(--brand-navy);
@@ -95,6 +103,59 @@
   --sidebar-ring: var(--ring);
 }
 
+/*
+ * Dark mode: the same semantic tokens, re-pointed. Chosen by the visitor
+ * (theme button in the header), defaulting to their device setting.
+ * Status colours are lighter here, with dark text on them, so they stay
+ * readable on dark surfaces.
+ */
+.dark {
+  --background: oklch(0.17 0.03 265);
+  --foreground: oklch(0.95 0.012 85);
+  --surface: oklch(0.22 0.035 265);
+  --surface-foreground: oklch(0.95 0.012 85);
+  --surface-sunken: oklch(0.145 0.028 265);
+  --card: var(--surface);
+  --card-foreground: oklch(0.95 0.012 85);
+  --popover: oklch(0.24 0.035 265);
+  --popover-foreground: oklch(0.95 0.012 85);
+  --primary: oklch(0.56 0.2 30);
+  --primary-hover: oklch(0.5 0.19 30);
+  --primary-foreground: oklch(0.99 0.005 85);
+  --secondary: oklch(0.29 0.04 265);
+  --secondary-foreground: oklch(0.95 0.012 85);
+  --muted: oklch(0.27 0.035 265);
+  --muted-foreground: oklch(0.76 0.03 260);
+  --accent: oklch(0.84 0.14 85);
+  --accent-foreground: var(--brand-ink);
+  --accent-soft: oklch(0.32 0.06 85);
+  --success: oklch(0.74 0.12 185);
+  --success-foreground: var(--brand-ink);
+  --success-soft: oklch(0.3 0.06 190);
+  --warning: oklch(0.84 0.13 85);
+  --warning-foreground: oklch(0.28 0.06 70);
+  --warning-soft: oklch(0.31 0.06 80);
+  --warning-text: oklch(0.86 0.12 85);
+  --destructive: oklch(0.7 0.19 27);
+  --destructive-foreground: var(--brand-ink);
+  --destructive-soft: oklch(0.26 0.07 27);
+  --info: oklch(0.7 0.13 255);
+  --info-foreground: var(--brand-ink);
+  --border: oklch(0.34 0.04 265);
+  --input: oklch(0.44 0.045 265);
+  --ring: oklch(0.7 0.17 32);
+  --link: oklch(0.76 0.14 38);
+  --overlay: oklch(0.05 0.02 265 / 70%);
+  --sidebar: var(--surface);
+  --sidebar-foreground: oklch(0.95 0.012 85);
+  --stage: oklch(0.15 0.05 265);
+  color-scheme: dark;
+}
+
+:root:not(.dark) {
+  color-scheme: light;
+}
+
 /* Anything inside .stage uses the dark game-show colours. */
 .stage {
   --background: var(--stage);
@@ -110,7 +171,25 @@
   --muted-foreground: var(--stage-muted);
   --border: oklch(0.4 0.07 262);
   --input: oklch(0.45 0.07 262);
+  --success: oklch(0.74 0.12 185);
+  --success-foreground: var(--brand-ink);
+  --destructive: oklch(0.7 0.19 27);
+  --destructive-foreground: var(--brand-ink);
+  --warning-text: oklch(0.86 0.12 85);
+  --link: oklch(0.76 0.14 38);
+  --popover: oklch(0.24 0.06 265);
+  --popover-foreground: var(--stage-foreground);
+  --accent-soft: oklch(0.34 0.07 85);
+  --success-soft: oklch(0.32 0.06 190);
+  --warning: oklch(0.84 0.13 85);
+  --warning-foreground: oklch(0.28 0.06 70);
+  --warning-soft: oklch(0.33 0.06 80);
+  --destructive-soft: oklch(0.26 0.07 27);
+  --info: oklch(0.7 0.13 255);
+  --info-foreground: var(--brand-ink);
+  --ring: oklch(0.7 0.17 32);
   color: var(--foreground);
+  color-scheme: dark;
 }
 
 @theme {
@@ -149,13 +228,19 @@
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-text: var(--warning-text);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-soft: var(--destructive-soft);
   --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-overlay: var(--overlay);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-link: var(--link);
   --color-stage: var(--stage);
   --color-stage-foreground: var(--stage-foreground);
   --color-stage-muted: var(--stage-muted);

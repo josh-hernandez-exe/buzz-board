@@ -33,6 +33,7 @@ vi.mock("@/trpc/react", () => ({
 }));
 
 const { HostRoomPanel } = await import("./index");
+const { HostGameBar } = await import("@/app/_components/client/HostGameBar");
 
 function gameState(game: Partial<PrivateGameState["game"]> = {}, players = 0) {
   state = {
@@ -48,6 +49,7 @@ function gameState(game: Partial<PrivateGameState["game"]> = {}, players = 0) {
       joiningOpen: true,
       teamAssignment: "auto",
       chatEnabled: false,
+      buzzerMode: "first",
       ...game,
     },
     gameTeams: [],
@@ -66,6 +68,7 @@ function gameState(game: Partial<PrivateGameState["game"]> = {}, players = 0) {
       ]),
     ),
     buzzWinner: null,
+    buzzQueue: [],
     mode: null,
   };
 }
@@ -76,8 +79,8 @@ describe("HostRoomPanel", () => {
     gameState();
   });
 
-  it("shows the join code, status and audience display link", () => {
-    render(<HostRoomPanel staffRole="owner" />);
+  it("game bar shows the join code, status and audience display link", () => {
+    render(<HostGameBar staffRole="owner" />);
 
     expect(screen.getByTestId("join-code")).toHaveTextContent("ABC123");
     expect(screen.getByTestId("game-status")).toHaveTextContent("Lobby");
@@ -162,9 +165,15 @@ describe("HostRoomPanel", () => {
   });
 
   it("shows moderators how to share, but no game or player controls", () => {
-    render(<HostRoomPanel staffRole="moderator" />);
+    render(
+      <>
+        <HostGameBar staffRole="moderator" />
+        <HostRoomPanel staffRole="moderator" />
+      </>,
+    );
 
     expect(screen.getByTestId("join-code")).toHaveTextContent("ABC123");
+    expect(screen.getByTestId("my-role")).toHaveTextContent("Moderator");
     for (const name of ["Finish game…", "Duplicate", "Delete…"]) {
       expect(screen.queryByRole("button", { name })).toBeNull();
     }

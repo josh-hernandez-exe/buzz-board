@@ -92,7 +92,7 @@ export function ChatPanel({
       ) : (
         <>
           {liveStatus === "connecting" && pulse && (
-            <p role="status" className="text-warning-foreground text-sm">
+            <p role="status" className="text-warning-text text-sm">
               Reconnecting… chat may be out of date.
             </p>
           )}
@@ -316,7 +316,7 @@ function ChannelMessages({
       {view.pinned && (
         <div
           data-testid="chat-pinned"
-          className="border-accent bg-accent/20 rounded border p-2 text-sm"
+          className="border-accent bg-accent-soft rounded border p-2 text-sm"
         >
           <span className="font-semibold">Pinned: </span>
           <MessageBody message={view.pinned} />

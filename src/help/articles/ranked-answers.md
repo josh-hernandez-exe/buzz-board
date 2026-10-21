@@ -46,7 +46,7 @@ Players see the board above their buzzer, and the audience display shows it in l
 
 Two hosts can run a board together. If you both press something at the same moment, only the first counts, and the other screen updates so you can check before trying again.
 
-You can also change scores by hand on the **Game Controls** tab at any time. While Ranked Answers is running, use **Undo last action** rather than the scoreboard's undo, so the board and the scores stay in step.
+You can also change scores by hand on the **Play** tab at any time. While Ranked Answers is running, use **Undo last action** rather than the scoreboard's undo, so the board and the scores stay in step.
 
 ## How do I go back to the buzzer?
 

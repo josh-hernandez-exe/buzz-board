@@ -11,7 +11,7 @@ test.afterAll(async () => {
 });
 
 async function createInviteLink(desk: Page, role: "Co-host" | "Moderator") {
-  await desk.getByRole("tab", { name: "Helpers" }).click();
+  await desk.getByRole("tab", { name: "Room" }).click();
   await desk.getByRole("radio", { name: role }).check();
   await desk.getByRole("button", { name: "Create invitation link" }).click();
   const input = desk.locator("#invite-url");
@@ -66,7 +66,7 @@ test("owner invites a co-host and a moderator, then removes the co-host", async 
   await expect(cohostDesk.getByTestId("my-role")).toContainText(
     "You're the Co-host",
   );
-  await cohostDesk.getByRole("button", { name: "Start Buzzer" }).click();
+  await cohostDesk.getByRole("button", { name: "Open buzzer" }).click();
   await expect
     .poll(
       async () =>
@@ -97,18 +97,18 @@ test("owner invites a co-host and a moderator, then removes the co-host", async 
     "You're the Moderator",
   );
   await expect(
-    moderatorDesk.getByRole("tab", { name: "Player Management" }),
+    moderatorDesk.getByRole("tab", { name: "Players", exact: true }),
   ).toBeVisible();
   await expect(
-    moderatorDesk.getByRole("tab", { name: "Game Controls" }),
+    moderatorDesk.getByRole("tab", { name: "Play", exact: true }),
   ).toHaveCount(0);
   await expect(
-    moderatorDesk.getByRole("button", { name: "Start Buzzer" }),
+    moderatorDesk.getByRole("button", { name: "Open buzzer" }),
   ).toHaveCount(0);
 
   // The owner sees both helpers and removes the co-host.
   await desk.reload();
-  await desk.getByRole("tab", { name: "Helpers" }).click();
+  await desk.getByRole("tab", { name: "Room" }).click();
   const cohostRow = desk
     .getByTestId("staff-helper")
     .filter({ hasText: "Cohost Cam" });
@@ -120,7 +120,7 @@ test("owner invites a co-host and a moderator, then removes the co-host", async 
   await expect(cohostRow).toHaveCount(0);
 
   // The removed co-host can no longer act, and reloading leaves the desk.
-  await cohostDesk.getByRole("button", { name: "Pause Buzzer" }).click();
+  await cohostDesk.getByRole("button", { name: "Close buzzer" }).click();
   await expect
     .poll(
       async () =>

@@ -98,6 +98,11 @@ model Game {
   /// Incremented each time the buzzer opens or is reset; a BuzzClaim belongs
   /// to one window, so each window has at most one winner.
   buzzerWindow      Int            @default(0)
+  /// The highest window number ever used. New windows are numbered above it,
+  /// so undoing buzzer actions never makes a number come round twice.
+  buzzerWindowHigh  Int            @default(0)
+  /// "first": the first buzz wins (default). "queue": every buzz queues.
+  buzzerMode        BuzzerMode     @default(first)
   data              Json           @default("{}")
   settings          Json           @default("{}")
   format            GameFormat     @default(team)
@@ -129,6 +134,8 @@ model Game {
   chatMessages     ChatMessage[]
   chatMutes        ChatMute[]
   gameMode         GameMode?
+  buzzQueue        BuzzQueueEntry[]
+  buzzerHistory    BuzzerHistory?
 
   @@unique([createdById, creationRequestId])
 }
@@ -155,6 +162,19 @@ model GameUser {
   user     User?     @relation(fields: [userId], references: [id])
   game     Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
   gameTeam GameTeam? @relation(fields: [gameTeamId], references: [id], onDelete: Cascade)
+}
+
+enum BuzzerMode {
+  first
+  queue
+}
+
+enum BuzzQueueStatus {
+  waiting
+  answering
+  correct
+  wrong
+  skipped
 }
 
 enum BuzzerState {
@@ -432,6 +452,38 @@ model GameMode {
   endedAt       DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+}
+
+/// One team's place in the buzz queue for one question (queue mode). Rows
+/// are never deleted, so buzzer history can restore any status.
+model BuzzQueueEntry {
+  id         String          @id @default(cuid())
+  gameId     String
+  /// The question (Game.buzzerWindow) this buzz belongs to.
+  window     Int
+  position   Int
+  gameTeamId String
+  gameUserId String
+  status     BuzzQueueStatus
+  requestId  String?         @db.VarChar(64)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, window, position])
+  @@unique([gameId, requestId])
+  @@index([gameId, window])
+}
+
+/// Undo and redo stacks of host buzzer actions, kept off the Game row.
+model BuzzerHistory {
+  gameId    String   @id
+  past      Json     @default("[]")
+  future    Json     @default("[]")
+  updatedAt DateTime @updatedAt
 
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
 }

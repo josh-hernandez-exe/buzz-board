@@ -51,10 +51,10 @@ test("staff rename and lock a name, remove a player, and recover a guest", async
     (typeof players)[number],
   ];
 
-  // The host keeps Player Management open while the moderator works.
+  // The host keeps the Players tab open while the moderator works.
   const hostDesk = await hostContext.newPage();
   await hostDesk.goto(`/game/${game.id}/admin`);
-  await hostDesk.getByRole("tab", { name: "Player Management" }).click();
+  await hostDesk.getByRole("tab", { name: "Players", exact: true }).click();
   await expect(
     hostDesk.getByTestId("roster-player").filter({ hasText: "Rude Name" }),
   ).toBeVisible();
@@ -62,7 +62,7 @@ test("staff rename and lock a name, remove a player, and recover a guest", async
   // Moderator renames and locks in one save.
   const modDesk = await moderatorContext.newPage();
   await modDesk.goto(`/game/${game.id}/admin`);
-  await modDesk.getByRole("tab", { name: "Player Management" }).click();
+  await modDesk.getByRole("tab", { name: "Players", exact: true }).click();
   await modDesk.getByLabel("Find a player").fill("rude");
   await expect(modDesk.getByTestId("roster-player")).toHaveCount(1);
   await modDesk.getByRole("button", { name: "Rename Rude Name" }).click();

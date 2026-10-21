@@ -43,7 +43,7 @@ export default async function HelpForAudience({
   return (
     <div className="flex flex-col gap-6">
       <p>
-        <Link href="/help" className="text-primary underline">
+        <Link href="/help" className="text-link underline">
           All help
         </Link>
       </p>
@@ -55,7 +55,7 @@ export default async function HelpForAudience({
           <h2 id={`a-${article.id}`} className="text-xl font-bold">
             <Link
               href={`/help/${article.id}`}
-              className="text-primary underline"
+              className="text-link underline"
             >
               {article.title}
             </Link>
@@ -68,7 +68,7 @@ export default async function HelpForAudience({
                 <li key={h.anchor}>
                   <Link
                     href={`/help/${article.id}#${h.anchor}`}
-                    className="text-primary underline"
+                    className="text-link underline"
                   >
                     {h.text}
                   </Link>

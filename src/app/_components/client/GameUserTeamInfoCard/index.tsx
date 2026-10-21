@@ -2,14 +2,7 @@
 
 import { env } from "@/env";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/app/_components/ui/card";
+import { Notice, Panel } from "@/app/_components/ui/page";
 
 import { api } from "@/trpc/react";
 
@@ -56,52 +49,39 @@ export function GameUserTeamInfoCard({
     (gameTeamInfo.isLoading || gameState.status === "connecting")
   ) {
     // If both the query and subscription data are not available, we show a loading state.
-    return <div>Loading...</div>;
+    return null;
   } else if (!gameTeam) {
     // If no team is assigned, we show a message indicating that the user is not part of any team.
     return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <div className="border-destructive/40 bg-destructive-soft rounded-lg border p-6 text-center">
-          <h3 className="text-destructive mb-2 text-lg font-medium">
-            No team assigned
-          </h3>
-          <p className="text-destructive">
-            You are not currently assigned to any team. Please switch to the
-            Team Switcher tab to select your team.
-          </p>
-        </div>
-      </div>
+      <Notice tone="warning">
+        <strong>No team yet.</strong> Choose one on the <strong>Team</strong>{" "}
+        tab, or wait for your host to put you on a team.
+      </Notice>
     );
   }
 
   gameUsers.sort((a, b) => a.index - b.index);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Your team</CardTitle>
-        <CardDescription>Who you&apos;re playing with</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p>
-          {gameTeam?.name} (team {gameTeam?.index}) · {gameUsers.length}{" "}
-          {gameUsers.length === 1 ? "player" : "players"}
-        </p>
-        {env.NEXT_PUBLIC_SHOW_DEBUG_INFO && <p>Team ID: {gameTeam?.id}</p>}
-        <GameTeamUserTable
-          data={gameUsers.map((gameUser) => {
-            const image =
-              "user" in gameUser ? gameUser.user?.image : gameUser.image;
-            return {
-              id: gameUser.id,
-              name: gameUser.name,
-              index: gameUser.index,
-              image: image ?? null,
-            };
-          })}
-        />
-      </CardContent>
-      <CardFooter></CardFooter>
-    </Card>
+    <Panel
+      title="Your team"
+      description={`${gameTeam?.name} · ${gameUsers.length} ${gameUsers.length === 1 ? "player" : "players"}`}
+    >
+      {env.NEXT_PUBLIC_SHOW_DEBUG_INFO && (
+        <p className="text-muted-foreground text-xs">Team ID: {gameTeam?.id}</p>
+      )}
+      <GameTeamUserTable
+        data={gameUsers.map((gameUser) => {
+          const image =
+            "user" in gameUser ? gameUser.user?.image : gameUser.image;
+          return {
+            id: gameUser.id,
+            name: gameUser.name,
+            index: gameUser.index,
+            image: image ?? null,
+          };
+        })}
+      />
+    </Panel>
   );
 }

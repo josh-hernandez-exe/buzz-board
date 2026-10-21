@@ -5,6 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import { GameFormat } from "@prisma/client";
 
 import { GenericCard } from "@/app/_components/GenericCard";
+import {
+  AddTeamButton,
+  DeleteTeamButton,
+  TeamSwitchingToggle,
+} from "@/app/_components/client/GameAdminTeamControl";
+import { Panel } from "@/app/_components/ui/page";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { Button } from "@/app/_components/ui/button";
@@ -153,6 +159,7 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
   const isTeamGame = live?.game.format === GameFormat.team;
   const teams = live?.gameTeams ?? [];
   const canRecover = can(staffRole, "recoverGuests");
+  const runsGame = can(staffRole, "runGame");
 
   // Names, teams and locks come from the live game state, so changes made at
   // another desk appear at once. The roster query only adds whether a player
@@ -198,46 +205,68 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
   return (
     <div className="flex flex-col gap-4">
       {isTeamGame && (
-        <GenericCard
+        <Panel
+          aria-label="Teams"
           title="Teams"
-          description="Rename a team or stop its members renaming it."
-          content={
-            <ul className="flex list-none flex-col gap-2">
-              {teams.map((team) => (
-                <li
-                  key={team.id}
-                  className="ml-0 flex flex-wrap items-center justify-between gap-2"
-                  data-testid="roster-team"
-                >
-                  <span>
-                    {team.index}. {team.name}
-                    {!team.allowMemberRename && (
-                      <span className="bg-muted ml-2 rounded-full px-2 py-0.5 text-xs">
-                        Name locked
-                      </span>
-                    )}
-                  </span>
-                  <RenameDialog
-                    label={team.name}
-                    currentName={team.name}
-                    locked={!team.allowMemberRename}
-                    lockLabel="Stop team members renaming it"
-                    error={renameTeam.error}
-                    pending={renameTeam.isPending}
-                    onSave={({ name, lock }) =>
-                      renameTeam.mutateAsync({
-                        gameTeamId: team.id,
-                        name,
-                        allowMemberRename: !lock,
-                        expectedNameVersion: team.nameVersion,
-                      })
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
+          description={
+            runsGame
+              ? "Add, rename and delete teams, and decide whether players may switch."
+              : "Rename a team or stop its members renaming it."
           }
-        />
+          actions={runsGame ? <AddTeamButton /> : undefined}
+        >
+          {runsGame && <TeamSwitchingToggle />}
+          {teams.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No teams yet.</p>
+          ) : (
+            <ul className="flex list-none flex-col gap-1.5">
+              {[...teams]
+                .sort((a, b) => a.index - b.index)
+                .map((team) => (
+                  <li
+                    key={team.id}
+                    className="border-border ml-0 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2"
+                    data-testid="roster-team"
+                  >
+                    <span className="min-w-0 flex-1 font-semibold break-words">
+                      {team.name}
+                      {!team.allowMemberRename && (
+                        <span className="bg-muted text-muted-foreground ml-2 rounded-full px-2 py-0.5 text-xs font-bold">
+                          Name locked
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-muted-foreground text-sm">
+                      {team.gameUsers.length}{" "}
+                      {team.gameUsers.length === 1 ? "player" : "players"}
+                    </span>
+                    <RenameDialog
+                      label={team.name}
+                      currentName={team.name}
+                      locked={!team.allowMemberRename}
+                      lockLabel="Stop team members renaming it"
+                      error={renameTeam.error}
+                      pending={renameTeam.isPending}
+                      onSave={({ name, lock }) =>
+                        renameTeam.mutateAsync({
+                          gameTeamId: team.id,
+                          name,
+                          allowMemberRename: !lock,
+                          expectedNameVersion: team.nameVersion,
+                        })
+                      }
+                    />
+                    {runsGame && (
+                      <DeleteTeamButton
+                        team={team}
+                        players={team.gameUsers.length}
+                      />
+                    )}
+                  </li>
+                ))}
+            </ul>
+          )}
+        </Panel>
       )}
 
       <GenericCard

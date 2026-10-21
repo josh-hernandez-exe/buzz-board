@@ -26,7 +26,7 @@ export function InformationTab({
     : [];
 
   return (
-    <div className="flex flex-col items-center justify-center">
+    <div className="flex flex-col gap-4">
       <GameBasicInfoCard game={gameState.game} />
       <GameUserInfoCard gameUser={gameUser} />
       {gameState.game.format === GameFormat.team && (

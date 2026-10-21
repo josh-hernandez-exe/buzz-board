@@ -65,7 +65,7 @@ export default async function InvitePage({
               </p>
 
               {invite.status !== "valid" && !invite.usedBySelf ? (
-                <p role="alert" className="bg-warning/40 rounded-md p-3">
+                <p role="alert" className="bg-warning-soft rounded-md p-3">
                   {STATUS_MESSAGE[invite.status]} Ask the host for a new link.
                 </p>
               ) : !session ? (
