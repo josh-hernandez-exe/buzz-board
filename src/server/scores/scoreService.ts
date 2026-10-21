@@ -103,97 +103,117 @@ export async function runScoreCommand({
   requestId: string;
   command: ScoreCommand;
 }): Promise<Result<ScoreCommandResult, ScoreCommandError>> {
+  const outcome = await withGameLock(gameId, (tx) =>
+    scoreCommandInTx(tx, { gameId, actorUserId, requestId, command }),
+  );
+  return outcome.isErr() ? err(outcome.error) : outcome.value;
+}
+
+/**
+ * The body of runScoreCommand, for callers that already hold the game lock
+ * and must change scores in the same transaction as their own state (for
+ * example a game mode revealing an answer and awarding its points).
+ */
+export async function scoreCommandInTx(
+  tx: GameTx,
+  {
+    gameId,
+    actorUserId,
+    requestId,
+    command,
+  }: {
+    gameId: string;
+    actorUserId: string | null;
+    requestId: string;
+    command: ScoreCommand;
+  },
+): Promise<Result<ScoreCommandResult, ScoreCommandError>> {
   const action = ACTION[command.kind];
   const hash = payloadHash(command);
-
-  const outcome = await withGameLock(gameId, async (tx) => {
-    const existing = await tx.gameOperation.findUnique({
-      where: { gameId_requestId: { gameId, requestId } },
+  const existing = await tx.gameOperation.findUnique({
+    where: { gameId_requestId: { gameId, requestId } },
+  });
+  if (existing) {
+    if (
+      existing.action !== action ||
+      existing.actorUserId !== actorUserId ||
+      existing.payloadHash !== hash
+    ) {
+      return err<ScoreCommandResult, ScoreCommandError>({
+        kind: "requestIdReused",
+        requestId,
+      });
+    }
+    const stored = existing.result as StoredResult;
+    return ok<ScoreCommandResult, ScoreCommandError>({
+      operationId: existing.id,
+      replayed: true,
+      scoreboardStateId: stored.scoreboardStateId,
+      effects: stored.effects,
     });
-    if (existing) {
-      if (
-        existing.action !== action ||
-        existing.actorUserId !== actorUserId ||
-        existing.payloadHash !== hash
-      ) {
-        return err<ScoreCommandResult, ScoreCommandError>({
-          kind: "requestIdReused",
-          requestId,
-        });
-      }
-      const stored = existing.result as StoredResult;
-      return ok<ScoreCommandResult, ScoreCommandError>({
-        operationId: existing.id,
-        replayed: true,
-        scoreboardStateId: stored.scoreboardStateId,
-        effects: stored.effects,
-      });
-    }
+  }
 
-    const planned = await planCommand(tx, gameId, command);
-    if (planned.isErr()) return err(planned.error);
-    const plan = planned.value;
+  const planned = await planCommand(tx, gameId, command);
+  if (planned.isErr()) return err(planned.error);
+  const plan = planned.value;
 
-    let scoreboardStateId = plan.currentStateId;
-    if (plan.kind === "newState") {
-      const state = await tx.scoreboardState.create({
-        data: {
-          gameId,
-          scoreboardId: plan.scoreboardId,
-          state: plan.scores,
-        },
-      });
-      scoreboardStateId = state.id;
-      await tx.scoreboard.update({
-        where: { id: plan.scoreboardId },
-        data: {
-          currentStateId: state.id,
-          pastStateIds: [...plan.pastStateIds, plan.currentStateId],
-          futureStateIds: [],
-        },
-      });
-    } else if (plan.kind === "move") {
-      scoreboardStateId = plan.targetStateId;
-      await tx.scoreboard.update({
-        where: { id: plan.scoreboardId },
-        data: {
-          currentStateId: plan.targetStateId,
-          pastStateIds: plan.pastStateIds,
-          futureStateIds: plan.futureStateIds,
-        },
-      });
-    }
-
-    const stored: StoredResult = { scoreboardStateId, effects: plan.effects };
-    const operation = await tx.gameOperation.create({
+  let scoreboardStateId = plan.currentStateId;
+  if (plan.kind === "newState") {
+    const state = await tx.scoreboardState.create({
       data: {
         gameId,
-        requestId,
-        action,
-        actorUserId,
-        payloadHash: hash,
-        result: stored,
+        scoreboardId: plan.scoreboardId,
+        state: plan.scores,
       },
     });
-    if (plan.effects.length > 0) {
-      await tx.scoreEffect.createMany({
-        data: plan.effects.map((effect) => ({
-          ...effect,
-          gameId,
-          operationId: operation.id,
-          scoreboardStateId,
-        })),
-      });
-    }
-
-    return ok<ScoreCommandResult, ScoreCommandError>({
-      operationId: operation.id,
-      replayed: false,
-      ...stored,
+    scoreboardStateId = state.id;
+    await tx.scoreboard.update({
+      where: { id: plan.scoreboardId },
+      data: {
+        currentStateId: state.id,
+        pastStateIds: [...plan.pastStateIds, plan.currentStateId],
+        futureStateIds: [],
+      },
     });
-  });
+  } else if (plan.kind === "move") {
+    scoreboardStateId = plan.targetStateId;
+    await tx.scoreboard.update({
+      where: { id: plan.scoreboardId },
+      data: {
+        currentStateId: plan.targetStateId,
+        pastStateIds: plan.pastStateIds,
+        futureStateIds: plan.futureStateIds,
+      },
+    });
+  }
 
-  return outcome.isErr() ? err(outcome.error) : outcome.value;
+  const stored: StoredResult = { scoreboardStateId, effects: plan.effects };
+  const operation = await tx.gameOperation.create({
+    data: {
+      gameId,
+      requestId,
+      action,
+      actorUserId,
+      payloadHash: hash,
+      result: stored,
+    },
+  });
+  if (plan.effects.length > 0) {
+    await tx.scoreEffect.createMany({
+      data: plan.effects.map((effect) => ({
+        ...effect,
+        gameId,
+        operationId: operation.id,
+        scoreboardStateId,
+      })),
+    });
+  }
+
+  return ok<ScoreCommandResult, ScoreCommandError>({
+    operationId: operation.id,
+    replayed: false,
+    ...stored,
+  });
 }
 
 type Plan = { scoreboardId: string; currentStateId: string } & (

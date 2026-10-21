@@ -13,6 +13,7 @@ import {
   withGameLock,
   type GameTransactionError,
   type GameTx,
+  lockChatGate,
 } from "@/server/db/gameTransaction";
 import {
   generateShortCode,
@@ -383,6 +384,8 @@ export async function finishGame(gameId: string) {
     await withGameLock(
       gameId,
       async (tx): Promise<Result<{ changed: boolean }, GameServiceError>> => {
+        // Chat closes for players at the same moment (see lockChatGate).
+        await lockChatGate(tx, gameId, "exclusive");
         const game = await tx.game.findUniqueOrThrow({
           where: { id: gameId },
         });

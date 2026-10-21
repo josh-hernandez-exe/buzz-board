@@ -72,32 +72,11 @@ async function gameAdminAuth({
   gameId: string | undefined;
   user?: { id: string };
 }): Promise<{ gameAdmin: GameAdmin | undefined | null }> {
-  let gameAdmin;
-
-  if (user?.id && gameId) {
-    gameAdmin = await db.gameAdmin.findUnique({
-      where: {
-        // @@unique([userId, gameId])
-        userId_gameId: {
-          gameId,
-          userId: user.id,
-        },
-      },
-      include: { game: true },
-    });
-  }
-
-  if (
-    !(
-      gameAdmin !== null &&
-      gameAdmin !== undefined &&
-      gameAdmin?.gameId === gameId &&
-      gameAdmin?.userId === user?.id
-    )
-  ) {
-    logger.warn("Game Admin found is not for the current game.");
-    gameAdmin = undefined;
-  }
+  if (!user?.id || !gameId) return { gameAdmin: undefined };
+  // Most requests come from players, who have no staff row: that's normal.
+  const gameAdmin = await db.gameAdmin.findUnique({
+    where: { userId_gameId: { gameId, userId: user.id } },
+  });
 
   return {
     gameAdmin,

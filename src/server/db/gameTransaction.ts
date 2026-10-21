@@ -42,6 +42,11 @@ class GameNotFound extends Error {}
 /**
  * Runs `work` in one transaction that holds a row lock on the game.
  *
+ * The lock is FOR NO KEY UPDATE: game writers still run one at a time, but
+ * inserts into tables that reference the game (chat messages, buzz claims,
+ * score effects), whose foreign-key checks take a key-share lock on the
+ * game row, don't queue behind it. Deleting the game still excludes them.
+ *
  * Writes that read and then replace shared game state (scores, buzzer, roster
  * revisions) must use this so concurrent requests for the same game run one
  * after another instead of overwriting each other or deadlocking. Requests for
@@ -60,11 +65,17 @@ export async function withGameLock<T>(
     maxWait = DEFAULT_MAX_WAIT_MS,
     timeout = DEFAULT_TIMEOUT_MS,
     lockTimeoutMs = DEFAULT_LOCK_TIMEOUT_MS,
+    lockFirst = true,
   }: {
     client?: PrismaClient;
     maxWait?: number;
     timeout?: number;
     lockTimeoutMs?: number;
+    /**
+     * False when `work` takes the game row lock itself with its first write
+     * (for example a conditional UPDATE), keeping the locked part short.
+     */
+    lockFirst?: boolean;
   } = {},
 ): Promise<Result<T, GameTransactionError>> {
   const lockTimeout = `${Math.max(1, Math.floor(lockTimeoutMs))}ms`;
@@ -73,10 +84,12 @@ export async function withGameLock<T>(
       async (tx) => {
         // Applies to this transaction only (including later locks in `work`).
         await tx.$executeRaw`SELECT set_config('lock_timeout', ${lockTimeout}, true)`;
-        const locked = await tx.$queryRaw<{ id: string }[]>`
-          SELECT id FROM "Game" WHERE id = ${gameId} FOR UPDATE`;
-        if (locked.length === 0) {
-          throw new GameNotFound(gameId);
+        if (lockFirst) {
+          const locked = await tx.$queryRaw<{ id: string }[]>`
+            SELECT id FROM "Game" WHERE id = ${gameId} FOR NO KEY UPDATE`;
+          if (locked.length === 0) {
+            throw new GameNotFound(gameId);
+          }
         }
         return work(tx);
       },
@@ -96,5 +109,25 @@ export async function withGameLock<T>(
       return err({ kind: "busy", gameId, cause: error });
     }
     throw error;
+  }
+}
+
+/**
+ * Chat's own per-game lock, separate from the game row so chat sends never
+ * queue behind buzzes or score changes (or hold them up). Sends take it
+ * shared, so they don't wait for each other; changes that decide whether a
+ * send is allowed (mute, finish, chat on/off, staff-only and slow mode) take
+ * it exclusively, so no send can interleave with them.
+ */
+export async function lockChatGate(
+  tx: GameTx,
+  gameId: string,
+  mode: "shared" | "exclusive",
+) {
+  const key = `chat:${gameId}`;
+  if (mode === "shared") {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(hashtextextended(${key}, 0))`;
+  } else {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
   }
 }

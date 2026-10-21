@@ -107,7 +107,7 @@ export const createTRPCRouter = t.router;
  * You can remove this if you don't like it, but it can help catch unwanted waterfalls by simulating
  * network latency that would occur in production but not in local development.
  */
-const timingMiddleware = t.middleware(async ({ next, path }) => {
+const timingMiddleware = t.middleware(async ({ next, path, type }) => {
   const start = Date.now();
 
   // tRPC's `isDev` is also true for NODE_ENV=test; only add latency in `next dev`.
@@ -119,8 +119,14 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 
   const result = await next();
 
-  const end = Date.now();
-  logger.info(`[TRPC] ${path} took ${end - start}ms to execute`);
+  const took = Date.now() - start;
+  // Every call at debug; only slow ones at info, so production logs stay
+  // useful (and cheap) under load. Subscriptions report their whole life.
+  if (took > 1_000 && type !== "subscription") {
+    logger.info(`[TRPC] slow: ${path} took ${took}ms`);
+  } else {
+    logger.debug(`[TRPC] ${path} took ${took}ms`);
+  }
 
   return result;
 });

@@ -151,9 +151,14 @@ export async function createGame({
   return { host, game, admin, gameTeams };
 }
 
+const randomIp = () =>
+  `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 254) + 1}`;
+
 /** Joins as a guest through the real `public.joinGame` procedure. */
 export async function joinAsGuest(code: string, nickname?: string) {
-  const joined = await requestCaller({}).public.joinGame({
+  // Each guest is a separate device on its own network, so ordinary tests
+  // never trip the per-address join limit (rate-limit tests set `ip`).
+  const joined = await requestCaller({ ip: randomIp() }).public.joinGame({
     gameCode: code,
     nickname,
   });

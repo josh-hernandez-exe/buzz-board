@@ -36,6 +36,10 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    /** Server log level; defaults to info in production, debug otherwise. */
+    LOG_LEVEL: z
+      .enum(["silly", "trace", "debug", "info", "warn", "error", "fatal"])
+      .optional(),
   },
 
   /**
@@ -62,6 +66,7 @@ export const env = createEnv({
     KV_URL: process.env.KV_URL,
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
+    LOG_LEVEL: process.env.LOG_LEVEL,
 
     NEXT_PUBLIC_QRCODE_BASE_URL: process.env.NEXT_PUBLIC_QRCODE_BASE_URL,
     NEXT_PUBLIC_SHOW_DEBUG_INFO: process.env.NEXT_PUBLIC_SHOW_DEBUG_INFO,

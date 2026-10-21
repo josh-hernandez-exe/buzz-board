@@ -1,4 +1,9 @@
-import { BuzzerState, GameStatus, type PrismaClient } from "@prisma/client";
+import {
+  BuzzerState,
+  GameStatus,
+  Prisma,
+  type PrismaClient,
+} from "@prisma/client";
 import { err, ok, type Result } from "neverthrow";
 
 import { db as defaultDb } from "@/server/db";
@@ -96,10 +101,12 @@ export function resetBuzzer(gameId: string) {
 /**
  * Accepts at most one buzz per open window. The claim, the team's `selected`
  * state and closing the window commit together, and the (game, window)
- * uniqueness constraint backs the lock, so there can only be one winner.
+ * uniqueness constraint backs it up, so there can only be one winner.
  *
- * Game, participant and team state are re-read under the game lock rather
- * than trusted from the request context, which was loaded before the lock.
+ * Buzzes that can't win are answered from committed state without any lock
+ * (settledOutcome). The rest race on one conditional UPDATE that closes the
+ * window: exactly one matches; the others match nothing once it commits and
+ * get the same answers a losing buzz always got.
  */
 export async function buzzIn({
   gameId,
@@ -113,54 +120,80 @@ export async function buzzIn({
   const settled = await settledOutcome({ gameId, gameUserId, requestId });
   if (settled) return settled;
 
+  const gameUser = await defaultDb.gameUser.findFirst({
+    where: { id: gameUserId, gameId },
+    select: { gameTeamId: true },
+  });
+  if (!gameUser) return err({ kind: "participantNotFound" });
+  if (!gameUser.gameTeamId) return err({ kind: "notOnTeam" });
+  const gameTeamId = gameUser.gameTeamId;
+
   const outcome = await withGameLock(
     gameId,
-    async (tx): Promise<Result<BuzzOutcome, BuzzError>> => {
-      if (requestId) {
-        const previous = await tx.buzzClaim.findUnique({
-          where: { gameId_requestId: { gameId, requestId } },
-        });
-        if (previous) {
-          return previous.gameUserId === gameUserId
-            ? ok({ accepted: true, replayed: true })
-            : err({ kind: "requestIdReused" });
-        }
-      }
+    async (tx): Promise<Result<BuzzOutcome, BuzzError> | null> => {
+      // Closing the window is the claim's first statement and takes the game
+      // row lock. When everyone buzzes at once, the others wait only for
+      // this short transaction, then match no row and answer straight away.
+      const closed = await tx.$queryRaw<{ buzzerWindow: number }[]>`
+        UPDATE "Game" SET "isBuzzerListening" = false
+        WHERE id = ${gameId} AND "isBuzzerListening"
+          AND status <> 'finished'::"GameStatus"
+        RETURNING "buzzerWindow"`;
+      if (closed.length === 0) return null;
 
-      const [game, gameUser] = await Promise.all([
-        tx.game.findUniqueOrThrow({ where: { id: gameId } }),
-        tx.gameUser.findFirst({ where: { id: gameUserId, gameId } }),
-      ]);
-      if (!gameUser) return err({ kind: "participantNotFound" });
-      if (!gameUser.gameTeamId) return err({ kind: "notOnTeam" });
-
+      // Re-read under the lock: the host may have reopened the buzzer (which
+      // rejects the previous winner's team) since the checks above.
       const team = await tx.gameTeam.findFirst({
-        where: { id: gameUser.gameTeamId, gameId },
+        where: { id: gameTeamId, gameId },
+        select: { buzzerState: true },
       });
-      if (!team) return err({ kind: "notOnTeam" });
+      if (!team) throw new BuzzRejected({ kind: "notOnTeam" });
       if (team.buzzerState === BuzzerState.rejected) {
-        return err({ kind: "teamRejected" });
+        throw new BuzzRejected({ kind: "teamRejected" });
       }
-      if (team.buzzerState === BuzzerState.selected) {
-        // A teammate (or this player) already holds the buzz.
-        return ok({ accepted: true, replayed: true });
-      }
-      if (game.status === GameStatus.finished) {
-        return err({ kind: "gameFinished" });
-      }
-      if (!game.isBuzzerListening) return err({ kind: "notListening" });
-
-      await claim(tx, {
-        gameId,
-        window: game.buzzerWindow,
-        gameUserId,
-        gameTeamId: team.id,
-        requestId,
+      await tx.buzzClaim.create({
+        data: {
+          gameId,
+          window: closed[0]!.buzzerWindow,
+          gameUserId,
+          gameTeamId,
+          requestId,
+        },
+      });
+      await tx.gameTeam.update({
+        where: { id: gameTeamId },
+        data: { buzzerState: BuzzerState.selected },
       });
       return ok({ accepted: true, replayed: false });
     },
+    { lockFirst: false },
+  ).catch((error: unknown) => {
+    if (error instanceof BuzzRejected) return ok(err(error.reason));
+    if (isUniqueViolation(error)) return ok(null);
+    throw error;
+  });
+  if (outcome.isErr()) return err(outcome.error);
+  if (outcome.value) return outcome.value;
+  // The window was already closed, or a retry of this request raced it:
+  // answer from committed state, as for any losing buzz.
+  return (
+    (await settledOutcome({ gameId, gameUserId, requestId })) ??
+    err({ kind: "notListening" })
   );
-  return outcome.isErr() ? err(outcome.error) : outcome.value;
+}
+
+/** Rolls back the claim transaction with a domain answer. */
+class BuzzRejected extends Error {
+  constructor(readonly reason: BuzzError) {
+    super(reason.kind);
+  }
+}
+
+function isUniqueViolation(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
 }
 
 /**
@@ -209,27 +242,6 @@ async function settledOutcome({
   }
   if (!gameUser.game.isBuzzerListening) return err({ kind: "notListening" });
   return null;
-}
-
-async function claim(
-  tx: GameTx,
-  data: {
-    gameId: string;
-    window: number;
-    gameUserId: string;
-    gameTeamId: string;
-    requestId?: string;
-  },
-) {
-  await tx.buzzClaim.create({ data });
-  await tx.gameTeam.update({
-    where: { id: data.gameTeamId },
-    data: { buzzerState: BuzzerState.selected },
-  });
-  await tx.game.update({
-    where: { id: data.gameId },
-    data: { isBuzzerListening: false },
-  });
 }
 
 /**

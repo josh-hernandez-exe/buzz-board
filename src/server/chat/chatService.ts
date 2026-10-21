@@ -11,6 +11,7 @@ import { err, ok, type Result } from "neverthrow";
 
 import { db } from "@/server/db";
 import {
+  lockChatGate,
   withGameLock,
   type GameTransactionError,
   type GameTx,
@@ -354,11 +355,13 @@ export async function sendMessage({
   try {
     const result = await db.$transaction(
       async (tx): Promise<Result<ChatMessage, ChatError>> => {
-        // Shared lock: sends don't block each other, but finishing the game
-        // or muting someone (which lock the game row) can't interleave.
+        // Shared chat lock: sends don't block each other (or buzzes and
+        // scores), but a mute, finish or channel-policy change can't
+        // interleave with the checks below.
+        await lockChatGate(tx, gameId, "shared");
         const [game] = await tx.$queryRaw<
           { status: GameStatus; chatEnabled: boolean }[]
-        >`SELECT status, "chatEnabled" FROM "Game" WHERE id = ${gameId} FOR SHARE`;
+        >`SELECT status, "chatEnabled" FROM "Game" WHERE id = ${gameId}`;
         if (!game) return err({ kind: "gameNotFound", gameId });
         if (!game.chatEnabled) return err({ kind: "chatDisabled" });
         if (game.status === GameStatus.finished && actor.kind === "player") {
@@ -753,6 +756,7 @@ export async function muteActor({
     await withGameLock(
       gameId,
       async (tx): Promise<Result<{ until: Date | null }, ChatError>> => {
+        await lockChatGate(tx, gameId, "exclusive");
         const target = await targetRole(tx, gameId, targetActorKey);
         if (!target) return err({ kind: "muteTargetNotFound" });
         if (!canMute(staff.role, target, targetActorKey === actorKey(staff))) {
@@ -850,6 +854,7 @@ export async function setChannelPolicy({
     await withGameLock(
       gameId,
       async (tx): Promise<Result<Changed, ChatError>> => {
+        await lockChatGate(tx, gameId, "exclusive");
         const channel = await channelForUpdate(tx, gameId, channelKey);
         if (!channel) return err({ kind: "channelNotFound" });
         const slow =
@@ -956,6 +961,7 @@ export async function setChatEnabled(gameId: string, enabled: boolean) {
     await withGameLock(
       gameId,
       async (tx): Promise<Result<Changed, ChatError>> => {
+        await lockChatGate(tx, gameId, "exclusive");
         const { count } = await tx.game.updateMany({
           where: { id: gameId, chatEnabled: !enabled },
           data: { chatEnabled: enabled },
