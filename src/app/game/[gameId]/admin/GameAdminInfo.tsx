@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { BuzzerPanel } from "@/app/_components/client/BuzzerPanel";
+import { CategoryGridPanel } from "@/app/_components/client/CategoryGridPanel";
 import { ChatPanel } from "@/app/_components/client/ChatPanel";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
 import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
@@ -21,6 +22,7 @@ import {
 } from "@/app/_components/ui/tabs";
 import type { PrivateGameState } from "@/types";
 import { can, type StaffRoleName } from "@/utils/capabilities";
+import type { ModeKind } from "@/utils/modes";
 
 /**
  * The host desk. Play holds everything needed mid-question; the other tabs
@@ -29,16 +31,28 @@ import { can, type StaffRoleName } from "@/utils/capabilities";
 export function GameAdminInfo({
   gameState: initialGameState,
   staffRole,
-  rankedAnswersFirst = false,
+  modeKind = null,
+  modeFirst = false,
 }: {
   gameState: PrivateGameState;
   staffRole: StaffRoleName;
-  /** Open on the Ranked Answers tab (the game was set up for it). */
-  rankedAnswersFirst?: boolean;
+  /** The game mode this game is set up for, if any. */
+  modeKind?: ModeKind | null;
+  /** Open on the mode's tab (the game was set up for it). */
+  modeFirst?: boolean;
 }) {
   const runsGame = can(staffRole, "runGame");
+  // A game runs one mode: show its tab, or both while none is chosen.
+  const showRanked = runsGame && modeKind !== "categoryGrid";
+  const showGrid = runsGame && modeKind !== "rankedAnswers";
   const [activeTab, setActiveTab] = useState(
-    !runsGame ? "players" : rankedAnswersFirst ? "ranked-answers" : "play",
+    !runsGame
+      ? "players"
+      : modeFirst && modeKind === "categoryGrid"
+        ? "category-grid"
+        : modeFirst
+          ? "ranked-answers"
+          : "play",
   );
   const { data } = useLiveGameState();
   const state = data ?? initialGameState;
@@ -50,8 +64,11 @@ export function GameAdminInfo({
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="flex h-auto w-full flex-wrap justify-start">
           {runsGame && <TabsTrigger value="play">Play</TabsTrigger>}
-          {runsGame && (
+          {showRanked && (
             <TabsTrigger value="ranked-answers">Ranked Answers</TabsTrigger>
+          )}
+          {showGrid && (
+            <TabsTrigger value="category-grid">Category Grid</TabsTrigger>
           )}
           <TabsTrigger value="players">Players</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
@@ -65,9 +82,14 @@ export function GameAdminInfo({
             </div>
           </TabsContent>
         )}
-        {runsGame && (
+        {showRanked && (
           <TabsContent value="ranked-answers">
             <RankedAnswersPanel />
+          </TabsContent>
+        )}
+        {showGrid && (
+          <TabsContent value="category-grid">
+            <CategoryGridPanel />
           </TabsContent>
         )}
         <TabsContent value="players" className="flex flex-col gap-4">

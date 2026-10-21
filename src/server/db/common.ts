@@ -4,7 +4,7 @@ import type { Result } from "neverthrow";
 
 import { parseScoreMap } from "@/server/scores/scoreMath";
 import { getBuzzQueue, getBuzzWinner } from "@/server/buzzer/buzzerService";
-import { publicModeView } from "@/utils/rankedAnswers/projection";
+import { publicGameModeView } from "@/utils/modes";
 import { err, ok } from "neverthrow";
 
 import type { PublicGameState, PrivateGameState, GameSettings } from "@/types";
@@ -31,7 +31,9 @@ export async function getPublicGameState({
       status: true,
       code: true,
       joiningOpen: true,
-      gameMode: { select: { status: true, content: true, state: true } },
+      gameMode: {
+        select: { kind: true, status: true, content: true, state: true },
+      },
       gameTeams: {
         select: {
           id: true,
@@ -90,7 +92,7 @@ export async function getPublicGameState({
       gameTeamId: e.gameTeamId,
       status: e.status,
     })),
-    mode: publicModeView(game.gameMode),
+    mode: publicGameModeView(game.gameMode),
   };
 
   data.gameTeams.sort((a, b) => a.index - b.index);
@@ -111,7 +113,9 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       status: true,
       finishedAt: true,
       joiningOpen: true,
-      gameMode: { select: { status: true, content: true, state: true } },
+      gameMode: {
+        select: { kind: true, status: true, content: true, state: true },
+      },
       teamAssignment: true,
       chatEnabled: true,
       gameTeams: {
@@ -173,7 +177,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
   const data: PrivateGameState = {
     buzzWinner,
     buzzQueue: await getBuzzQueue(gameId),
-    mode: publicModeView(game.gameMode),
+    mode: publicGameModeView(game.gameMode),
     game: {
       id: game.id,
       name: game.name,

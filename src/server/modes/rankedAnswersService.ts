@@ -53,7 +53,9 @@ export type ModeError =
   | { kind: "preflightBlocked"; problems: string[] }
   | { kind: "stepConflict"; step: number }
   | { kind: "modeRule"; error: EngineError }
-  | { kind: "nothingToUndoInMode" };
+  | { kind: "nothingToUndoInMode" }
+  /** The game is set up for a different game mode. */
+  | { kind: "otherMode"; mode: string };
 
 type HistoryEntry = { state: EngineState; scores: Record<string, number> };
 type Json = Prisma.InputJsonValue;
@@ -79,6 +81,8 @@ async function teamsInOrder(client: GameTx | typeof db, gameId: string) {
 
 export type HostView = {
   status: "none" | "draft" | "running" | "ended";
+  /** The game is set up for another mode instead (for example Category Grid). */
+  otherMode: string | null;
   draft: Content;
   draftRevision: number;
   preflight: Preflight;
@@ -93,10 +97,12 @@ export type HostView = {
 
 /** Everything the host desk needs, including every answer. Staff only. */
 export async function hostView(gameId: string): Promise<HostView> {
-  const [mode, teams] = await Promise.all([
+  const [stored, teams] = await Promise.all([
     db.gameMode.findUnique({ where: { gameId } }),
     teamsInOrder(db, gameId),
   ]);
+  const otherMode = stored && stored.kind !== MODE_KIND ? stored.kind : null;
+  const mode = otherMode ? null : stored;
   const draft: Content = mode
     ? (mode.draft as unknown as Content)
     : { rules: defaultRules(teams.length), boards: [] };
@@ -106,6 +112,7 @@ export async function hostView(gameId: string): Promise<HostView> {
     .map((t) => `${t.name} has no players yet.`);
   return {
     status: (mode?.status as HostView["status"] | undefined) ?? "none",
+    otherMode,
     draft,
     draftRevision: mode?.draftRevision ?? 0,
     preflight: { ...check, warnings: [...check.warnings, ...emptyTeams] },
@@ -149,6 +156,9 @@ export async function saveDraft({
   return flatten(
     await withGameLock(gameId, async (tx) => {
       const mode = await tx.gameMode.findUnique({ where: { gameId } });
+      if (mode && mode.kind !== MODE_KIND) {
+        return err({ kind: "otherMode", mode: mode.kind });
+      }
       if (mode && mode.status !== "draft") {
         return err({ kind: "modeAlreadyStarted" });
       }
@@ -193,6 +203,9 @@ export async function startMode(
           kind: "preflightBlocked",
           problems: ["Add boards and save them first."],
         });
+      }
+      if (mode.kind !== MODE_KIND) {
+        return err({ kind: "otherMode", mode: mode.kind });
       }
       if (mode.status !== "draft") return err({ kind: "modeAlreadyStarted" });
       const content = contentSchema.parse(mode.draft);
@@ -283,7 +296,7 @@ export async function actInMode({
         tx.gameMode.findUnique({ where: { gameId } }),
       ]);
       if (replay) return ok({ step: mode?.step ?? 0, replayed: true });
-      if (mode?.status !== "running") {
+      if (mode?.status !== "running" || mode.kind !== MODE_KIND) {
         return err({ kind: "modeNotRunning" });
       }
       if (mode.step !== expectedStep) {
@@ -355,7 +368,7 @@ export async function undoInMode({
   return flatten(
     await withGameLock(gameId, async (tx) => {
       const mode = await tx.gameMode.findUnique({ where: { gameId } });
-      if (mode?.status !== "running") {
+      if (mode?.status !== "running" || mode.kind !== MODE_KIND) {
         return err({ kind: "modeNotRunning" });
       }
       if (mode.step !== expectedStep) {
@@ -398,7 +411,7 @@ export async function endMode(
   return flatten(
     await withGameLock(gameId, async (tx) => {
       const { count } = await tx.gameMode.updateMany({
-        where: { gameId, status: "running" },
+        where: { gameId, kind: MODE_KIND, status: "running" },
         data: { status: "ended", endedAt: new Date() },
       });
       return ok<{ changed: boolean }, ModeError>({ changed: count > 0 });
@@ -413,7 +426,7 @@ export async function discardDraft(
   return flatten(
     await withGameLock(gameId, async (tx) => {
       const { count } = await tx.gameMode.deleteMany({
-        where: { gameId, status: "draft" },
+        where: { gameId, kind: MODE_KIND, status: "draft" },
       });
       return ok<{ changed: boolean }, ModeError>({ changed: count > 0 });
     }),

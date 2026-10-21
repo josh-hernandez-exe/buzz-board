@@ -12,6 +12,7 @@ import { GAME_LIMITS } from "@/utils/gameRules";
 import { newRequestId } from "@/utils/requestId";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { RankedRulesEditor } from "@/app/_components/client/RankedRulesEditor";
+import type { ModeKind } from "@/utils/modes";
 import {
   presetRules,
   suggestedPreset,
@@ -22,8 +23,9 @@ const { minTeams: MIN_TEAMS, maxTeams: MAX_TEAMS } = GAME_LIMITS;
 
 /**
  * One short form: name, format, (for team games) team count, how buzzing
- * works, and optionally Ranked Answers with its rules. Boards, chat and
- * everything else can be set up later from the host desk.
+ * works, and optionally a game mode (Ranked Answers or Category Grid) with
+ * its rules. Boards, clues, chat and everything else can be set up later
+ * from the host desk.
  */
 export function CreateGame() {
   const router = useRouter();
@@ -31,8 +33,13 @@ export function CreateGame() {
   const [format, setFormat] = useState<GameFormat>(GameFormat.team);
   const [teamCount, setTeamCount] = useState<number>(GAME_LIMITS.defaultTeams);
   const [buzzerMode, setBuzzerMode] = useState<BuzzerMode>(BuzzerMode.first);
-  const [ranked, setRanked] = useState(false);
+  const [gameType, setGameType] = useState<"basic" | ModeKind>("basic");
+  const ranked = gameType === "rankedAnswers";
+  const gridGame = gameType === "categoryGrid";
   const [sampleBoards, setSampleBoards] = useState(true);
+  const [sampleGrid, setSampleGrid] = useState(true);
+  const [gridLockout, setGridLockout] = useState(true);
+  const [gridPenalty, setGridPenalty] = useState(false);
   // null until the host touches the rules: follows the team count till then.
   const [rules, setRules] = useState<Rules | null>(null);
   const knownTeams = format === GameFormat.team ? teamCount : null;
@@ -65,6 +72,15 @@ export function CreateGame() {
           buzzerMode,
           rankedAnswers: ranked
             ? { rules: shownRules, sampleBoards }
+            : undefined,
+          categoryGrid: gridGame
+            ? {
+                rules: {
+                  wrongAnswerLockout: gridLockout,
+                  wrongAnswerPenalty: gridPenalty ? "clueValue" : "none",
+                },
+                sampleGrid,
+              }
             : undefined,
           requestId: requestId.current,
         });
@@ -182,14 +198,19 @@ export function CreateGame() {
         {(
           [
             [
-              false,
+              "basic",
               "Buzzer and scoreboard",
               "Ask questions your own way; players buzz and you keep score.",
             ],
             [
-              true,
+              "rankedAnswers",
               "Ranked Answers (family-feud style)",
               "Boards of ranked answers, revealed as teams find them. Choose the rules now; add boards before you start.",
+            ],
+            [
+              "categoryGrid",
+              "Category Grid (quiz-show grid)",
+              "Categories across the top, clues worth more as you go down. Teams pick a clue and buzz in to answer.",
             ],
           ] as const
         ).map(([value, label, hint]) => (
@@ -198,8 +219,8 @@ export function CreateGame() {
               type="radio"
               name="gameType"
               className="mt-1"
-              checked={ranked === value}
-              onChange={() => setRanked(value)}
+              checked={gameType === value}
+              onChange={() => setGameType(value)}
             />
             <span className="flex flex-col">
               {label}
@@ -227,6 +248,39 @@ export function CreateGame() {
           <p className="text-muted-foreground text-xs">
             Every rule can still be changed on the host desk until you start
             Ranked Answers.
+          </p>
+        </div>
+      )}
+
+      {gridGame && (
+        <div className="border-border flex flex-col gap-2 rounded-lg border p-3 text-sm">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={gridLockout}
+              onChange={(e) => setGridLockout(e.target.checked)}
+            />
+            A wrong answer locks the team out of that clue
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={gridPenalty}
+              onChange={(e) => setGridPenalty(e.target.checked)}
+            />
+            Wrong answers lose the clue&apos;s value
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={sampleGrid}
+              onChange={(e) => setSampleGrid(e.target.checked)}
+            />
+            Start with the sample grid (holiday trivia you can edit or replace)
+          </label>
+          <p className="text-muted-foreground text-xs">
+            Fill in the clues and change the rules on the host desk until you
+            start the grid.
           </p>
         </div>
       )}

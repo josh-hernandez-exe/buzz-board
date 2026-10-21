@@ -13,6 +13,8 @@ import { type IdentityError } from "@/server/identity/identityService";
 import { type ChatError } from "@/server/chat/chatService";
 import { type ModeError } from "@/server/modes/rankedAnswersService";
 import { type EngineError } from "@/utils/rankedAnswers/engine";
+import { type GridModeError } from "@/server/modes/categoryGridService";
+import { type GridError } from "@/utils/categoryGrid/engine";
 import { nameErrorMessage } from "@/utils/displayName";
 import { SCORE_LIMITS } from "@/server/scores/scoreMath";
 import { helpHref } from "@/help/manifest";
@@ -27,7 +29,8 @@ export type ServiceError =
   | RosterError
   | IdentityError
   | ChatError
-  | ModeError;
+  | ModeError
+  | GridModeError;
 
 const number = (n: number) => n.toLocaleString("en-US");
 
@@ -118,6 +121,8 @@ const ERROR_HELP: Partial<Record<ServiceError["kind"], string>> = {
   ),
   nothingToUndoBuzzer: helpHref("buzzing", "how-do-undo-and-redo-work"),
   nothingToRedoBuzzer: helpHref("buzzing", "how-do-undo-and-redo-work"),
+  gridRule: helpHref("category-grid", "running-the-grid"),
+  otherMode: helpHref("category-grid", "how-do-i-go-back-to-the-buzzer"),
 };
 
 /** "about 3 more minutes", from server time, so device clocks don't matter. */
@@ -461,6 +466,11 @@ function baseError(error: ServiceError): TRPCError {
         message:
           "Someone else saved these boards while you were editing. Your changes are still here: copy them (Export), reload, and apply them again.",
       });
+    case "otherMode":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: `This game is set up for ${error.mode === "categoryGrid" ? "Category Grid" : "Ranked Answers"}. Discard that setup first to use this game mode instead.`,
+      });
     case "modeAlreadyStarted":
       return new TRPCError({
         code: "PRECONDITION_FAILED",
@@ -487,6 +497,11 @@ function baseError(error: ServiceError): TRPCError {
       return new TRPCError({
         code: "PRECONDITION_FAILED",
         message: engineMessage(error.error),
+      });
+    case "gridRule":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: gridMessage(error.error),
       });
     case "queueEntryNotFound":
       return new TRPCError({
@@ -519,6 +534,25 @@ function baseError(error: ServiceError): TRPCError {
         code: "PRECONDITION_FAILED",
         message: "There's nothing to undo.",
       });
+  }
+}
+
+function gridMessage(error: GridError): string {
+  switch (error.kind) {
+    case "gridWrongPhase":
+      return error.phase === "board"
+        ? "Open a clue first."
+        : error.phase === "finished"
+          ? "The grid is finished."
+          : "Finish the current clue first.";
+    case "unknownCell":
+      return "That tile isn't on the grid.";
+    case "cellUsed":
+      return "That clue has already been played.";
+    case "unknownTeam":
+      return "That team isn't in this game.";
+    case "teamLockedOut":
+      return "That team already answered this clue wrongly.";
   }
 }
 

@@ -10,6 +10,7 @@ This decides the shape of a board. Every other option hangs off it.
 
 | Style | Teams | Flow | Built |
 | --- | --- | --- | --- |
+| **Open answering** | 2–50 | No turns: any team answers any time; the host reveals a row and credits every team that got it | Yes (new; suggested for 3+ teams) |
 | **Classic** | 2 | Face-off → play or pass → the playing team answers until it clears the board or strikes out → steal | Yes |
 | **Face-off ladder** | 3–8 | Classic, with a rotating pair facing off each board | Yes |
 | **Round robin** | 2–12 | One answer per team per turn, rotating; starting team rotates per board | Yes |
@@ -57,12 +58,12 @@ The race uses the real buzzer. In queue mode the buzz queue *is* the race order,
 
 **Open buzzer** after a correct answer starts a fresh question, so every team can race for the next row.
 
-## 6. All-play
+## 6. All-play and open answering
 
 | Option | Values | Notes |
 | --- | --- | --- |
 | **Rounds per board** | 1–8 | |
-| **Same row found by several teams** (`sharedAnswers`) | `full` (each scores it), `split` (points divided, rounded down), `uniqueOnly` (nobody scores a shared row, "Scattergories" style) | The row is revealed either way, so it can't be scored later |
+| **Same row found by several teams** (`sharedAnswers`, all-play and open answering) | `full` (each scores it), `split` (points divided, rounded down), `uniqueOnly` (nobody scores a shared row, "Scattergories" style) | The row is revealed either way, so it can't be scored later |
 
 ## 7. Points and the end of the game
 
@@ -76,6 +77,26 @@ The race uses the real buzzer. In queue mode the buzz queue *is* the race order,
 | Practice and spare boards | per board | Practice never scores; spare boards run tie-breaks between chosen teams |
 | Clear-the-board bonus | — | No: the bank already rewards clearing; a host can add points by hand |
 | Timers | — | No: pacing stays with the host, as in the rest of the app |
+
+## Turn-order review
+
+Before the first event the engine was reviewed line by line and tested with randomised games ([fuzz.test.ts](../src/utils/rankedAnswers/fuzz.test.ts)): every preset at several team counts, random legal and illegal host actions and random undos. After every step it checks:
+- No row is revealed twice, and a shown row stays shown.
+- Points awarded match the scores reported.
+- The bank only holds banked rows.
+- Nobody loses points without a penalty, and boards don't pay more than they're worth where the rules allow one payout.
+- The turn and control teams are the ones the rotation says.
+- From any state the host can close the board and finish.
+
+A heavier run of about 27,000 games of up to 500 steps also passes. The review fixed:
+- A repeated face-off answer that was already on the board could win the face-off.
+- A deleted team could jam scoring and undo, and a team added after the start could never play.
+- Undo could let a board whose answers had been seen be played again.
+
+Fixed rotations are pinned by explicit tests:
+- **Round robin:** order within a board; the first team moves on each main board, and practice or spare boards don't move it.
+- **Face-off ladder:** every team faces off equally often for 3 to 8 teams.
+- **No face-off:** every team plays the same number of boards.
 
 ## Compatibility
 

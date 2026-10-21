@@ -7,6 +7,7 @@ import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { RankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
 import { RankedRulesEditor } from "@/app/_components/client/RankedRulesEditor";
 import { Button } from "@/app/_components/ui/button";
+import { Notice } from "@/app/_components/ui/page";
 import { helpHref } from "@/help/manifest";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { newRequestId } from "@/utils/requestId";
@@ -63,12 +64,27 @@ export function RankedAnswersPanel() {
           How it works
         </a>
       </p>
-      {view.status === "none" || view.status === "draft" ? (
+      {view.otherMode ? (
+        <OtherModeNotice mode={view.otherMode} />
+      ) : view.status === "none" || view.status === "draft" ? (
         <Editor view={view} />
       ) : (
         <Controls view={view} />
       )}
     </section>
+  );
+}
+
+/** The game is set up for a different mode; explain how to switch. */
+export function OtherModeNotice({ mode }: { mode: string }) {
+  const name = mode === "categoryGrid" ? "Category Grid" : "Ranked Answers";
+  return (
+    <Notice tone="info">
+      This game is set up for <strong>{name}</strong>. A game runs one game
+      mode. To use this one instead, open the {name} tab and choose{" "}
+      <strong>Discard setup</strong> (only possible before it starts), or
+      duplicate the game.
+    </Notice>
   );
 }
 
@@ -97,6 +113,13 @@ function Editor({ view }: { view: HostView }) {
   });
   const start = api.rankedAnswers.start.useMutation({
     onSuccess: () => utils.rankedAnswers.hostView.invalidate(),
+  });
+  const discard = api.rankedAnswers.discardDraft.useMutation({
+    onSuccess: () => {
+      setDirty(false);
+      void utils.rankedAnswers.hostView.invalidate();
+      void utils.categoryGrid.hostView.invalidate();
+    },
   });
 
   const update = (next: Content) => {
@@ -236,9 +259,27 @@ function Editor({ view }: { view: HostView }) {
         {dirty && (
           <span className="text-warning-text text-sm">Unsaved changes</span>
         )}
+        {view.status === "draft" && (
+          <Button
+            variant="ghost"
+            className="text-destructive ml-auto"
+            disabled={discard.isPending}
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Discard this Ranked Answers setup? Its rules and boards are deleted (export them first to keep a copy).",
+                )
+              ) {
+                discard.mutate();
+              }
+            }}
+          >
+            Discard setup
+          </Button>
+        )}
       </div>
       <ErrorNotice
-        error={save.error ?? start.error}
+        error={save.error ?? start.error ?? discard.error}
         className="text-destructive text-sm"
       />
     </div>

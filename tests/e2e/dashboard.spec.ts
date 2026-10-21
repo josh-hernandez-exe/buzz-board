@@ -54,6 +54,9 @@ test("the owner deletes a game in play from the dashboard; its player is told", 
   await expect(confirm).toBeDisabled();
   await dialog.getByRole("checkbox", { name: /End it for everyone/ }).check();
   await confirm.click();
+  // While the dialog is open the rest of the page is hidden from the
+  // accessibility tree, so wait for it to close before checking rows.
+  await expect(dialog).toBeHidden();
 
   await expect(
     dashboard.getByRole("row").filter({ hasText: doomed.name }),
@@ -61,7 +64,7 @@ test("the owner deletes a game in play from the dashboard; its player is told", 
   await expect(
     dashboard.getByRole("row").filter({ hasText: keep.name }),
   ).toHaveCount(1);
-  expect(await db.game.count({ where: { id: doomed.id } })).toBe(0);
+  await expect.poll(() => db.game.count({ where: { id: doomed.id } })).toBe(0);
 
   await expect(
     player.getByText("This game was deleted by its host."),

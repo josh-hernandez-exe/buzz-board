@@ -1,4 +1,11 @@
-import { MODE_KIND } from "@/server/modes/rankedAnswersService";
+import {
+  bankSchema,
+  emptyBank,
+  type Bank,
+  type GridRules,
+} from "@/utils/categoryGrid/content";
+import { sampleBank } from "@/utils/categoryGrid/sample";
+import type { ModeKind } from "@/utils/modes";
 import {
   contentSchema,
   type Content,
@@ -82,7 +89,8 @@ async function insertGame(data: {
   teamAssignment?: TeamAssignment;
   buzzerMode?: BuzzerMode;
   /** A Ranked Answers draft (rules and boards) to set up with the game. */
-  modeDraft?: Content;
+  /** A game mode draft (Ranked Answers or Category Grid) to set up with the game. */
+  modeDraft?: { kind: ModeKind; draft: Content | Bank };
   requestId?: string;
 }): Promise<Created> {
   if (data.requestId) {
@@ -121,8 +129,8 @@ async function insertGame(data: {
           await tx.gameMode.create({
             data: {
               gameId: created.id,
-              kind: MODE_KIND,
-              draft: data.modeDraft,
+              kind: data.modeDraft.kind,
+              draft: data.modeDraft.draft as Prisma.InputJsonValue,
               draftRevision: 1,
             },
           });
@@ -154,6 +162,7 @@ export async function createGame({
   teamCount = GAME_LIMITS.defaultTeams,
   buzzerMode,
   rankedAnswers,
+  categoryGrid,
   requestId,
 }: {
   ownerId: string;
@@ -163,6 +172,8 @@ export async function createGame({
   buzzerMode?: BuzzerMode;
   /** Set the game up for Ranked Answers with these rules. */
   rankedAnswers?: { rules: Rules; sampleBoards?: boolean };
+  /** Or set it up for Category Grid with these rules. */
+  categoryGrid?: { rules: GridRules; sampleGrid?: boolean };
   requestId?: string;
 }): Promise<Result<Created, GameServiceError>> {
   if (requestId) {
@@ -194,13 +205,26 @@ export async function createGame({
           : [],
       buzzerMode,
       modeDraft: rankedAnswers
-        ? contentSchema.parse({
-            rules: rankedAnswers.rules,
-            boards: rankedAnswers.sampleBoards
-              ? sampleContent(teamCount).boards
-              : [],
-          })
-        : undefined,
+        ? {
+            kind: "rankedAnswers",
+            draft: contentSchema.parse({
+              rules: rankedAnswers.rules,
+              boards: rankedAnswers.sampleBoards
+                ? sampleContent(teamCount).boards
+                : [],
+            }),
+          }
+        : categoryGrid
+          ? {
+              kind: "categoryGrid",
+              draft: bankSchema.parse(
+                withGridRules(
+                  categoryGrid.sampleGrid ? sampleBank() : emptyBank(),
+                  categoryGrid.rules,
+                ),
+              ),
+            }
+          : undefined,
       requestId,
     }),
   );
@@ -238,8 +262,21 @@ export async function duplicateGame({
       teamAssignment: source.teamAssignment,
       buzzerMode: source.buzzerMode,
       // Ranked Answers rules and boards come along, ready to play again.
+      // Game mode rules and content come along, ready to play again.
       modeDraft: source.gameMode
-        ? contentSchema.parse(source.gameMode.content ?? source.gameMode.draft)
+        ? source.gameMode.kind === "categoryGrid"
+          ? {
+              kind: "categoryGrid",
+              draft: bankSchema.parse(
+                source.gameMode.content ?? source.gameMode.draft,
+              ),
+            }
+          : {
+              kind: "rankedAnswers",
+              draft: contentSchema.parse(
+                source.gameMode.content ?? source.gameMode.draft,
+              ),
+            }
         : undefined,
       teamNames:
         source.format === GameFormat.team
@@ -568,4 +605,14 @@ export async function deleteGame({
       },
     ),
   );
+}
+
+function withGridRules(bank: Bank, rules: GridRules): Bank {
+  return {
+    ...bank,
+    modes: {
+      ...bank.modes,
+      categoryGrid: { ...bank.modes.categoryGrid, rules },
+    },
+  };
 }

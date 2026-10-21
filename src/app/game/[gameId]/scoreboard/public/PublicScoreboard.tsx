@@ -12,6 +12,7 @@ import {
   usePublicLiveGameState,
 } from "@/app/_components/client/LiveGameState";
 import { RankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
+import { CategoryGridBoard } from "@/app/_components/client/CategoryGridBoard";
 import { Button } from "@/app/_components/ui/button";
 import { cn } from "@/app/_lib/utils";
 import { env } from "@/env";
@@ -92,7 +93,11 @@ function AudienceDisplay({
         </Button>
       </header>
 
-      {state.mode?.status === "running" ? (
+      {state.mode?.kind === "categoryGrid" &&
+      state.mode.status === "running" ? (
+        <CategoryGridBoard view={state.mode} names={teamNames} size="large" />
+      ) : state.mode?.kind === "rankedAnswers" &&
+        state.mode.status === "running" ? (
         <RankedAnswersBoard
           view={state.mode}
           names={teamNames}

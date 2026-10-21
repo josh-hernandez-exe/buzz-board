@@ -238,7 +238,9 @@ export function RankedAnswersBoard({
 /** The board for a player page, from the page's live game state. */
 export function LiveRankedAnswersBoard() {
   const { data } = useLiveGameState();
-  if (data?.mode?.status !== "running") return null;
+  if (data?.mode?.kind !== "rankedAnswers" || data.mode.status !== "running") {
+    return null;
+  }
   const names = Object.fromEntries(data.gameTeams.map((t) => [t.id, t.name]));
   const scores = Object.fromEntries(data.gameTeams.map((t) => [t.id, t.score]));
   return <RankedAnswersBoard view={data.mode} names={names} scores={scores} />;

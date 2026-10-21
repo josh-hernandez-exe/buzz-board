@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
+import type { PublicGameModeView } from "@/utils/modes";
 import { presetRules } from "@/utils/rankedAnswers/content";
 import { sampleContent } from "@/utils/rankedAnswers/sample";
 
@@ -20,6 +21,12 @@ import {
 } from "../support/integration";
 
 const rid = () => randomUUID().replaceAll("-", "");
+
+/** The Ranked Answers view from a game state's mode. */
+function ranked(mode: PublicGameModeView | null) {
+  if (mode?.kind !== "rankedAnswers") throw new Error("not Ranked Answers");
+  return mode;
+}
 
 async function readyGame(teams = 2) {
   const created = await createGame({ teams });
@@ -110,10 +117,9 @@ describe("play", () => {
       for (const word of ["Lights", "Ornaments", "Tinsel", "baubles"]) {
         expect(json).not.toContain(word);
       }
-      expect(state.mode?.board?.rows.every((r) => r.text === null)).toBe(true);
-      expect(state.mode?.board?.prompt).toBe(
-        "Things people hang on a holiday tree",
-      );
+      const mode = ranked(state.mode);
+      expect(mode.board?.rows.every((r) => r.text === null)).toBe(true);
+      expect(mode.board?.prompt).toBe("Things people hang on a holiday tree");
     }
 
     await act(ra, {
@@ -135,8 +141,9 @@ describe("play", () => {
       [a]: 0,
       [b]: 27 + 10 + 35 + 14,
     });
-    const shown = (await guest.player.gameGeneral.currentGameState()).mode!
-      .board!;
+    const shown = ranked(
+      (await guest.player.gameGeneral.currentGameState()).mode,
+    ).board!;
     expect(shown.phase).toBe("closed");
     expect(shown.rows.filter((r) => r.text).map((r) => r.text)).toEqual([
       "Lights",
@@ -150,7 +157,9 @@ describe("play", () => {
     const after = await requestCaller({}).public.currentGameState({
       gameId: game.id,
     });
-    expect(after.mode!.board!.rows.every((r) => r.text !== null)).toBe(true);
+    expect(ranked(after.mode).board!.rows.every((r) => r.text !== null)).toBe(
+      true,
+    );
     expect(await currentScores(game.id)).toMatchObject({ [b]: 86 });
   });
 
@@ -226,11 +235,13 @@ describe("play", () => {
     await ra.undo({ expectedStep: step, requestId: rid() });
 
     expect(await currentScores(created.game.id)).toMatchObject({ [a]: 0 });
-    const row = (
-      await requestCaller({}).public.currentGameState({
-        gameId: created.game.id,
-      })
-    ).mode!.board!.rows[0]!;
+    const row = ranked(
+      (
+        await requestCaller({}).public.currentGameState({
+          gameId: created.game.id,
+        })
+      ).mode,
+    ).board!.rows[0]!;
     expect(row).toMatchObject({ text: "Turkey", leftover: true });
     // Nobody can score Turkey now.
     await act(ra, { type: "answer", answerId: "a1" });

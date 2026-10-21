@@ -45,10 +45,10 @@ export default async function GameAdminPage({
   const currentGameState = await (
     await gameApi(gameId)
   ).gameGeneral.currentGameState();
-  // Games set up for Ranked Answers open on its tab until it's over.
+  // Games set up for a game mode open on its tab until it's over.
   const mode = await db.gameMode.findUnique({
     where: { gameId },
-    select: { status: true },
+    select: { status: true, kind: true },
   });
   return (
     <HydrateClient>
@@ -66,7 +66,14 @@ export default async function GameAdminPage({
           <GameAdminInfo
             gameState={currentGameState}
             staffRole={staffRole}
-            rankedAnswersFirst={!!mode && mode.status !== "ended"}
+            modeKind={
+              mode?.kind === "categoryGrid"
+                ? "categoryGrid"
+                : mode
+                  ? "rankedAnswers"
+                  : null
+            }
+            modeFirst={!!mode && mode.status !== "ended"}
           />
         </PageShell>
       </GameScope>

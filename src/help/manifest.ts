@@ -106,6 +106,14 @@ export const HELP_ARTICLES = [
     facts: [],
   },
   {
+    id: "category-grid",
+    title: "Category Grid (quiz-show grid)",
+    summary:
+      "Set up a grid of categories and clues, run it with the buzzer, give the next pick, and fix mistakes with undo or void.",
+    audiences: ["host", "player"],
+    facts: [],
+  },
+  {
     id: "troubleshooting",
     title: "Troubleshooting",
     summary:

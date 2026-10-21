@@ -17,6 +17,7 @@ import { GameScope } from "@/app/_components/client/GameScope";
 import { PlayerHeader } from "@/app/_components/client/PlayerStatus";
 import { PlayerTabs } from "@/app/_components/client/PlayerTabs";
 import { LiveRankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
+import { LiveCategoryGrid } from "@/app/_components/client/CategoryGridBoard";
 
 export default async function GameUserPage({
   params,
@@ -87,6 +88,7 @@ export default async function GameUserPage({
             buzzer={
               <>
                 <LiveRankedAnswersBoard />
+                <LiveCategoryGrid />
                 <GameBuzzerTab gameUserId={gameUser.id} />
                 <GameWhoBuzzedIn gameUserId={gameUser.id} />
               </>

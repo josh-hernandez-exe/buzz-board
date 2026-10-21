@@ -1,5 +1,5 @@
 import type { BuzzQueueStatus } from "@prisma/client";
-import type { PublicModeView } from "@/utils/rankedAnswers/projection";
+import type { PublicGameModeView } from "@/utils/modes";
 import type { Prisma } from "@prisma/client";
 import type { Game, GameTeam, GameUser, User } from "@prisma/client";
 
@@ -118,9 +118,13 @@ export type PublicGameState = {
     score: number;
   }>;
   /** Queue mode: the current question's queue, in order (teams only). */
-  buzzQueue: { position: number; gameTeamId: string; status: BuzzQueueStatus }[];
+  buzzQueue: {
+    position: number;
+    gameTeamId: string;
+    status: BuzzQueueStatus;
+  }[];
   /** The running game mode's board, never including hidden answers. */
-  mode: PublicModeView | null;
+  mode: PublicGameModeView | null;
 };
 
 export type GameTeamFromPublicState = PublicGameState["gameTeams"][number];
@@ -181,7 +185,7 @@ export type PrivateGameState = {
     status: BuzzQueueStatus;
   }[];
   /** The running game mode's board, never including hidden answers. */
-  mode: PublicModeView | null;
+  mode: PublicGameModeView | null;
 };
 
 export type GameTeamFromPrivateState = PrivateGameState["gameTeams"][number];

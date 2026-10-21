@@ -1,3 +1,4 @@
+import { gridRulesSchema } from "@/utils/categoryGrid/content";
 import { rulesSchema } from "@/utils/rankedAnswers/content";
 import { TRPCError } from "@trpc/server";
 import { BuzzerMode, GameFormat } from "@prisma/client";
@@ -49,6 +50,13 @@ export const userRouter = createTRPCRouter({
               sampleBoards: z.boolean().optional(),
             })
             .optional(),
+          /** Or set it up for Category Grid with these rules. */
+          categoryGrid: z
+            .object({
+              rules: gridRulesSchema,
+              sampleGrid: z.boolean().optional(),
+            })
+            .optional(),
           requestId: z
             .string()
             .min(8)
@@ -65,6 +73,7 @@ export const userRouter = createTRPCRouter({
           teamCount: input.teamCount,
           buzzerMode: input.buzzerMode,
           rankedAnswers: input.rankedAnswers,
+          categoryGrid: input.rankedAnswers ? undefined : input.categoryGrid,
           requestId: input.requestId,
         });
         if (result.isErr()) throw toTRPCError(result.error);

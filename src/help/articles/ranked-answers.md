@@ -21,6 +21,7 @@ Pick a starting point. Each is just a set of rules, so you can change any of the
 
 | Starting point | Teams | How it works |
 | --- | --- | --- |
+| **Open answering** | 2 to 50 | Trivia style, with no turns: any team can call out an answer at any time. You reveal each answer and tap every team that got it; each scores it. Suggested for 3 or more teams. |
 | **Classic feud** | 2 | The TV format. One player from each team faces off. The winner chooses to play or pass. The playing team keeps answering until it finds every answer or gets 3 strikes; then the other team gets one guess to steal. Whoever wins takes all the points found on that board (the bank). |
 | **Take turns, no face-off** | 2 | Like Classic, but the teams take turns playing whole boards, with no face-off. |
 | **Face-off ladder** | 3 to 8 | Like Classic, but two teams face off each board, taking turns so everyone gets a go. When the playing team strikes out, every other team gives one steal guess at once. The best steal takes the bank; other correct steals score their own answer. |
@@ -46,7 +47,7 @@ Under **Fine-tune the rules**, only the rules that matter for your style are sho
 | **Several correct steals** | The highest answer takes the bank, or every correct team does. |
 | **Answers or turns per team** | Round robin and Pass-along: how many times each team gets a go per board. |
 | **Rounds per board** | All-play: how many rounds before the board closes. |
-| **Same answer found by several teams** | All-play: each gets the full points, they split them, or nobody scores it. |
+| **Same answer found by several teams** | All-play and Open answering: each gets the full points, they split them, or nobody scores it. |
 | **After a wrong answer** | Buzz race: sit out until the next answer is found, sit out the rest of the board after a number of misses, or no lockout. If every team is sitting out, everyone gets another go. |
 | **Points lost for a miss** | Taken off the team that missed, when it alone was answering. 0 means no penalty. |
 | **Target score** | Shown on every screen as "First to 300 points wins", and announced when a team gets there. You still decide when to finish. |
@@ -60,6 +61,7 @@ Choose **Show this board** to put the next board on every screen. Then follow th
 - **Playing:** press the answer the team gave, or **Strike**.
 - **Steal:** pick each stealing team's answer, then **Record steal**.
 - **Round robin:** press the answer, or **Wrong / pass**, for the team whose turn it is.
+- **Open answering:** tap every team that got it, then the answer. Tapping an answer with no team chosen just reveals it for no points. With a miss penalty, choose one team and press **Wrong** to take points off.
 - **Pass-along:** press each answer the team gives; **Miss: next team** passes the turn on.
 - **Buzz race:** the team holding the buzz is chosen for you (or choose who answered), then press their answer or **Wrong**. With **Also update the buzzer** ticked, the buzzer is marked too: a right answer closes it; a wrong one lets the next team answer, and only locks the team out if your rules sit it out. If every team is sitting out, the buzzer starts afresh so everyone can go again. **Open buzzer** starts the race for the next answer.
 - **All-play:** pick every team's answer, then **Reveal round**. Teams can tell you their answer out loud or post it in their team chat.

@@ -5,7 +5,7 @@ Buzz-Board runs buzzers and a live scoreboard. Present your questions however yo
 1. Choose **Host a game** on the home page and sign in.
 2. Give the game a name, choose whether players compete **as teams** or **individually**, and pick how many teams to start with.
 3. Choose how buzzing works: **First buzz wins** or **Queue**. You can change this later between questions. See [Buzzing modes and undo](/help/buzzing).
-4. Under **Game**, keep **Buzzer and scoreboard**, or choose **Ranked Answers** and its rules. See [Ranked Answers](/help/ranked-answers).
+4. Under **Game**, keep **Buzzer and scoreboard**, or choose a game mode: **Ranked Answers** with its rules (see [Ranked Answers](/help/ranked-answers)), or **Category Grid** (see [Category Grid](/help/category-grid)).
 5. Select **Create game**. You'll go straight to the host desk.
 
 New games start in the **lobby**. Players can join and pick names before you begin.
@@ -18,6 +18,7 @@ The bar at the top always shows the game's name and status, the join code, **Cop
 | --- | --- |
 | **Play** | The buzzer and scores: everything you need during a question. |
 | **Ranked Answers** | Family-feud style boards. See [Ranked Answers](/help/ranked-answers). |
+| **Category Grid** | A quiz-show grid of categories and clues. See [Category Grid](/help/category-grid). A game shows the tab of the mode it's set up for, or both before you choose. |
 | **Players** | Teams (add, delete, lock switching) and every player (rename, move, remove). |
 | **Chat** | Turn chat on and moderate it. See [Chat](/help/chat). |
 | **Room** | The QR code, who may join, helpers, and finishing, duplicating or deleting the game. |
@@ -54,7 +55,7 @@ If you notice a mistake, select **Reopen to correct results** shortly afterwards
 
 ## Can I run the same game again?
 
-Select **Duplicate** to make a new game with the same name, format, settings, buzzing mode, team names, and Ranked Answers rules and boards. Players, scores and history are not copied, and the copy gets a new join code. You own the copy, even if you were helping run the original.
+Select **Duplicate** to make a new game with the same name, format, settings, buzzing mode, team names, and game mode rules and content (Ranked Answers boards or Category Grid clues). Players, scores and history are not copied, and the copy gets a new join code. You own the copy, even if you were helping run the original.
 
 ## How do I delete a game?
 
