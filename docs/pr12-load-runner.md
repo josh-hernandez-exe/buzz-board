@@ -65,6 +65,19 @@ Every buzz used to wait for the game's row lock, even though, once someone has w
 - **Why it's safe:** the early answers are exactly what the locked path would return for a request arriving at that moment.
 - **Tests:** a new integration test holds the game lock and shows losing buzzes are still answered within a second. It **fails on the old code**, which blocked for 5 seconds. All 14 buzzer tests and the related lifecycle, live-state, roster and chat tests pass.
 
+### Follow-up run: shorter locks (commit `776ddb8`)
+
+After the PR12 commit, a CPU profile of the server and a third full run checked whether locking or logging was the bottleneck:
+
+- **Changes:**
+  - Buzz claims race on one conditional UPDATE instead of queueing for the game lock.
+  - Chat sends use their own shared lock.
+  - The game row lock no longer blocks inserts that reference the game.
+  - Production logs drop per-request debug lines.
+- **Result:** every invariant still held, with 0 unexpected errors from the app. PostgreSQL lock waits fell from 4 to 1 at peak. Latency barely moved: buzz ack p95 1,391 ms, send ack p95 927 ms, visible delivery p95 1,667 ms and p99 2,349 ms.
+- **The profile** showed the server's event loop busy about 40% of samples. The rest was garbage collection, Prisma result parsing and response serialization; no single hot function. The machine's 4 vCPUs are shared with the runner, PostgreSQL and Redis.
+- **Conclusion:** the remaining latency is CPU per request, not waiting, so the options below still stand. The run also found a real bug, now fixed. A player who joined while the shared feed was mid-read could get a snapshot from just before their join, and was told "You were removed from this game". Streams now check the database before ending.
+
 ### Shortfall for owner review
 
 On this hardware the mixed-100 latency targets aren't met; correctness is. The plan says to report a shortfall rather than weaken correctness or permissions, so here are the facts and the likely causes:

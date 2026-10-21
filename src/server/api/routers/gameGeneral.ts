@@ -50,6 +50,14 @@ export const gameGeneralRouter = createTRPCRouter({
       liveFeeds.privateGameState.subscribe(gameId, signal),
     )) {
       if (playerId && !state.gameUsers[playerId]) {
+        // A snapshot read before this player joined (shared reads can
+        // start a moment earlier) doesn't list them yet: check, and wait
+        // for the next snapshot instead of ending the stream.
+        const player = await ctx.db.gameUser.findUnique({
+          where: { id: playerId },
+          select: { removedAt: true },
+        });
+        if (player && !player.removedAt) continue;
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "You were removed from this game.",

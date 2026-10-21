@@ -23,7 +23,8 @@ import {
   setChatEnabled,
   unmuteActor,
 } from "@/server/chat/chatService";
-import { staffRoleFor } from "@/server/staff/staffService";
+import { isStillStaff, staffRoleFor } from "@/server/staff/staffService";
+import { db } from "@/server/db";
 import {
   projectChatPulse,
   type ChatPulse,
@@ -161,6 +162,16 @@ export const chatRouter = createTRPCRouter({
     )) {
       const pulse = projectChatPulse(summary, viewer);
       if (pulse.isErr()) {
+        // The summary may predate this viewer joining or being invited:
+        // check before ending the stream.
+        const stillHere =
+          viewer.kind === "player"
+            ? !!(await db.gameUser.findFirst({
+                where: { id: viewer.gameUserId, removedAt: null },
+                select: { id: true },
+              }))
+            : await isStillStaff(ctx.gameId, viewer.userId);
+        if (stillHere) continue;
         throw new TRPCError({
           code: "FORBIDDEN",
           message:
