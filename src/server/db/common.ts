@@ -8,6 +8,13 @@ import { err, ok } from "neverthrow";
 
 import type { PublicGameState, PrivateGameState, GameSettings } from "@/types";
 
+/** The game no longer exists (for example its owner deleted it). */
+export class GameNotFoundError extends Error {
+  constructor(readonly gameId: string) {
+    super("Game not found");
+  }
+}
+
 export async function getPublicGameState({
   gameId,
 }: {
@@ -51,7 +58,7 @@ export async function getPublicGameState({
   });
 
   if (!game) {
-    return err(new Error("Game not found"));
+    return err(new GameNotFoundError(gameId));
   }
 
   const scoreboardState = parseScoreMap(game.scoreboard?.currentState?.state);
@@ -144,7 +151,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
   });
 
   if (!game) {
-    return err(new Error("Game not found"));
+    return err(new GameNotFoundError(gameId));
   }
 
   const scoreboardState = parseScoreMap(game.scoreboard?.currentState?.state);

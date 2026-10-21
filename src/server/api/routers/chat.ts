@@ -32,6 +32,7 @@ import {
 import {
   emitChatChanged,
   emitUpdatedGameState,
+  endWhenGameDeleted,
   liveFeeds,
 } from "@/server/utils/events";
 import { CHAT_LIMITS, type ChatActor } from "@/utils/chatRules";
@@ -155,7 +156,9 @@ export const chatRouter = createTRPCRouter({
         ? { kind: "player", gameUserId: ctx.actor.gameUserId }
         : { kind: "staff", userId: ctx.actor.userId };
     let last: ChatPulse | undefined;
-    for await (const summary of liveFeeds.chat.subscribe(ctx.gameId, signal)) {
+    for await (const summary of endWhenGameDeleted(
+      liveFeeds.chat.subscribe(ctx.gameId, signal),
+    )) {
       const pulse = projectChatPulse(summary, viewer);
       if (pulse.isErr()) {
         throw new TRPCError({

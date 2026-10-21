@@ -90,13 +90,8 @@ export const gameUserRouter = createTRPCRouter({
             id: true,
             name: true,
             index: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                image: true,
-              },
-            },
+            // Only the avatar: teammates never see each other's account.
+            user: { select: { image: true } },
           },
         },
       },

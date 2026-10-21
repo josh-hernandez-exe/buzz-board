@@ -111,16 +111,27 @@ describe("HostRoomPanel", () => {
     });
   });
 
-  it("explains why a game in play cannot be deleted", async () => {
+  it("deletes a game in play only after an explicit end-for-everyone tick", async () => {
     gameState({ status: "running" }, 2);
     render(<HostRoomPanel staffRole="owner" />);
 
     await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    await userEvent.type(
+      screen.getByLabelText("Game name to confirm deletion"),
+      "Quiz night",
+    );
+    const confirm = screen.getByRole("button", { name: "Delete forever" });
+    expect(confirm).toBeDisabled();
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /End it for everyone/ }),
+    );
+    expect(screen.getByText(/still in play with 2 players/)).toBeVisible();
+    await userEvent.click(confirm);
 
-    expect(screen.getByText(/Finish the game first/)).toBeVisible();
-    expect(
-      screen.getByRole("button", { name: "Delete forever" }),
-    ).toBeDisabled();
+    expect(calls.deleteGame).toHaveBeenCalledWith({
+      confirmName: "Quiz night",
+      finishFirst: true,
+    });
   });
 
   it("offers reopen only within 24 hours of finishing", () => {

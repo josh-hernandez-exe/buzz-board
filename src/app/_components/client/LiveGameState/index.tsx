@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { createContext, useContext, type ReactNode } from "react";
 
 import { api } from "@/trpc/react";
@@ -44,6 +45,7 @@ export function LiveGameStateProvider({
       <LiveConnectionNotice
         status={subscription.status}
         hasLiveData={subscription.data !== undefined}
+        error={subscription.error}
       />
       {children}
     </PrivateLiveState.Provider>
@@ -72,6 +74,7 @@ export function PublicLiveGameStateProvider({
       <LiveConnectionNotice
         status={subscription.status}
         hasLiveData={subscription.data !== undefined}
+        error={subscription.error}
       />
       {children}
     </PublicLiveState.Provider>
@@ -100,12 +103,29 @@ export function usePublicLiveGameState(): LiveState<PublicGameState> {
 export function LiveConnectionNotice({
   status,
   hasLiveData,
+  error,
 }: {
   status: LiveStatus;
   hasLiveData: boolean;
+  error?: { message: string; data?: { code?: string } | null } | null;
 }) {
   let message: string | undefined;
-  if (status === "error") {
+  if (status === "error" && error?.data?.code === "NOT_FOUND") {
+    return (
+      <div
+        role="status"
+        className="fixed inset-x-0 top-0 z-50 bg-gray-900 px-4 py-3 text-center text-sm font-medium text-white"
+      >
+        {error.message}{" "}
+        <Link className="underline" href="/">
+          Go to the home page
+        </Link>
+      </div>
+    );
+  }
+  if (status === "error" && error?.data?.code === "FORBIDDEN") {
+    message = error.message;
+  } else if (status === "error") {
     message = "Live updates stopped. Reload the page to reconnect.";
   } else if (status === "connecting" && hasLiveData) {
     message = "Reconnecting… scores and buzzers may be out of date.";

@@ -4,7 +4,7 @@ import {
 } from "@/server/api/trpc";
 
 import { getPrivateGameState } from "@/server/db/common";
-import { liveFeeds } from "@/server/utils/events";
+import { endWhenGameDeleted, liveFeeds } from "@/server/utils/events";
 import { isStillStaff } from "@/server/staff/staffService";
 import { TRPCError } from "@trpc/server";
 
@@ -46,9 +46,8 @@ export const gameGeneralRouter = createTRPCRouter({
     // Re-check access as state changes, so removal takes effect for streams
     // that are already open, not just new requests.
     const staffOnly = !playerId && !!userId;
-    for await (const state of liveFeeds.privateGameState.subscribe(
-      gameId,
-      signal,
+    for await (const state of endWhenGameDeleted(
+      liveFeeds.privateGameState.subscribe(gameId, signal),
     )) {
       if (playerId && !state.gameUsers[playerId]) {
         throw new TRPCError({

@@ -1,13 +1,40 @@
 import type { Game } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
 import { err, ok, type Result } from "neverthrow";
 
 import { db } from "@/server/db";
-import { getPublicGameState, getPrivateGameState } from "@/server/db/common";
+import {
+  GameNotFoundError,
+  getPublicGameState,
+  getPrivateGameState,
+} from "@/server/db/common";
 import { getBuzzWinner } from "@/server/buzzer/buzzerService";
 import { loadChatSummary, type ChatSummary } from "@/server/chat/chatLive";
 import { type GameChangeBus, gameChangeBus } from "@/server/live/gameChangeBus";
 import { GameFeed } from "@/server/live/gameFeed";
 import type { PublicGameState, PrivateGameState, WhoBuzzedIn } from "@/types";
+
+const gameGone = (error: Error) => error instanceof GameNotFoundError;
+
+/**
+ * Yields a live feed, turning "the game was deleted" into a clear error
+ * that ends the stream instead of leaving the page silently stale.
+ */
+export async function* endWhenGameDeleted<T>(
+  stream: AsyncIterable<T>,
+): AsyncGenerator<T, void, undefined> {
+  try {
+    yield* stream;
+  } catch (error) {
+    if (error instanceof GameNotFoundError) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "This game was deleted by its host.",
+      });
+    }
+    throw error;
+  }
+}
 
 /** Bus topic for chat changes, separate so chat never reloads game state. */
 export const chatTopic = (gameId: string) => `chat:${gameId}`;
@@ -22,6 +49,7 @@ export function createChatFeed(bus: () => GameChangeBus) {
     topics: (gameId) => [gameId, chatTopic(gameId)],
     coalesceMs: 100,
     refreshEveryMs: 5_000,
+    isTerminal: gameGone,
   });
 }
 
@@ -35,11 +63,13 @@ export const liveFeeds = {
     "public game state",
     gameChangeBus,
     (gameId) => getPublicGameState({ gameId }),
+    { isTerminal: gameGone },
   ),
   privateGameState: new GameFeed<PrivateGameState>(
     "private game state",
     gameChangeBus,
     (gameId) => getPrivateGameState({ gameId }),
+    { isTerminal: gameGone },
   ),
   /** Kept for tabs opened before PR04; current pages use `buzzWinner`. */
   whoBuzzedIn: new GameFeed<WhoBuzzedIn>(

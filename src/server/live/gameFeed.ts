@@ -31,6 +31,8 @@ export type GameFeedOptions = {
    * notification was lost (for example while Redis was down).
    */
   refreshEveryMs?: number;
+  /** Load errors that end every subscription (for example a deleted game). */
+  isTerminal?: (error: Error) => boolean;
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -162,8 +164,12 @@ export class GameFeed<T> {
         for (const sink of entry.sinks) {
           if (result.isOk()) {
             sink.pending = { value: result.value };
-          } else if (!sink.delivered) {
-            // A subscriber that never received state cannot continue.
+          } else if (
+            !sink.delivered ||
+            this.options.isTerminal?.(result.error)
+          ) {
+            // A subscriber that never received state cannot continue, and
+            // nobody can continue once the game itself is gone.
             sink.pending = { error: result.error };
           } else {
             logger.warn(

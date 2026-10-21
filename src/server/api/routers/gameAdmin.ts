@@ -352,12 +352,19 @@ export const gameAdminRouter = createTRPCRouter({
       return { gameId: result.value.game.id, replayed: result.value.replayed };
     }),
   deleteGame: staffProcedure("deleteGame")
-    .input(z.object({ confirmName: z.string().max(200) }))
+    .input(
+      z.object({
+        confirmName: z.string().max(200),
+        /** End a game still in play and delete it, in one step. */
+        finishFirst: z.boolean().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const result = await deleteGame({
         gameId: ctx.gameSession.id,
         actorUserId: ctx.session.user.id,
         confirmName: input.confirmName,
+        finishFirst: input.finishFirst,
       });
       if (result.isErr()) throw toTRPCError(result.error);
       await publishAfterCommit(ctx.gameSession.id);

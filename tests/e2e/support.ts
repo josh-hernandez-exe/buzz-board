@@ -97,10 +97,7 @@ export async function selectGameFromDashboard(
   { gameName, gameId }: { gameName: string; gameId: string },
 ) {
   await page.goto("/dashboard");
-  const link = page
-    .getByRole("row")
-    .filter({ hasText: gameName })
-    .getByRole("link", { name: "Select" });
+  const link = page.getByRole("link", { name: `Open ${gameName}` });
   await expect(async () => {
     await link.click({ timeout: 5_000 });
     await page.waitForURL(`**/game/${gameId}/admin`, { timeout: 5_000 });

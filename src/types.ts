@@ -16,13 +16,20 @@ export type BasicGameInfo = Prisma.GameGetPayload<{
   };
 }>;
 
-export type GameWithRelations = Prisma.GameGetPayload<{
-  include: {
-    gameUsers: true;
-    gameTeams: true;
-    gameAdmins: true;
-  };
-}>;
+/** A row on the host dashboard: counts only, never player credentials. */
+export type DashboardGame = {
+  id: Game["id"];
+  name: Game["name"];
+  code: Game["code"];
+  format: Game["format"];
+  status: Game["status"];
+  createdAt: Game["createdAt"];
+  finishedAt: Game["finishedAt"];
+  numTeams: number;
+  numPlayers: number;
+  /** The caller's role: only the owner can delete. */
+  myRole: "owner" | "cohost" | "moderator";
+};
 
 export type GameUserBasicInfo = Prisma.GameUserGetPayload<{
   select: {
@@ -80,13 +87,7 @@ export type GameTeamWithRelations = Prisma.GameTeamGetPayload<{
         id: true;
         name: true;
         index: true;
-        user: {
-          select: {
-            id: true;
-            name: true;
-            image: true;
-          };
-        };
+        user: { select: { image: true } };
       };
     };
   };

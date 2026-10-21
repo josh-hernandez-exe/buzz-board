@@ -1,64 +1,50 @@
 "use client";
 
-import { DateTime } from "luxon";
-
-import { api } from "@/trpc/react";
+import { useState } from "react";
 
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
-
-import type { GameWithRelations } from "@/types";
-import { logger } from "@/logger";
+import { api } from "@/trpc/react";
+import type { DashboardGame } from "@/types";
 
 import { GameTeamUserTable } from "./GameViewDataTable";
-import type { GameViewDataTableRow } from "./gameViewColumns";
 
+/** The host's games: open one, or (as owner) delete it. */
 export function UserGameView({
   games: initialGames,
 }: {
-  games: GameWithRelations[];
+  games: DashboardGame[];
 }) {
   const [, setGameIdData] = useGameTokenData();
-  const gameInfo = api.user.game.getAll.useQuery();
-
-  const gameData = gameInfo.data ?? initialGames;
-
-  const games: GameViewDataTableRow[] = gameData.map((game) => {
-    return {
-      ...game,
-      gameId: game.id,
-      numTeams: game.gameTeams.length,
-      numPlayers: game.gameUsers.length,
-      createdAt:
-        game.createdAt instanceof Date // is it a built in JS Date type
-          ? // convert to luxon DateTime
-            DateTime.fromJSDate(game.createdAt)
-          : // else default to now
-            DateTime.now(),
-    };
+  const utils = api.useUtils();
+  const gameInfo = api.user.game.getAll.useQuery(undefined, {
+    initialData: initialGames,
+  });
+  const [hideFinished, setHideFinished] = useState(false);
+  const deleteGame = api.user.deleteGame.useMutation({
+    onSuccess: () => utils.user.game.getAll.invalidate(),
   });
 
-  if (!games) {
-    return <div>Loading...</div>;
-  }
+  const all = gameInfo.data;
+  const finishedCount = all.filter((g) => g.status === "finished").length;
+  const games = hideFinished ? all.filter((g) => g.status !== "finished") : all;
 
-  const onSelectClick = (gameId: string) => {
-    logger.debug(`GameView selected: ${gameId}`);
-    setGameIdData({ gameId });
-  };
-
-  games.sort((a, b) => {
-    if (
-      DateTime.isDateTime(a.createdAt) &&
-      DateTime.isDateTime(b.createdAt) &&
-      a.createdAt.isValid &&
-      b.createdAt.isValid
-    ) {
-      return a.createdAt.diff(b.createdAt).as("milliseconds");
-    }
-
-    logger.error("Invalid date format during game sorting.");
-    return 0; // Fallback to no sorting if dates are invalid
-  });
-
-  return <GameTeamUserTable data={games} onSelectClick={onSelectClick} />;
+  return (
+    <div className="flex flex-col gap-2">
+      {finishedCount > 0 && (
+        <label className="flex items-center gap-2 self-end text-sm">
+          <input
+            type="checkbox"
+            checked={hideFinished}
+            onChange={(e) => setHideFinished(e.target.checked)}
+          />
+          Hide finished games ({finishedCount})
+        </label>
+      )}
+      <GameTeamUserTable
+        data={games}
+        onSelectClick={(gameId) => setGameIdData({ gameId })}
+        deleteGame={deleteGame}
+      />
+    </div>
+  );
 }

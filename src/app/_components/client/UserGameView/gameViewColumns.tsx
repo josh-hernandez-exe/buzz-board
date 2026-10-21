@@ -1,163 +1,133 @@
-import { GameFormat, type Game } from "@prisma/client";
-import type { DateTime } from "luxon";
+import { GameFormat } from "@prisma/client";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DateTime } from "luxon";
 import Link from "next/link";
 
-import type { ColumnDef } from "@tanstack/react-table";
+import { DeleteGameDialog } from "@/app/_components/client/DeleteGameDialog";
+import type { DashboardGame } from "@/types";
+import { ROLE_LABEL } from "@/utils/capabilities";
+import { STATUS_LABEL } from "@/utils/gameRules";
 
-import { Button } from "@/app/_components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/app/_components/ui/tooltip";
+export type GameViewDataTableRow = DashboardGame;
 
-import { env } from "@/env";
+type DeleteMutation = {
+  mutate: (input: {
+    gameId: string;
+    confirmName: string;
+    finishFirst?: boolean;
+  }) => void;
+  isPending: boolean;
+  error: { message: string } | null;
+  variables?: { gameId: string };
+};
 
-export type GameViewDataTableRow = {
-  gameId: Game["id"];
-  name: Game["name"];
-  format: Game["format"];
-  code: Game["code"];
-  numTeams: number | undefined;
-  numPlayers: number;
-  createdAt: DateTime;
+const STATUS_STYLE: Record<DashboardGame["status"], string> = {
+  lobby: "bg-amber-100 text-amber-900",
+  running: "bg-green-100 text-green-800",
+  finished: "bg-gray-200 text-gray-800",
 };
 
 export function columnGenerator({
   onSelectClick,
+  deleteGame,
 }: {
   onSelectClick: (gameId: string) => void;
+  deleteGame: DeleteMutation;
 }): ColumnDef<GameViewDataTableRow>[] {
   return [
     {
       accessorKey: "name",
-      header: "Game Name",
-      enableSorting: true,
-      enableHiding: false,
+      header: "Game",
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="font-semibold">{row.original.name}</span>
+          <span className="text-xs text-gray-300">
+            {row.original.format === GameFormat.team
+              ? `${row.original.numTeams} teams`
+              : "Individual"}{" "}
+            · {row.original.numPlayers}{" "}
+            {row.original.numPlayers === 1 ? "player" : "players"}
+          </span>
+        </div>
+      ),
     },
     {
-      accessorKey: "format",
-      header: () => (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger>Format</TooltipTrigger>
-            <TooltipContent>
-              <p>Format of the game. Either team-based or individual.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <span
+          data-testid="dashboard-status"
+          className={`rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${STATUS_STYLE[row.original.status]}`}
+        >
+          {STATUS_LABEL[row.original.status]}
+        </span>
       ),
-      enableSorting: true,
-      enableHiding: false,
     },
     {
       accessorKey: "code",
-      header: () => (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger>Code</TooltipTrigger>
-            <TooltipContent>
-              <p>
-                Code used to join the game on the join page (when using{" "}
-                {env.NEXT_PUBLIC_QRCODE_BASE_URL}/join).
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+      header: "Code",
+      cell: ({ row }) => (
+        <span className="font-mono">
+          {row.original.status === "finished" ? "—" : row.original.code}
+        </span>
       ),
-      enableSorting: false,
-      enableHiding: true,
     },
     {
-      accessorKey: "numTeams",
-      header: () => (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger># Teams</TooltipTrigger>
-            <TooltipContent>
-              <p>Number of Teams in game.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ),
-      enableSorting: true,
-      enableHiding: true,
-      cell: ({ row }) => {
-        const numTeams: GameViewDataTableRow["numTeams"] =
-          row.getValue("numTeams");
-        const format = row.getValue("format");
-
-        if (numTeams === undefined || numTeams === null) {
-          return <span>N/A</span>;
-        }
-        if (format === GameFormat.individual) {
-          return <span>N/A</span>;
-        }
-        if (numTeams < 0) {
-          return <span>N/A</span>;
-        }
-
-        return <span>{numTeams}</span>;
-      },
-    },
-    {
-      accessorKey: "numPlayers",
-      header: () => (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger># Players</TooltipTrigger>
-            <TooltipContent>
-              <p>Number of players who have joined Game at any point.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ),
-      enableSorting: true,
-      enableHiding: true,
+      accessorKey: "myRole",
+      header: "Your role",
+      cell: ({ row }) => ROLE_LABEL[row.original.myRole],
     },
     {
       accessorKey: "createdAt",
-      header: () => (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger>Created At</TooltipTrigger>
-            <TooltipContent>
-              <p>The date and time when a game was created.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+      header: "Created",
+      cell: ({ row }) => (
+        <span suppressHydrationWarning className="whitespace-nowrap">
+          {DateTime.fromJSDate(new Date(row.original.createdAt)).toFormat(
+            "d LLL yyyy, HH:mm",
+          )}
+        </span>
       ),
-      enableSorting: true,
-      enableHiding: true,
-      cell: ({ row }) => {
-        const createdAt: DateTime = row.getValue("createdAt");
-        return <span suppressHydrationWarning>{createdAt.toFormat("ff")}</span>;
-      },
     },
     {
+      id: "actions",
       header: "Actions",
-      accessorKey: "gameId",
       cell: ({ row }) => {
-        const gameId: string = row.getValue("gameId");
-
+        const game = row.original;
+        const pendingHere =
+          deleteGame.isPending && deleteGame.variables?.gameId === game.id;
         return (
           <div className="flex items-center gap-2">
             <Link
-              className="text-blue-500"
-              href={`/game/${gameId}/admin`}
-              onNavigate={() => onSelectClick(gameId)}
+              className="rounded bg-white/10 px-3 py-1 font-semibold hover:bg-white/20"
+              href={`/game/${game.id}/admin`}
+              onNavigate={() => onSelectClick(game.id)}
+              aria-label={`Open ${game.name}`}
             >
-              Select
+              Open
             </Link>
-            <Button className="text-red-500" disabled={true}>
-              Delete
-            </Button>
+            {game.myRole === "owner" && (
+              <DeleteGameDialog
+                game={{
+                  name: game.name,
+                  status: game.status,
+                  playerCount: game.numPlayers,
+                }}
+                triggerLabel="Delete…"
+                triggerAriaLabel={`Delete ${game.name}`}
+                onDelete={(input) =>
+                  deleteGame.mutate({ gameId: game.id, ...input })
+                }
+                isPending={pendingHere}
+                error={
+                  deleteGame.variables?.gameId === game.id
+                    ? deleteGame.error
+                    : null
+                }
+              />
+            )}
           </div>
         );
       },
-      enableSorting: false,
-      enableHiding: false,
     },
   ];
 }

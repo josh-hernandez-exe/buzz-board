@@ -27,6 +27,7 @@ import { ASSIGNMENT_LABEL, GAME_LIMITS, STATUS_LABEL } from "@/utils/gameRules";
 import { can, type StaffRoleName } from "@/utils/capabilities";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { helpHref } from "@/help/manifest";
+import { DeleteGameDialog } from "@/app/_components/client/DeleteGameDialog";
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState<boolean | "failed">(false);
@@ -59,7 +60,6 @@ export function HostRoomPanel({ staffRole }: { staffRole: StaffRoleName }) {
   const runsGame = can(staffRole, "runGame");
   const router = useRouter();
   const { data } = useLiveGameState();
-  const [confirmName, setConfirmName] = useState("");
   // Updated each minute so "Reopen" disables once the 24-hour window ends.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -90,10 +90,6 @@ export function HostRoomPanel({ staffRole }: { staffRole: StaffRoleName }) {
     finished &&
     !!game.finishedAt &&
     now - new Date(game.finishedAt).getTime() <= GAME_LIMITS.reopenWindowMs;
-  const deleteBlockedReason =
-    finished || (game.status === GameStatus.lobby && playerCount === 0)
-      ? undefined
-      : "Finish the game first. Only finished games or unused lobbies can be deleted.";
 
   return (
     <GenericCard
@@ -291,53 +287,16 @@ export function HostRoomPanel({ staffRole }: { staffRole: StaffRoleName }) {
                   {duplicateGame.isPending ? "Duplicating…" : "Duplicate"}
                 </Button>
                 {isOwner && (
-                  <Dialog onOpenChange={() => setConfirmName("")}>
-                    <DialogTrigger asChild>
-                      <Button variant="destructive">Delete…</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Delete this game permanently?</DialogTitle>
-                        <DialogDescription>
-                          This removes the game, its players, scores and history
-                          for everyone. It cannot be undone.
-                        </DialogDescription>
-                      </DialogHeader>
-                      {deleteBlockedReason ? (
-                        <p className="text-sm">{deleteBlockedReason}</p>
-                      ) : (
-                        <label className="flex flex-col gap-1 text-sm">
-                          <span>
-                            Type the game name, <strong>{game.name}</strong>, to
-                            confirm
-                          </span>
-                          <input
-                            aria-label="Game name to confirm deletion"
-                            className="rounded-md border px-2 py-1"
-                            value={confirmName}
-                            onChange={(e) => setConfirmName(e.target.value)}
-                          />
-                        </label>
-                      )}
-                      <ErrorNotice error={deleteGame.error} />
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button variant="secondary">Cancel</Button>
-                        </DialogClose>
-                        <Button
-                          variant="destructive"
-                          disabled={
-                            !!deleteBlockedReason ||
-                            confirmName.trim() !== game.name ||
-                            deleteGame.isPending
-                          }
-                          onClick={() => deleteGame.mutate({ confirmName })}
-                        >
-                          Delete forever
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                  <DeleteGameDialog
+                    game={{
+                      name: game.name,
+                      status: game.status,
+                      playerCount,
+                    }}
+                    onDelete={(input) => deleteGame.mutate(input)}
+                    isPending={deleteGame.isPending}
+                    error={deleteGame.error}
+                  />
                 )}
               </div>
               <ErrorNotice

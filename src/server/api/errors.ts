@@ -195,7 +195,7 @@ function baseError(error: ServiceError): TRPCError {
       return new TRPCError({
         code: "PRECONDITION_FAILED",
         message:
-          "Finish the game before deleting it. Only finished games or unused lobbies can be deleted.",
+          "This game is still in play or has players. Confirm that you want to end it for everyone, then delete it.",
       });
     case "confirmationMismatch":
       return new TRPCError({

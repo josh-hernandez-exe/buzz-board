@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { GameFormat } from "@prisma/client";
 import { z } from "zod";
 
@@ -10,11 +11,16 @@ import {
 import {
   acceptStaffInvite,
   previewStaffInvite,
+  staffRoleFor,
 } from "@/server/staff/staffService";
 import { emitUpdatedGameState } from "@/server/utils/events";
-import { createGame, GAME_LIMITS } from "@/server/games/gameService";
+import {
+  createGame,
+  deleteGame,
+  GAME_LIMITS,
+} from "@/server/games/gameService";
 
-import type { GameWithRelations } from "@/types";
+import type { DashboardGame } from "@/types";
 
 export const userRouter = createTRPCRouter({
   game: {
@@ -53,23 +59,97 @@ export const userRouter = createTRPCRouter({
         return result.value.game;
       }),
     /** Games the user created or helps run. */
+    /**
+     * Games the caller owns or helps run, newest first. Counts only: player
+     * rows (and their credentials) never leave the server here.
+     */
     getAll: protectedUserProcedure.query(async ({ ctx }) => {
       const userId = ctx.session.user.id;
-      const games: GameWithRelations[] = await ctx.db.game.findMany({
-        orderBy: { createdAt: "asc" },
+      const games = await ctx.db.game.findMany({
+        orderBy: { createdAt: "desc" },
         where: {
           OR: [{ createdById: userId }, { gameAdmins: { some: { userId } } }],
         },
-        include: {
-          gameUsers: true,
-          gameTeams: true,
-          gameAdmins: true,
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          format: true,
+          status: true,
+          createdAt: true,
+          finishedAt: true,
+          createdById: true,
+          gameAdmins: {
+            where: { userId },
+            select: { userId: true, role: true },
+          },
+          _count: {
+            select: {
+              gameTeams: true,
+              gameUsers: { where: { removedAt: null } },
+            },
+          },
         },
       });
 
-      return games;
+      return games.flatMap((game): DashboardGame[] => {
+        const myRole = staffRoleFor({
+          createdById: game.createdById,
+          gameAdmin: game.gameAdmins[0],
+          userId,
+        });
+        if (!myRole) return [];
+        return [
+          {
+            id: game.id,
+            name: game.name,
+            code: game.code,
+            format: game.format,
+            status: game.status,
+            createdAt: game.createdAt,
+            finishedAt: game.finishedAt,
+            numTeams: game._count.gameTeams,
+            numPlayers: game._count.gameUsers,
+            myRole,
+          },
+        ];
+      });
     }),
   },
+  /**
+   * Deletes one of the caller's games from the dashboard. The service checks
+   * the caller is the owner and that the typed name matches.
+   */
+  deleteGame: protectedUserProcedure
+    .input(
+      z.object({
+        gameId: z.string().max(64),
+        confirmName: z.string().max(200),
+        finishFirst: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const exists = await ctx.db.game.findUnique({
+        where: { id: input.gameId },
+        select: { id: true },
+      });
+      if (!exists) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "That game no longer exists.",
+        });
+      }
+      const result = await deleteGame({
+        gameId: input.gameId,
+        actorUserId: ctx.session.user.id,
+        confirmName: input.confirmName,
+        finishFirst: input.finishFirst,
+      });
+      if (result.isErr()) throw toTRPCError(result.error);
+      // Open pages for this game learn it's gone.
+      await emitUpdatedGameState({ gameId: input.gameId });
+      return result.value;
+    }),
   invite: {
     /** Shows a staff invitation without using it (safe for link previews). */
     preview: publicProcedure

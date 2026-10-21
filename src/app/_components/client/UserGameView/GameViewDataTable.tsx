@@ -18,16 +18,18 @@ import { type GameViewDataTableRow, columnGenerator } from "./gameViewColumns";
 export function GameTeamUserTable({
   data,
   onSelectClick,
+  deleteGame,
 }: {
   data: GameViewDataTableRow[];
   onSelectClick: (gameId: string) => void;
+  deleteGame: Parameters<typeof columnGenerator>[0]["deleteGame"];
 }) {
-  const columns = columnGenerator({ onSelectClick });
+  const columns = columnGenerator({ onSelectClick, deleteGame });
   const table = useReactTable({
     data,
-    columns: columnGenerator({ onSelectClick }),
+    columns,
     getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => row.gameId,
+    getRowId: (row) => row.id,
   });
 
   return (
@@ -68,7 +70,7 @@ export function GameTeamUserTable({
           ) : (
             <TableRow>
               <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results.
+                No games yet. Create one above.
               </TableCell>
             </TableRow>
           )}

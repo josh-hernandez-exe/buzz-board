@@ -438,6 +438,27 @@ describe("delete", () => {
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
   });
 
+  it("ends a game still in play and deletes it only when explicitly asked", async () => {
+    const { game, admin, gameTeams } = await createGame();
+    await joinAsGuest(game.code);
+    await admin.gameAdmin.startBuzzer();
+    await admin.gameAdmin.addScore({ [gameTeams[0]!.id]: 2 });
+
+    await expect(
+      admin.gameAdmin.deleteGame({ confirmName: game.name }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    await expect(
+      admin.gameAdmin.deleteGame({ confirmName: "nope", finishFirst: true }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(await db.game.count({ where: { id: game.id } })).toBe(1);
+
+    await admin.gameAdmin.deleteGame({
+      confirmName: game.name,
+      finishFirst: true,
+    });
+    expect(await db.game.count({ where: { id: game.id } })).toBe(0);
+  });
+
   it("is limited to the game's creator", async () => {
     const { game, admin } = await createGame();
     await admin.gameAdmin.finishGame();
@@ -501,10 +522,13 @@ describe("duplicate", () => {
 });
 
 describe("dashboard", () => {
-  it("lists games the user created or helps run, including games with several helpers", async () => {
+  it("lists games the user created or helps run, newest first, with their role", async () => {
     const { game, host } = await createGame();
     const coHost = await createUser("Co-host");
     await db.gameAdmin.create({ data: { userId: coHost.id, gameId: game.id } });
+    const newer = await (
+      await callerFor({ user: host })
+    ).user.game.create({ name: "Later game", format: "team" });
 
     const forHost = await (await callerFor({ user: host })).user.game.getAll();
     const forCoHost = await (
@@ -514,9 +538,109 @@ describe("dashboard", () => {
       await callerFor({ user: await createUser() })
     ).user.game.getAll();
 
-    expect(forHost.map((g) => g.id)).toContain(game.id);
-    expect(forCoHost.map((g) => g.id)).toContain(game.id);
+    expect(forHost.map((g) => g.id).slice(0, 2)).toEqual([newer.id, game.id]);
+    expect(forHost.find((g) => g.id === game.id)?.myRole).toBe("owner");
+    expect(forCoHost.find((g) => g.id === game.id)?.myRole).toBe("cohost");
     expect(stranger.map((g) => g.id)).not.toContain(game.id);
+  });
+
+  it("never sends player credentials, and counts only current players", async () => {
+    const { game, host, admin } = await createGame();
+    const kept = await joinAsGuest(game.code, "Kept");
+    const removed = await joinAsGuest(game.code, "Gone");
+    await admin.gameAdmin.roster.removePlayer({
+      gameUserId: removed.gameUser.id,
+    });
+
+    const games = await (await callerFor({ user: host })).user.game.getAll();
+    const row = games.find((g) => g.id === game.id)!;
+
+    expect(row).toMatchObject({ numPlayers: 1, status: "lobby" });
+    const json = JSON.stringify(games);
+    expect(json).not.toContain(kept.token);
+    expect(json).not.toContain("gameUsers");
+  });
+
+  it("lets the owner delete from the dashboard, and nobody else", async () => {
+    const { game, host, admin } = await createGame();
+    await joinAsGuest(game.code);
+    await admin.gameAdmin.startBuzzer();
+    const coHost = await createUser("Co-host");
+    await db.gameAdmin.create({ data: { userId: coHost.id, gameId: game.id } });
+
+    await expect(
+      (await callerFor({ user: coHost })).user.deleteGame({
+        gameId: game.id,
+        confirmName: game.name,
+        finishFirst: true,
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      (await callerFor({ user: host })).user.deleteGame({
+        gameId: game.id,
+        confirmName: game.name,
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+
+    await (
+      await callerFor({ user: host })
+    ).user.deleteGame({
+      gameId: game.id,
+      confirmName: game.name,
+      finishFirst: true,
+    });
+    expect(await db.game.count({ where: { id: game.id } })).toBe(0);
+    await expect(
+      (await callerFor({ user: host })).user.deleteGame({
+        gameId: game.id,
+        confirmName: game.name,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("ends open live streams with a clear message when the game is deleted", async () => {
+    const { game, host, admin } = await createGame();
+    const guest = await joinAsGuest(game.code);
+    await admin.chat.setEnabled({ enabled: true });
+    await admin.gameAdmin.finishGame();
+    const controller = new AbortController();
+    const streams = await Promise.all([
+      requestCaller({
+        gameId: game.id,
+        gameUserToken: guest.token,
+        signal: controller.signal,
+      }).gameGeneral.gameState(),
+      requestCaller({ signal: controller.signal }).public.gameState({
+        gameId: game.id,
+      }),
+      requestCaller({
+        gameId: game.id,
+        gameUserToken: guest.token,
+        signal: controller.signal,
+      }).chat.live({}),
+    ]);
+    const iterators = streams.map((s) => s[Symbol.asyncIterator]());
+    await Promise.all(iterators.map((it) => it.next()));
+
+    await (
+      await callerFor({ user: host })
+    ).user.deleteGame({
+      gameId: game.id,
+      confirmName: game.name,
+    });
+
+    for (const it of iterators) {
+      await expect(
+        (async () => {
+          for (let i = 0; i < 5; i++) await it.next();
+          return "still streaming";
+        })(),
+      ).rejects.toMatchObject({
+        code: "NOT_FOUND",
+        message: "This game was deleted by its host.",
+      });
+    }
+    controller.abort();
   });
 });
 

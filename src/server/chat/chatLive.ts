@@ -4,6 +4,7 @@ import { GameFormat, GameStatus } from "@prisma/client";
 import { err, ok, type Result } from "neverthrow";
 
 import { db } from "@/server/db";
+import { GameNotFoundError } from "@/server/db/common";
 import { staffRoleFor } from "@/server/staff/staffService";
 import { type StaffRoleName } from "@/utils/capabilities";
 import {
@@ -80,7 +81,7 @@ export async function loadChatSummary(
       chatMutes: { select: { actorKey: true, until: true } },
     },
   });
-  if (!game) return err(new Error(`Game ${gameId} not found`));
+  if (!game) return err(new GameNotFoundError(gameId));
 
   const staff = new Map<string, StaffRoleName>([[game.createdById, "owner"]]);
   for (const admin of game.gameAdmins) {

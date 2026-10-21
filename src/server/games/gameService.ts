@@ -478,17 +478,21 @@ export async function setTeamAssignment(
 }
 
 /**
- * Permanently deletes a game. Only the owner may do this, only for a finished
- * game or an unused lobby game, and only after typing the game's name.
+ * Permanently deletes a game. Only the owner may do this, only after typing
+ * the game's name, and only for a finished game or an unused lobby, unless
+ * `finishFirst` is set: then a game still in play is finished and deleted in
+ * one step (the owner confirmed they're ending it for everyone).
  */
 export async function deleteGame({
   gameId,
   actorUserId,
   confirmName,
+  finishFirst = false,
 }: {
   gameId: string;
   actorUserId: string;
   confirmName: string;
+  finishFirst?: boolean;
 }) {
   return flatten(
     await withGameLock(
@@ -508,7 +512,11 @@ export async function deleteGame({
           game.status === GameStatus.lobby &&
           game._count.gameUsers === 0 &&
           game._count.operations === 0;
-        if (game.status !== GameStatus.finished && !unusedLobby) {
+        if (
+          game.status !== GameStatus.finished &&
+          !unusedLobby &&
+          !finishFirst
+        ) {
           return err({ kind: "cannotDeleteActiveGame" });
         }
         await tx.game.delete({ where: { id: gameId } });

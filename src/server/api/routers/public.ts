@@ -22,7 +22,11 @@ import { getPublicGameState } from "@/server/db/common";
 import { joinGame, resumePreview } from "@/server/games/gameService";
 import { toTRPCError } from "@/server/api/errors";
 
-import { emitUpdatedGameState, liveFeeds } from "@/server/utils/events";
+import {
+  emitUpdatedGameState,
+  endWhenGameDeleted,
+  liveFeeds,
+} from "@/server/utils/events";
 
 async function enforceRateLimit(name: RateLimitName, address: string) {
   const { allowed, retryAfterSeconds } = await takeRateLimit(name, address);
@@ -128,6 +132,8 @@ export const publicRouter = createTRPCRouter({
   gameState: publicProcedure
     .input(z.object({ gameId: z.string() }))
     .subscription(async function* ({ input, signal }) {
-      yield* liveFeeds.publicGameState.subscribe(input.gameId, signal);
+      yield* endWhenGameDeleted(
+        liveFeeds.publicGameState.subscribe(input.gameId, signal),
+      );
     }),
 });

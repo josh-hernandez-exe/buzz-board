@@ -39,4 +39,8 @@ Select **Duplicate** to make a new game with the same name, format, settings and
 
 ## How do I delete a game?
 
-Only the person who created a game can delete it, using **Delete…** and typing the game's name to confirm. You can delete a finished game, or a lobby that hasn't been used yet (nobody has joined and no scores were changed). Deleting removes the game's players, scores and history for everyone and can't be undone.
+Only the person who created a game can delete it. Use **Delete…** next to the game on your dashboard, or on the game's host desk, and type the game's name to confirm. Deleting removes the game's players, scores, chat and history for everyone and can't be undone.
+
+If the game is still in play or people have joined, also tick **End it for everyone and delete it**. Anyone with the game open sees that it was deleted.
+
+To tidy your dashboard without deleting anything, tick **Hide finished games**.
