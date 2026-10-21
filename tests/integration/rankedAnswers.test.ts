@@ -412,3 +412,42 @@ describe("teams changing mid-game", () => {
     expect(view.state!.board!.teams).toEqual([t2, t3, added.id]);
   });
 });
+
+describe("void a board", () => {
+  it("takes back every point the board gave or took; undo restores them", async () => {
+    const created = await createGame({ teams: 2 });
+    const ra = created.admin.rankedAnswers;
+    const content = sampleContent(2);
+    content.rules = { ...presetRules("roundRobin", 2), missPenalty: 3 };
+    await ra.saveDraft({ draft: content, expectedRevision: 0 });
+    await ra.start();
+    const [first, second] = content.boards.filter((b) => b.role === "main");
+    // A board that scores normally, then a flawed one.
+    await act(ra, { type: "startBoard", boardId: first!.id });
+    await act(ra, { type: "answer", answerId: first!.answers[0]!.id });
+    await act(ra, { type: "closeBoard" });
+    const before = await currentScores(created.game.id);
+    await act(ra, { type: "startBoard", boardId: second!.id });
+    await act(ra, { type: "answer", answerId: second!.answers[1]!.id });
+    await act(ra, { type: "answer", answerId: null }); // penalty
+    const beforeVoid = await currentScores(created.game.id);
+    expect(beforeVoid).not.toEqual(before);
+    await act(ra, { type: "voidBoard" });
+
+    expect(await currentScores(created.game.id)).toEqual(before);
+    const view = await ra.hostView();
+    expect(
+      view.view && "board" in view.view ? view.view.board : null,
+    ).toMatchObject({
+      voided: true,
+      phase: "closed",
+    });
+    await expect(act(ra, { type: "voidBoard" })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+    });
+
+    const { step } = await ra.hostView();
+    await ra.undo({ expectedStep: step, requestId: rid() });
+    expect(await currentScores(created.game.id)).toEqual(beforeVoid);
+  });
+});

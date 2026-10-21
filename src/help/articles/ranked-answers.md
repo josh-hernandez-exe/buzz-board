@@ -74,6 +74,8 @@ Players see the board above their buzzer, and the audience display shows it in l
 
 **Undo last action** takes back the last step and the points it gave, in one go. An answer that was already shown stays on the board, marked as shown for 0 points, because everyone has seen it. You can undo several steps in a row.
 
+**Void this board** is for a board that went wrong, for example a mistake in its answers. It takes back every point the board gave or took (including miss penalties) and closes it. Answers already shown stay shown, and the board can't be played again, so play a spare board instead. Undo can reverse a void.
+
 Two hosts can run a board together. If you both press something at the same moment, only the first counts, and the other screen updates so you can check before trying again.
 
 You can also change scores by hand on the **Play** tab at any time. While Ranked Answers is running, use **Undo last action** rather than the scoreboard's undo, so the board and the scores stay in step.

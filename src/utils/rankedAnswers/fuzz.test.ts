@@ -89,6 +89,7 @@ function randomAction(
   const remaining = content.boards.filter(
     (x) => !state.boardsPlayed.includes(x.id),
   );
+  if (b && r.chance(0.03)) return { type: "voidBoard" };
   if (!b || b.phase === "closed") {
     if (b && r.chance(0.2)) return { type: "revealRemaining" };
     const next = remaining.length > 0 ? r.pick(remaining) : null;
@@ -202,7 +203,8 @@ function checkInvariants(
     ).toBe(true);
   }
   // Without penalties, nobody loses points.
-  if (rules.missPenalty === 0) {
+  // Without penalties, nobody loses points (except a void taking them back).
+  if (rules.missPenalty === 0 && action.type !== "voidBoard") {
     for (const p of Object.values(scores)) expect(p >= 0, label).toBe(true);
   }
   // Points stay within what the board is worth when each row can only pay
@@ -337,6 +339,15 @@ function play(preset: PresetId, teamCount: number, seed: number) {
       }
     }
     checkInvariants(content, sim, before, action, scores, label);
+    if (action.type === "voidBoard" && before.board) {
+      // A void takes back exactly what the board gave or took.
+      for (const t of teams) {
+        expect(scores[t] ?? 0, `${label}: void for ${t}`).toBe(
+          0 - (before.board.awarded[t] ?? 0) || 0,
+        );
+      }
+      expect(state.board!.phase, label).toBe("closed");
+    }
   }
   // From wherever play stopped, the host can always close the board and
   // finish: no state is a dead end.

@@ -717,6 +717,24 @@ function Controls({ view }: { view: HostView }) {
           >
             Undo last action
           </Button>
+          {board && !board.voided && (
+            <Button
+              variant="ghost"
+              className="text-destructive"
+              disabled={busy}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Void this board? Every point it gave or took is taken back. Answers already shown stay shown, and the board can't be played again (use a spare board instead).",
+                  )
+                ) {
+                  send({ type: "voidBoard" });
+                }
+              }}
+            >
+              Void this board
+            </Button>
+          )}
           <Button
             variant="destructive"
             disabled={end.isPending}

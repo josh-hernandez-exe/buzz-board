@@ -46,6 +46,7 @@ export function boardStatus(board: PublicBoard, names: TeamNames): string {
         : "Buzz in to answer!";
     }
     case "closed":
+      if (board.voided) return "Board voided: no points from this board";
       if (board.bankWinners.length > 0) {
         return `${list(board.bankWinners, names)} ${board.bankWinners.length === 1 ? "takes" : "take"} the bank: ${board.bank} points`;
       }

@@ -61,6 +61,8 @@ export type BoardState = {
   lockedOut?: string[];
   /** Buzz race: misses per team on this board. */
   teamStrikes?: Record<string, number>;
+  /** Voided: every point it gave or took was taken back. */
+  voided?: boolean;
 };
 
 export type EngineState = {
@@ -97,6 +99,8 @@ export type Action =
   | { type: "raceAnswer"; team: string; answerId: string | null }
   /** Host closes the board early, for example for time. */
   | { type: "closeBoard" }
+  /** A flawed board: take back every point it gave or took, and close it. */
+  | { type: "voidBoard" }
   | { type: "revealRemaining" }
   | { type: "finish" };
 
@@ -551,6 +555,16 @@ export function apply(
           b.lockedOut = [];
         }
       }
+      return done(b);
+    }
+    case "voidBoard": {
+      if (b.voided) return err({ kind: "wrongPhase", phase: b.phase });
+      for (const [team, p] of Object.entries(b.awarded)) award(b, team, -p);
+      b.awarded = {};
+      b.bank = 0;
+      b.bankWinners = [];
+      b.phase = "closed";
+      b.voided = true;
       return done(b);
     }
     case "closeBoard": {

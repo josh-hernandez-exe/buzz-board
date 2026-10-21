@@ -51,6 +51,7 @@ const actionSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("miss"), team: id }),
   z.object({ type: z.literal("closeBoard") }),
+  z.object({ type: z.literal("voidBoard") }),
   z.object({ type: z.literal("revealRemaining") }),
   z.object({ type: z.literal("finish") }),
 ]);

@@ -53,6 +53,8 @@ export type PublicBoard = {
   lockedOut: string[];
   /** Face-off styles: rows build a bank, or score at once. */
   usesBank: boolean;
+  /** The host voided the board: no points from it count. */
+  voided: boolean;
 };
 
 export type PublicModeView = {
@@ -115,6 +117,7 @@ export function projectPublic(
       keepTurnOnHit: rules.playStyle === "passAlong",
       lockedOut: b.lockedOut ?? [],
       usesBank: opts.scoring === "bank",
+      voided: b.voided ?? false,
     };
   }
   return {
