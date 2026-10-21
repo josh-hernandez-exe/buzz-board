@@ -9,10 +9,21 @@ const fake = vi.hoisted(() => ({
 
 vi.mock("@/env", () => ({ env: { KV_URL: "redis://unused" } }));
 vi.mock("@/logger", () => ({ logger: { warn: vi.fn() } }));
+const handlers = vi.hoisted(() => new Map<string, (() => void)[]>());
+const listen = (event: string, fn: () => void) => {
+  handlers.set(event, [...(handlers.get(event) ?? []), fn]);
+  return fake;
+};
+/** Simulates the client finishing its connection. */
+function connected() {
+  fake.isReady = true;
+  for (const fn of handlers.get("ready") ?? []) fn();
+}
 vi.mock("redis", () => ({
   createClient: () =>
     Object.assign(fake, {
-      on: () => fake,
+      on: listen,
+      once: listen,
       connect: async () => undefined,
     }),
 }));
@@ -25,6 +36,19 @@ const limits = {
   perMinute: 30,
   gamePerSecond: 50,
 };
+
+describe("server start", () => {
+  it("waits for the first connection instead of refusing the first chat message", async () => {
+    fake.incr.mockResolvedValue(1);
+    const pending = takeChatAllowance({
+      gameId: "g",
+      actorKey: "player:p",
+      limits,
+    });
+    setTimeout(connected, 50);
+    await expect(pending).resolves.toEqual({ allowed: true });
+  });
+});
 
 describe("rate limits while Redis is unavailable", () => {
   beforeEach(() => {

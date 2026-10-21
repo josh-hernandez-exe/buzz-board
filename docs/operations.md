@@ -94,4 +94,38 @@ The runner prints a summary and writes `load-results/<profile>-<runId>.json` wit
 
 ## Backups and restore
 
-Use your PostgreSQL host's automated backups. Before an event, rehearse a restore into a separate database and check that a game, its scores and its chat come back. That rehearsal hasn't been recorded for this release yet; see the delivery plan's release gates. Redis holds only rate-limit counters and change notifications, so it needs no backup: after a Redis restart, streams resync from PostgreSQL.
+Redis holds only rate-limit counters and change notifications, so it needs no backup: after a Redis restart, streams resync from PostgreSQL. PostgreSQL holds everything else.
+
+**Backups:** turn on your PostgreSQL host's automated backups (most offer daily snapshots and point-in-time restore). Note how long they're kept: deleted chat stays in backups until they expire, and the privacy notice says so.
+
+### What a backup-restore rehearsal is
+
+A backup you've never restored is a hope, not a backup. A **rehearsal** is a practice run of the real thing, done before an event while nothing is wrong:
+
+1. Restore your latest backup into a **new, separate** database. Never restore over the live one.
+2. Check the restored copy matches: every table, and a game you know (its scores, players and chat).
+3. Write down how long it took, who did it, and anything confusing, so a real restore at a stressful moment is a routine.
+4. Delete the restored copy.
+
+"Recorded" means step 3 is written somewhere you can find it, for example a dated line in your event notes.
+
+### Rehearsing with a hosted database
+
+1. Pause anything writing to the database, or note the time, because later writes show up as differences.
+2. Use your host's restore feature to create a **new** database from the latest backup.
+3. Compare: `bun run ops:verify-restore -- --source "$DATABASE_URL" --restored "$RESTORED_DATABASE_URL"`. It reads both databases (never writes), compares every table's row count and a fingerprint of all its contents, and exits 1 with the tables that differ.
+4. Optionally point a local copy of the app at the restored database and open a known game.
+5. Delete the restored database, and record the result and the time taken.
+
+### Rehearsing locally
+
+`bun run ops:backup-rehearsal` runs the whole drill against the disposable test database, refusing any other:
+
+1. It plays a marker game through the app's own services (3 players, scores 30/25/8, a chat message).
+2. It backs up with `pg_dump` and restores into a new database with `pg_restore`.
+3. It runs the same table comparison, re-reads the marker game from the restored copy, and prints timings.
+4. It deletes the copy and the dump (`--keep` leaves them for inspection).
+
+Without local PostgreSQL tools, add `--docker-container buzz-board-test-buzz-board-test-db-1` to use the ones in the test container. The report goes to the git-ignored `backups/` folder.
+
+**Recorded local rehearsal (21 Oct 2026):** passed. The whole database (18 tables) matched after restore, and the marker game's scores, players and chat came back. Backup took 0.26 s and restore 0.26 s for a 56 KB test database. A deliberately altered score in the restored copy was reported as `ScoreEffect: same row count, different contents`. A rehearsal with the production host's own backups is still to do before the first event.

@@ -21,6 +21,8 @@ export const RATE_LIMITS = {
 export type RateLimitName = keyof typeof RATE_LIMITS;
 
 let client: RedisClient | undefined;
+/** Set once the first connection succeeds; later outages aren't waited on. */
+let everReady = false;
 
 function redis(): RedisClient {
   if (!client) {
@@ -36,6 +38,7 @@ function redis(): RedisClient {
     client.on("error", (error) =>
       logger.warn("Redis rate-limit client error", String(error)),
     );
+    client.on("ready", () => (everReady = true));
     client
       .connect()
       .catch((error) => logger.warn("Redis rate-limit connect failed", error));
@@ -43,6 +46,23 @@ function redis(): RedisClient {
   return client;
 }
 
+/**
+ * The client, waiting (at most `waitMs`) for its first connection. Connecting
+ * happens on first use, so without this the first check after every server
+ * start saw "not ready": chat refused the first message, joins skipped the
+ * limit. After that, an outage is reported at once rather than waited on.
+ */
+async function readyRedis(waitMs = 1_000): Promise<RedisClient> {
+  const connection = redis();
+  if (connection.isReady || everReady) return connection;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    new Promise<void>((resolve) => connection.once("ready", () => resolve())),
+    new Promise<void>((resolve) => (timer = setTimeout(resolve, waitMs))),
+  ]);
+  clearTimeout(timer);
+  return connection;
+}
 /** The address a request came from, as reported by the proxy in front. */
 export function clientAddress(headers: Headers): string {
   const forwarded = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
@@ -61,7 +81,7 @@ export async function takeRateLimit(
   const { limit, windowSeconds } = RATE_LIMITS[name];
   const redisKey = `buzz-board:rate:${name}:${key}`;
   try {
-    const connection = redis();
+    const connection = await readyRedis();
     if (!connection.isReady) return { allowed: true, retryAfterSeconds: 0 };
     const count = await connection.incr(redisKey);
     // Only the first attempt starts the window. (EXPIRE ... NX would need
@@ -115,7 +135,7 @@ export async function takeChatAllowance({
   };
 }): Promise<ChatAllowance> {
   try {
-    const connection = redis();
+    const connection = await readyRedis();
     if (!connection.isReady) return { allowed: false, reason: "unavailable" };
     const prefix = `buzz-board:chat:${gameId}`;
     const second = Math.floor(Date.now() / 1000);

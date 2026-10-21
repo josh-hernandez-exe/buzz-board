@@ -88,3 +88,6 @@ yarn-error.log*
 
 # load runner reports (may include timings of local hardware)
 /load-results/
+
+# backup rehearsal dumps and reports (contain database contents)
+/backups/
