@@ -175,4 +175,36 @@ describe("BuzzerPanel", () => {
       screen.getByRole("button", { name: "Redo: Close buzzer" }),
     ).toBeEnabled();
   });
+
+  it("keyboard: O opens, C judges the answering team, typing in a field does nothing", async () => {
+    render(<BuzzerPanel />);
+    await userEvent.keyboard("o");
+    expect(calls.open).toHaveBeenCalledTimes(1);
+
+    state = gameState(
+      { buzzerMode: "queue", isBuzzerListening: true },
+      {
+        buzzQueue: [
+          {
+            id: "e1",
+            position: 1,
+            gameTeamId: "t1",
+            gameUserId: "u1",
+            status: "answering",
+          },
+        ],
+      },
+    );
+    const { unmount } = render(<BuzzerPanel />);
+    await userEvent.keyboard("c");
+    expect(calls.judge).toHaveBeenCalledWith({
+      entryId: "e1",
+      verdict: "correct",
+    });
+    calls.judge!.mockReset();
+    // Typing points into a field is not a shortcut.
+    await userEvent.type(screen.getAllByLabelText("Points")[0]!, "w");
+    expect(calls.judge).not.toHaveBeenCalled();
+    unmount();
+  });
 });

@@ -11,6 +11,7 @@ import { Notice } from "@/app/_components/ui/page";
 import { helpHref } from "@/help/manifest";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { newRequestId } from "@/utils/requestId";
+import { hotkeyHint, useHotkeys } from "@/utils/useHotkeys";
 import {
   LIMITS,
   contentSchema,
@@ -891,6 +892,64 @@ function AnswerSelect({
 
 const asAnswer = (v: string) => (v === "wrong" ? null : v);
 
+/**
+ * The hidden answers as buttons, plus a wrong/strike button. Keyboard:
+ * the answer's number reveals it, X records a miss.
+ */
+function AnswerButtons({
+  hidden,
+  disabled,
+  onPick,
+  wrongLabel,
+}: {
+  hidden: Hidden;
+  disabled: boolean;
+  onPick: (answerId: string | null) => void;
+  wrongLabel: string;
+}) {
+  useHotkeys(
+    {
+      ...Object.fromEntries(
+        hidden.map((a) => [String(a.rank), () => onPick(a.id)]),
+      ),
+      x: () => onPick(null),
+    },
+    !disabled,
+  );
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap gap-2">
+        {hidden.map((a) => (
+          <Button
+            key={a.id}
+            disabled={disabled}
+            className="bg-info text-info-foreground hover:bg-info/90"
+            aria-keyshortcuts={String(a.rank)}
+            onClick={() => onPick(a.id)}
+          >
+            #{a.rank} {a.text}
+          </Button>
+        ))}
+        <Button
+          variant="destructive"
+          disabled={disabled}
+          aria-keyshortcuts="X"
+          onClick={() => onPick(null)}
+        >
+          {wrongLabel}
+        </Button>
+      </div>
+      <p className="text-muted-foreground text-xs">
+        Keyboard:{" "}
+        {hotkeyHint([
+          ["1–8", "answer"],
+          ["X", "miss"],
+        ])}
+      </p>
+    </div>
+  );
+}
+
 function PhaseControls({
   view,
   names,
@@ -943,25 +1002,12 @@ function PhaseControls({
     onPick: (answerId: string | null) => void,
     wrongLabel: string,
   ) => (
-    <div className="flex flex-wrap gap-2">
-      {hidden.map((a) => (
-        <Button
-          key={a.id}
-          disabled={disabled}
-          className="bg-info text-info-foreground hover:bg-info/90"
-          onClick={() => onPick(a.id)}
-        >
-          #{a.rank} {a.text}
-        </Button>
-      ))}
-      <Button
-        variant="destructive"
-        disabled={disabled}
-        onClick={() => onPick(null)}
-      >
-        {wrongLabel}
-      </Button>
-    </div>
+    <AnswerButtons
+      hidden={hidden}
+      disabled={disabled}
+      onPick={onPick}
+      wrongLabel={wrongLabel}
+    />
   );
 
   const closeButton = (
@@ -1231,6 +1277,13 @@ function OpenControls({
 }) {
   const [who, setWho] = useState<string[]>([]);
   const playing = board.teams.filter((t) => t in names);
+  const credit = (answerId: string) =>
+    send({ type: "credit", answerId, teams: who }, () => setWho([]));
+  useHotkeys(
+    Object.fromEntries(hidden.map((h) => [String(h.rank), () => credit(h.id)])),
+    // A number key never reveals an answer for nobody by accident.
+    !disabled && who.length > 0,
+  );
   const toggle = (t: string) =>
     setWho((cur) =>
       cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t],
@@ -1268,7 +1321,8 @@ function OpenControls({
         )}
       </div>
       <p className="text-muted-foreground text-sm">
-        Then tap the answer they gave ({label}):
+        Then tap the answer they gave ({label})
+        {who.length > 0 ? ", or press its number" : ""}.
       </p>
       <div className="flex flex-wrap gap-2">
         {hidden.map((a) => (
@@ -1276,11 +1330,8 @@ function OpenControls({
             key={a.id}
             disabled={disabled}
             className="bg-info text-info-foreground hover:bg-info/90"
-            onClick={() =>
-              send({ type: "credit", answerId: a.id, teams: who }, () =>
-                setWho([]),
-              )
-            }
+            aria-keyshortcuts={String(a.rank)}
+            onClick={() => credit(a.id)}
           >
             #{a.rank} {a.text}
           </Button>

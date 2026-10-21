@@ -16,6 +16,7 @@ import { CategoryGridBoard } from "@/app/_components/client/CategoryGridBoard";
 import { Button } from "@/app/_components/ui/button";
 import { cn } from "@/app/_lib/utils";
 import { env } from "@/env";
+import { unlockAudio } from "@/utils/synthSounds";
 
 import type { PublicGameState } from "@/types";
 
@@ -87,7 +88,11 @@ function AudienceDisplay({
         <Button
           variant="secondary"
           aria-pressed={soundOn}
-          onClick={() => setSoundOn((on) => !on)}
+          onClick={() => {
+            // The click lets the browser play the chimes made in-page.
+            if (!soundOn) unlockAudio();
+            setSoundOn((on) => !on);
+          }}
         >
           {soundOn ? "Turn off sound" : "Turn on sound"}
         </Button>

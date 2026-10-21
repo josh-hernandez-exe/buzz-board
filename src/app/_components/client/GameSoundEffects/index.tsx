@@ -7,6 +7,9 @@ import {
   useLiveGameState,
   usePublicLiveGameState,
 } from "@/app/_components/client/LiveGameState";
+import type { PublicGameModeView } from "@/utils/modes";
+import { modeSoundCues } from "@/utils/modeSounds";
+import { playCue } from "@/utils/synthSounds";
 
 export interface GameSoundEffectsProps {
   gameTeamId?: string;
@@ -26,7 +29,30 @@ export function GameSoundEffects({ gameTeamId }: GameSoundEffectsProps) {
  */
 export function PublicGameSoundEffects({ enabled }: { enabled: boolean }) {
   const { data } = usePublicLiveGameState();
-  return <BuzzerSounds gameTeams={data?.gameTeams} muted={!enabled} />;
+  return (
+    <>
+      <BuzzerSounds gameTeams={data?.gameTeams} muted={!enabled} />
+      <ModeSounds mode={data?.mode ?? null} enabled={enabled} />
+    </>
+  );
+}
+
+/** Chimes and buzzes for Ranked Answers and Category Grid boards. */
+function ModeSounds({
+  mode,
+  enabled,
+}: {
+  mode: PublicGameModeView | null;
+  enabled: boolean;
+}) {
+  const previous = useRef(mode);
+  useEffect(() => {
+    const cues = modeSoundCues(previous.current, mode);
+    previous.current = mode;
+    if (enabled)
+      cues.forEach((cue, i) => setTimeout(() => playCue(cue), i * 250));
+  }, [mode, enabled]);
+  return null;
 }
 
 function BuzzerSounds({

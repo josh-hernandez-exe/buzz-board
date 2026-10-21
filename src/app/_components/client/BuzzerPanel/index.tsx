@@ -9,6 +9,7 @@ import { Panel, StatusPill } from "@/app/_components/ui/page";
 import { api } from "@/trpc/react";
 import type { PrivateGameState } from "@/types";
 import { newRequestId } from "@/utils/requestId";
+import { hotkeyHint, useHotkeys } from "@/utils/useHotkeys";
 
 type Queue = PrivateGameState["buzzQueue"];
 type Entry = Queue[number];
@@ -76,6 +77,30 @@ export function BuzzerPanel() {
     judge.error ??
     undo.error ??
     redo.error;
+
+  // Keyboard: O open/close, N next question; in queue mode C/W/S judge
+  // whoever is answering. Every one of these can be undone.
+  const playable = !!data && data.game.status !== "finished";
+  const answeringEntry =
+    data?.game.buzzerMode === "queue"
+      ? data.buzzQueue.find((e) => e.status === "answering")
+      : undefined;
+  const verdict = (v: "correct" | "wrong" | "skip") =>
+    answeringEntry
+      ? () => judge.mutate({ entryId: answeringEntry.id, verdict: v })
+      : undefined;
+  useHotkeys(
+    {
+      o: playable
+        ? () => (data.game.isBuzzerListening ? close.mutate() : open.mutate())
+        : undefined,
+      n: playable ? () => next.mutate() : undefined,
+      c: playable ? verdict("correct") : undefined,
+      w: playable ? verdict("wrong") : undefined,
+      s: playable ? verdict("skip") : undefined,
+    },
+    !busy,
+  );
 
   if (!data) return null;
   const { game, buzzWinner, buzzQueue } = data;
@@ -212,6 +237,20 @@ export function BuzzerPanel() {
 
       <ErrorNotice error={error} />
 
+      <p className="text-muted-foreground text-xs">
+        Keyboard:{" "}
+        {hotkeyHint([
+          ["O", "open/close"],
+          ["N", "next question"],
+          ...(queueMode
+            ? ([
+                ["C", "correct"],
+                ["W", "wrong"],
+                ["S", "skip"],
+              ] as [string, string][])
+            : []),
+        ])}
+      </p>
       <div className="border-border flex flex-wrap items-center gap-2 border-t pt-3">
         <Button
           variant="outline"

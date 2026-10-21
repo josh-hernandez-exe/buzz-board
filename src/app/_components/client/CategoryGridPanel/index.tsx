@@ -23,6 +23,7 @@ import {
 } from "@/utils/categoryGrid/content";
 import { sampleBank } from "@/utils/categoryGrid/sample";
 import { newRequestId } from "@/utils/requestId";
+import { hotkeyHint, useHotkeys } from "@/utils/useHotkeys";
 
 type HostView = RouterOutputs["categoryGrid"]["hostView"];
 type Action = Parameters<
@@ -355,7 +356,9 @@ function GridEditor({ view }: { view: HostView }) {
                         )}
                       >
                         <span className="w-full truncate">
-                          {q?.prompt.text.length ? q.prompt.text : "Needs a clue"}
+                          {q?.prompt.text.length
+                            ? q.prompt.text
+                            : "Needs a clue"}
                         </span>
                         <span className="text-muted-foreground w-full truncate">
                           {q?.answer.text ? `→ ${q.answer.text}` : ""}
@@ -772,6 +775,32 @@ function GridControls({ view }: { view: HostView }) {
     }
   };
 
+  const judge = (correct: boolean) => {
+    if (!team) return;
+    const answered = team;
+    send({ type: "judge", team: answered, correct }, () => {
+      setChosen(null);
+      updateBuzzer(answered, correct);
+    });
+  };
+  const revealAnswer = () =>
+    send({ type: "revealAnswer" }, () => {
+      if (syncBuzzer) closeBuzzer.mutate();
+    });
+  const clueOpen = running && clue?.phase === "open";
+  useHotkeys(
+    {
+      c: clueOpen && team ? () => judge(true) : undefined,
+      w: clueOpen && team ? () => judge(false) : undefined,
+      r: clueOpen ? revealAnswer : undefined,
+      b:
+        running && clue?.phase === "answered"
+          ? () => send({ type: "closeClue" })
+          : undefined,
+    },
+    !busy,
+  );
+
   return (
     <div className="flex flex-col gap-4">
       {view.view && (
@@ -889,16 +918,8 @@ function GridControls({ view }: { view: HostView }) {
                     <Button
                       className="bg-success text-success-foreground hover:bg-success/90"
                       disabled={busy || !team}
-                      onClick={() => {
-                        const answered = team!;
-                        send(
-                          { type: "judge", team: answered, correct: true },
-                          () => {
-                            setChosen(null);
-                            updateBuzzer(answered, true);
-                          },
-                        );
-                      }}
+                      aria-keyshortcuts="C"
+                      onClick={() => judge(true)}
                     >
                       ✓ Correct
                       {team ? `: ${name(team)} +${found.cell.points}` : ""}
@@ -906,16 +927,8 @@ function GridControls({ view }: { view: HostView }) {
                     <Button
                       variant="destructive"
                       disabled={busy || !team}
-                      onClick={() => {
-                        const answered = team!;
-                        send(
-                          { type: "judge", team: answered, correct: false },
-                          () => {
-                            setChosen(null);
-                            updateBuzzer(answered, false);
-                          },
-                        );
-                      }}
+                      aria-keyshortcuts="W"
+                      onClick={() => judge(false)}
                     >
                       ✕ Wrong
                       {team
@@ -925,11 +938,8 @@ function GridControls({ view }: { view: HostView }) {
                     <Button
                       variant="secondary"
                       disabled={busy}
-                      onClick={() =>
-                        send({ type: "revealAnswer" }, () => {
-                          if (syncBuzzer) closeBuzzer.mutate();
-                        })
-                      }
+                      aria-keyshortcuts="R"
+                      onClick={revealAnswer}
                     >
                       Nobody got it: show the answer
                     </Button>
@@ -939,12 +949,22 @@ function GridControls({ view }: { view: HostView }) {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     disabled={busy}
+                    aria-keyshortcuts="B"
                     onClick={() => send({ type: "closeClue" })}
                   >
                     Back to the grid
                   </Button>
                 </div>
               )}
+              <p className="text-muted-foreground text-xs">
+                Keyboard:{" "}
+                {hotkeyHint([
+                  ["C", "correct"],
+                  ["W", "wrong"],
+                  ["R", "show the answer"],
+                  ["B", "back to the grid"],
+                ])}
+              </p>
               <Button
                 variant="ghost"
                 size="sm"

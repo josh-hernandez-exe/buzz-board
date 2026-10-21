@@ -47,6 +47,18 @@ In **Queue** mode, every buzz lines up in order and you mark each answer **Corre
 
 Every player's buzzer says whether it is open, closed or locked, so players always know why they can't press it.
 
+## Are there keyboard shortcuts?
+
+Yes, on a computer. They're single keys, they don't work while you're typing in a box or a dialog is open, and the screen lists them under each set of buttons.
+
+| Where | Keys |
+| --- | --- |
+| **Play** tab, buzzer | **O** open or close the buzzer, **N** next question. In queue mode: **C** correct, **W** wrong, **S** skip for whoever is answering |
+| **Ranked Answers** | **1**–**8** the answer with that number, **X** strike, wrong or miss. In Open answering, choose the teams first, then press the answer's number |
+| **Category Grid** | **C** correct, **W** wrong (for the team under **Who answered?**), **R** show the answer, **B** back to the grid |
+
+Every shortcut can be undone like the button it stands for.
+
 ## How do I finish the game?
 
 Open the **Room** tab, select **Finish game…** and confirm. The buzzer closes, nobody new can join, and players can no longer change names or teams. Scores stay visible.
