@@ -3,6 +3,7 @@
 import { BuzzerState, GameFormat } from "@prisma/client";
 
 import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
+import { LiveFinalStandings } from "@/app/_components/client/FinalStandings";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { PageHeading } from "@/app/_components/ui/page";
@@ -32,6 +33,7 @@ export function Scoreboard({
         title={game.name}
         description={`Scoreboard · ${STATUS_LABEL[game.status]}`}
       />
+      <LiveFinalStandings />
       <GameWhoBuzzedIn />
       <ul
         aria-label={individual ? "Players" : "Teams"}

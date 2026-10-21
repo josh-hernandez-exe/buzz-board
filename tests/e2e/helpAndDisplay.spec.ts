@@ -134,6 +134,10 @@ test("the audience display shows the room safely, with sound off until turned on
   await expect(display.getByTestId("display-status")).toHaveText(
     "Final scores",
   );
+  // Final results: every team tied on 0, so they share first place.
+  await expect(display.getByTestId("final-winner")).toHaveText(
+    "🏆 Team 1 and Team 2 tie for first!",
+  );
 
   await Promise.all([hostContext.close(), displayContext.close()]);
 });

@@ -13,6 +13,7 @@ import {
 } from "@/app/_components/client/LiveGameState";
 import { RankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
 import { CategoryGridBoard } from "@/app/_components/client/CategoryGridBoard";
+import { FinalStandings } from "@/app/_components/client/FinalStandings";
 import { Button } from "@/app/_components/ui/button";
 import { cn } from "@/app/_lib/utils";
 import { env } from "@/env";
@@ -117,6 +118,10 @@ function AudienceDisplay({
         >
           {buzzerLine(state)}
         </p>
+      )}
+
+      {game.status === GameStatus.finished && (
+        <FinalStandings teams={gameTeams} size="large" />
       )}
 
       {game.buzzerMode === "queue" && state.buzzQueue.length > 0 && (
