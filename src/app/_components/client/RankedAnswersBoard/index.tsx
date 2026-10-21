@@ -37,6 +37,8 @@ export function boardStatus(board: PublicBoard, names: TeamNames): string {
         : `${name(board.currentTeam)}'s turn (${board.turn + 1} of ${board.maxTurns})`;
     case "allPlay":
       return `Round ${board.round + 1} of ${board.maxRounds}: captains, give your team's answer`;
+    case "open":
+      return "Shout it out! Any team can answer";
     case "race": {
       const out = board.lockedOut.length;
       return out > 0

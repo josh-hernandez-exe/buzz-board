@@ -189,11 +189,36 @@ async function normalizeQueue(tx: GameTx, gameId: string, window: number) {
     },
     data: { status: BuzzQueueStatus.skipped },
   });
-  const entries = await tx.buzzQueueEntry.findMany({
+  let entries = await tx.buzzQueueEntry.findMany({
     where: { gameId, window },
     orderBy: { position: "asc" },
     select: { id: true, status: true, gameTeamId: true },
   });
+  // One place in line per team: an undo can bring back an earlier place
+  // after the team buzzed again. The earlier place is kept.
+  const inLine = new Set<string>();
+  const duplicates: string[] = [];
+  for (const e of entries) {
+    if (
+      e.status !== BuzzQueueStatus.waiting &&
+      e.status !== BuzzQueueStatus.answering
+    ) {
+      continue;
+    }
+    if (inLine.has(e.gameTeamId)) duplicates.push(e.id);
+    inLine.add(e.gameTeamId);
+  }
+  if (duplicates.length > 0) {
+    await tx.buzzQueueEntry.updateMany({
+      where: { id: { in: duplicates } },
+      data: { status: BuzzQueueStatus.skipped },
+    });
+    entries = entries.map((e) =>
+      duplicates.includes(e.id)
+        ? { ...e, status: BuzzQueueStatus.skipped }
+        : e,
+    );
+  }
   const answering = entries.filter(
     (e) => e.status === BuzzQueueStatus.answering,
   );
@@ -215,17 +240,22 @@ async function normalizeQueue(tx: GameTx, gameId: string, window: number) {
       });
     }
   }
+  // The answering team is highlighted; with nobody answering, the team
+  // that got it right stays highlighted.
+  const highlight =
+    current?.gameTeamId ??
+    entries.find((e) => e.status === BuzzQueueStatus.correct)?.gameTeamId;
   await tx.gameTeam.updateMany({
     where: {
       gameId,
       buzzerState: BuzzerState.selected,
-      ...(current ? { id: { not: current.gameTeamId } } : {}),
+      ...(highlight ? { id: { not: highlight } } : {}),
     },
     data: { buzzerState: BuzzerState.available },
   });
-  if (current) {
+  if (highlight) {
     await tx.gameTeam.updateMany({
-      where: { gameId, id: current.gameTeamId },
+      where: { gameId, id: highlight },
       data: { buzzerState: BuzzerState.selected },
     });
   }

@@ -471,6 +471,47 @@ describe("buzzer history", () => {
     ).toBe(false);
   });
 
+  it("undoing a skip after the team buzzed again keeps one place in line", async () => {
+    const { admin, game, players } = await queueGame();
+    await admin.gameAdmin.startBuzzer();
+    await players[0]!.player.gameUser.buzzIn();
+    await players[1]!.player.gameUser.buzzIn();
+    const [first] = await queueOf(game.id);
+    await admin.gameAdmin.buzzer.judge({ entryId: first!.id, verdict: "skip" });
+    await players[0]!.player.gameUser.buzzIn(); // back of the line
+
+    await admin.gameAdmin.buzzer.undo(); // the skip
+
+    const queue = await queueOf(game.id);
+    const active = queue.filter(
+      (e) => e.status === "waiting" || e.status === "answering",
+    );
+    expect(active.map((e) => [e.gameTeamId, e.status])).toEqual([
+      [players[0]!.teamId, "answering"],
+      [players[1]!.teamId, "waiting"],
+    ]);
+  });
+
+  it("undoing the next question after a correct answer keeps the winner highlighted", async () => {
+    const { admin, game, players } = await queueGame();
+    await admin.gameAdmin.startBuzzer();
+    await players[2]!.player.gameUser.buzzIn();
+    const [first] = await queueOf(game.id);
+    await admin.gameAdmin.buzzer.judge({
+      entryId: first!.id,
+      verdict: "correct",
+    });
+    await admin.gameAdmin.startBuzzer(); // a new question
+
+    await admin.gameAdmin.buzzer.undo();
+
+    expect((await queueOf(game.id)).map((e) => e.status)).toEqual(["correct"]);
+    expect(await states(game.id)).toMatchObject({
+      [players[2]!.teamId]: "selected",
+      [players[0]!.teamId]: "available",
+    });
+  });
+
   it("an accepted buzz or a new action clears redo", async () => {
     const { admin, game, gameTeams } = await createGame({ teams: 2 });
     const guest = await joinAsGuest(game.code);

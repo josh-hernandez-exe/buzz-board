@@ -25,6 +25,7 @@ export type Phase =
   | "steal"
   | "turns"
   | "race"
+  | "open"
   | "allPlay"
   | "closed";
 
@@ -70,6 +71,11 @@ export type EngineState = {
   /** Main boards started so far: drives rotation and face-off pairs. */
   mainStarted: number;
   finished: boolean;
+  /**
+   * Boards that have shown any answer to players. Kept through every undo,
+   * so a seen board can never be played again with its answers hidden.
+   */
+  spent?: string[];
 };
 
 export type FaceOffAnswer = { team: string; answerId: string | null };
@@ -83,6 +89,10 @@ export type Action =
   | { type: "answer"; answerId: string | null }
   | { type: "steal"; answers: Record<string, string | null> }
   | { type: "allPlayRound"; answers: Record<string, string | null> }
+  /** Open answering: reveal a row for every team that got it (none = just reveal). */
+  | { type: "credit"; answerId: string; teams: string[] }
+  /** Open answering: a wrong answer, which only matters with a miss penalty. */
+  | { type: "miss"; team: string }
   /** Buzz race: the team that buzzed, and its answer (null = wrong). */
   | { type: "raceAnswer"; team: string; answerId: string | null }
   /** Host closes the board early, for example for time. */
@@ -97,6 +107,7 @@ export type EngineError =
   | { kind: "unknownAnswer" }
   | { kind: "unknownTeam"; team: string }
   | { kind: "teamLockedOut"; team: string }
+  | { kind: "answerShown" }
   | { kind: "badTeams" };
 
 export type Step = {
@@ -217,7 +228,9 @@ export function apply(
             ? "turns"
             : style === "buzzRace"
               ? "race"
-              : "allPlay",
+              : style === "open"
+                ? "open"
+                : "allPlay",
       revealed: [],
       strikes: 0,
       bank: 0,
@@ -255,8 +268,20 @@ export function apply(
     b.revealed.filter((r) => !r.leftover).length === board.answers.length;
   const reveal = (rank: number, teams: string[], pts: number) =>
     b.revealed.push({ rank, teams, points: pts, leftover: false });
-  const done = (s: BoardState): Result<Step, EngineError> =>
-    ok({ state: { ...state, board: s }, scores });
+  const done = (s: BoardState): Result<Step, EngineError> => {
+    const spent = state.spent ?? [];
+    return ok({
+      state: {
+        ...state,
+        board: s,
+        spent:
+          s.revealed.length > 0 && !spent.includes(s.boardId)
+            ? [...spent, s.boardId]
+            : spent,
+      },
+      scores,
+    });
+  };
   const needPhase = (...phases: Phase[]) =>
     phases.includes(b.phase)
       ? null
@@ -300,17 +325,29 @@ export function apply(
         ) ??
         checkAnswers(action.answers.map((a) => a.answerId));
       if (wrong) return wrong;
-      if (action.answers.length === 0 || action.answers.length > 2) {
+      if (
+        action.answers.length === 0 ||
+        action.answers.length > 2 ||
+        new Set(action.answers.map((a) => a.team)).size !==
+          action.answers.length
+      ) {
         return err({ kind: "badTeams" });
       }
-      // Rows found in the face-off go into the bank.
-      const ranks = action.answers.map((a) => rankOf(board, a.answerId));
+      // Only rows still hidden count: repeating an answer already on the
+      // board (from an earlier face-off attempt) is a miss.
+      const ranks = action.answers.map((a) => {
+        const r = rankOf(board, a.answerId);
+        return r !== null && isHidden(b, r) ? r : null;
+      });
       const [first, second] = action.answers;
       const r1 = ranks[0] ?? null;
       const r2 = ranks[1] ?? null;
+      const topHidden =
+        board.answers.findIndex((_a, i) => isHidden(b, i + 1)) + 1;
       let winner: string | null;
       if (rules.faceOffMethod === "buzzer") {
-        if (r1 === 1) winner = first!.team;
+        // The top remaining answer wins at once.
+        if (r1 !== null && r1 === topHidden) winner = first!.team;
         else if (!second) winner = r1 !== null ? first!.team : null;
         else if (r1 === null && r2 === null) winner = null;
         else
@@ -446,6 +483,36 @@ export function apply(
       if (allFound() || b.round >= rules.allPlayRounds) b.phase = "closed";
       return done(b);
     }
+    case "credit": {
+      const wrong =
+        needPhase("open") ??
+        checkTeams(action.teams, b.teams) ??
+        checkAnswers([action.answerId]);
+      if (wrong) return wrong;
+      if (new Set(action.teams).size !== action.teams.length) {
+        return err({ kind: "badTeams" });
+      }
+      const rank = rankOf(board, action.answerId)!;
+      if (!isHidden(b, rank)) return err({ kind: "answerShown" });
+      const p = points(rank);
+      const n = action.teams.length;
+      const each =
+        n <= 1 || opts.sharedAnswers === "full"
+          ? p
+          : opts.sharedAnswers === "split"
+            ? Math.floor(p / n)
+            : 0;
+      reveal(rank, action.teams, n === 0 ? 0 : each);
+      for (const t of action.teams) award(b, t, each);
+      if (allFound()) b.phase = "closed";
+      return done(b);
+    }
+    case "miss": {
+      const wrong = needPhase("open") ?? checkTeams([action.team], b.teams);
+      if (wrong) return wrong;
+      penalize(action.team);
+      return done(b);
+    }
     case "raceAnswer": {
       const wrong =
         needPhase("race") ??
@@ -534,6 +601,14 @@ export function undoTo(
         then.revealed.push({ ...row, teams: [], points: 0, leftover: true });
       }
     }
+  }
+  // Boards whose answers were seen stay used up, however far back the undo
+  // goes, so they can't come back with those answers hidden.
+  const spent = new Set([...(previous.spent ?? []), ...(current.spent ?? [])]);
+  if (now && now.revealed.length > 0) spent.add(now.boardId);
+  restored.spent = [...spent];
+  for (const id of spent) {
+    if (!restored.boardsPlayed.includes(id)) restored.boardsPlayed.push(id);
   }
   return restored;
 }

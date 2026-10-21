@@ -895,7 +895,8 @@ function PhaseControls({
   }, [view.step]);
   const pick = (team: string) => (v: string) =>
     setPicks((p) => ({ ...p, [team]: v }));
-  const name = (id: string | null) => (id ? (names[id] ?? "Team") : "Team");
+  const name = (id: string | null) =>
+    id ? (names[id] ?? "A removed team") : "Team";
 
   const answerButtons = (
     onPick: (answerId: string | null) => void,
@@ -1034,7 +1035,8 @@ function PhaseControls({
         </div>
       );
     case "steal": {
-      const stealers = stealersOf(rules, board);
+      // A team deleted mid-board can't answer.
+      const stealers = stealersOf(rules, board).filter((t) => t in names);
       const ready = stealers.every((t) => picks[t]);
       const forBank =
         opts.scoring === "bank" && opts.stealReward === "bankPlusRow";
@@ -1092,7 +1094,8 @@ function PhaseControls({
       );
     }
     case "allPlay": {
-      const ready = board.teams.every((t) => picks[t]);
+      const playing = board.teams.filter((t) => t in names);
+      const ready = playing.every((t) => picks[t]);
       return (
         <div className="flex flex-col gap-2">
           <p className="font-semibold">
@@ -1100,7 +1103,7 @@ function PhaseControls({
             team&apos;s answer, then reveal.
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {board.teams.map((t) => (
+            {playing.map((t) => (
               <AnswerSelect
                 key={t}
                 label={name(t)}
@@ -1117,7 +1120,7 @@ function PhaseControls({
                 send({
                   type: "allPlayRound",
                   answers: Object.fromEntries(
-                    board.teams.map((t) => [t, asAnswer(picks[t]!)]),
+                    playing.map((t) => [t, asAnswer(picks[t]!)]),
                   ),
                 })
               }
@@ -1129,6 +1132,18 @@ function PhaseControls({
         </div>
       );
     }
+    case "open":
+      return (
+        <OpenControls
+          board={board}
+          names={names}
+          hidden={hidden}
+          disabled={disabled}
+          penalty={opts.missPenalty}
+          send={send}
+          closeButton={closeButton}
+        />
+      );
     case "race":
       return (
         <RaceControls
@@ -1145,6 +1160,106 @@ function PhaseControls({
     default:
       return null;
   }
+}
+
+/**
+ * Open answering: tap every team that got it, then the answer. Tapping an
+ * answer with no team chosen just reveals it, for no points.
+ */
+function OpenControls({
+  board,
+  names,
+  hidden,
+  disabled,
+  penalty,
+  send,
+  closeButton,
+}: {
+  board: NonNullable<HostView["state"]>["board"] & object;
+  names: Record<string, string>;
+  hidden: Hidden;
+  disabled: boolean;
+  penalty: number;
+  send: (
+    action: Parameters<
+      ReturnType<typeof api.rankedAnswers.act.useMutation>["mutate"]
+    >[0]["action"],
+    onDone?: () => void,
+  ) => void;
+  closeButton: React.ReactNode;
+}) {
+  const [who, setWho] = useState<string[]>([]);
+  const playing = board.teams.filter((t) => t in names);
+  const toggle = (t: string) =>
+    setWho((cur) =>
+      cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t],
+    );
+  const label =
+    who.length === 0
+      ? "Reveal for no one"
+      : who.map((t) => names[t]).join(" + ");
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="font-semibold">Who got it? Tap every team that did.</p>
+      <div
+        role="group"
+        aria-label="Teams that got it"
+        className="flex flex-wrap gap-2"
+      >
+        {playing.map((t) => (
+          <Button
+            key={t}
+            size="sm"
+            variant={who.includes(t) ? "default" : "outline"}
+            aria-pressed={who.includes(t)}
+            disabled={disabled}
+            onClick={() => toggle(t)}
+          >
+            {who.includes(t) ? "✓ " : ""}
+            {names[t]}
+          </Button>
+        ))}
+        {who.length > 0 && (
+          <Button size="sm" variant="ghost" onClick={() => setWho([])}>
+            Clear
+          </Button>
+        )}
+      </div>
+      <p className="text-muted-foreground text-sm">
+        Then tap the answer they gave ({label}):
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {hidden.map((a) => (
+          <Button
+            key={a.id}
+            disabled={disabled}
+            className="bg-info text-info-foreground hover:bg-info/90"
+            onClick={() =>
+              send({ type: "credit", answerId: a.id, teams: who }, () =>
+                setWho([]),
+              )
+            }
+          >
+            #{a.rank} {a.text}
+          </Button>
+        ))}
+      </div>
+      {penalty > 0 && who.length === 1 && (
+        <Button
+          variant="destructive"
+          disabled={disabled}
+          className="self-start"
+          onClick={() =>
+            send({ type: "miss", team: who[0]! }, () => setWho([]))
+          }
+        >
+          ✕ Wrong: {names[who[0]!]} loses {penalty}
+        </Button>
+      )}
+      {closeButton}
+    </div>
+  );
 }
 
 /**

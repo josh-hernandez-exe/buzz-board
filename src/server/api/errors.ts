@@ -536,6 +536,8 @@ function engineMessage(error: EngineError): string {
       return "That team can't answer right now.";
     case "teamLockedOut":
       return "That team is sitting out until another answer is found.";
+    case "answerShown":
+      return "That answer is already on the board.";
     case "badTeams":
       return "Choose at least two different teams from this game.";
   }

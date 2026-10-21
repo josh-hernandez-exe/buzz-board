@@ -226,24 +226,34 @@ export async function startMode(
 const hash = (value: unknown) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
+/**
+ * Adds the points to the scoreboard and returns what was applied. Teams
+ * deleted since the board started are skipped: their scores are gone, and
+ * one missing team must never block play or undo for everyone else.
+ */
 async function applyScores(
   tx: GameTx,
   gameId: string,
   actorUserId: string,
   requestId: string,
   scores: Record<string, number>,
-): Promise<Result<void, ModeError>> {
-  const changes = Object.fromEntries(
-    Object.entries(scores).filter(([, p]) => p !== 0),
+): Promise<Result<Record<string, number>, ModeError>> {
+  const existing = new Set(
+    (
+      await tx.gameTeam.findMany({ where: { gameId }, select: { id: true } })
+    ).map((t) => t.id),
   );
-  if (Object.keys(changes).length === 0) return ok(undefined);
+  const changes = Object.fromEntries(
+    Object.entries(scores).filter(([t, p]) => p !== 0 && existing.has(t)),
+  );
+  if (Object.keys(changes).length === 0) return ok({});
   const result = await scoreCommandInTx(tx, {
     gameId,
     actorUserId,
     requestId: `${requestId}-score`,
     command: { kind: "add", changes },
   });
-  return result.isErr() ? err(result.error) : ok(undefined);
+  return result.isErr() ? err(result.error) : ok(changes);
 }
 
 /**
@@ -279,7 +289,13 @@ export async function actInMode({
       if (mode.step !== expectedStep) {
         return err({ kind: "stepConflict", step: mode.step });
       }
-      const state = mode.state as unknown as EngineState;
+      let state = mode.state as unknown as EngineState;
+      if (action.type === "startBoard") {
+        // Each board is played by the teams in the game now: a team added
+        // since the start joins in, a deleted one drops out.
+        const current = (await teamsInOrder(tx, gameId)).map((t) => t.id);
+        state = { ...state, teams: current };
+      }
       const step = apply(mode.content as unknown as Content, state, action);
       if (step.isErr()) {
         return err({ kind: "modeRule", error: step.error });
@@ -293,9 +309,10 @@ export async function actInMode({
       );
       if (scored.isErr()) return err(scored.error);
 
+      // Undo reverses exactly what was applied.
       const history = [
         ...(mode.history as unknown as HistoryEntry[]),
-        { state, scores: step.value.scores },
+        { state: mode.state as unknown as EngineState, scores: scored.value },
       ].slice(-HISTORY_LIMIT);
       await tx.gameMode.update({
         where: { gameId },
@@ -312,7 +329,7 @@ export async function actInMode({
           action: `ranked.${action.type}`,
           actorUserId,
           payloadHash: hash(action),
-          result: json({ step: mode.step + 1, scores: step.value.scores }),
+          result: json({ step: mode.step + 1, scores: scored.value }),
         },
       });
       return ok({ step: mode.step + 1, replayed: false });

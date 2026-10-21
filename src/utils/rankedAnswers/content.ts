@@ -5,6 +5,7 @@
 import { z } from "zod";
 
 export const PLAY_STYLES = [
+  "open",
   "classic",
   "faceOffLadder",
   "roundRobin",
@@ -16,6 +17,7 @@ export type PlayStyle = (typeof PLAY_STYLES)[number];
 
 /** Team counts each style supports. */
 export const STYLE_TEAM_RANGE: Record<PlayStyle, [number, number]> = {
+  open: [2, 50],
   classic: [2, 2],
   faceOffLadder: [3, 8],
   roundRobin: [2, 12],
@@ -25,6 +27,7 @@ export const STYLE_TEAM_RANGE: Record<PlayStyle, [number, number]> = {
 };
 
 export const STYLE_LABEL: Record<PlayStyle, string> = {
+  open: "Open answering (2–50 teams)",
   classic: "Classic (2 teams)",
   faceOffLadder: "Face-off ladder (3–8 teams)",
   roundRobin: "Round robin (2–12 teams)",
@@ -34,6 +37,7 @@ export const STYLE_LABEL: Record<PlayStyle, string> = {
 };
 
 export const STYLE_DESCRIPTION: Record<PlayStyle, string> = {
+  open: "No turns: any team can answer at any time. The host reveals each answer and credits every team that got it.",
   classic:
     "Face-off, then the winning team plays or passes. The playing team answers until it clears the board or reaches the strike limit; then the other team gets one steal. The winner takes the bank.",
   faceOffLadder:
@@ -51,8 +55,7 @@ export const STYLE_DESCRIPTION: Record<PlayStyle, string> = {
 /** The style suggested for a number of teams. */
 export function suggestedStyle(teamCount: number): PlayStyle {
   if (teamCount <= 2) return "classic";
-  if (teamCount <= 6) return "faceOffLadder";
-  return "allPlay";
+  return "open";
 }
 
 export const DEFAULT_POINTS = [30, 25, 20, 15, 10, 8, 5, 2];
@@ -173,7 +176,7 @@ export function optionsFor(rules: Rules) {
     stealReward: faceOff && r.stealBy !== "none" && r.scoring === "bank",
     turnCycles: style === "roundRobin" || style === "passAlong",
     allPlayRounds: style === "allPlay",
-    sharedAnswers: style === "allPlay",
+    sharedAnswers: style === "allPlay" || style === "open",
     raceLockout: style === "buzzRace",
     missPenalty: style !== "allPlay",
   };
@@ -193,6 +196,7 @@ export function defaultRules(teamCount: number): Rules {
 }
 
 export type PresetId =
+  | "open"
   | "classic"
   | "noFaceOff"
   | "ladder"
@@ -216,6 +220,14 @@ export type Preset = {
  * stays editable afterwards.
  */
 export const PRESETS: Preset[] = [
+  {
+    id: "open",
+    label: "Open answering",
+    teams: [2, 50],
+    summary:
+      "Trivia style: anyone can answer at any time, no turns. Reveal each answer and credit every team that got it.",
+    rules: { playStyle: "open", sharedAnswers: "full" },
+  },
   {
     id: "classic",
     label: "Classic feud",
@@ -298,8 +310,7 @@ export function presetRules(id: PresetId, teamCount: number): Rules {
 /** The preset suggested for a number of teams. */
 export function suggestedPreset(teamCount: number): PresetId {
   if (teamCount <= 2) return "classic";
-  if (teamCount <= 6) return "ladder";
-  return "allPlay";
+  return "open";
 }
 
 /** Points for the row at `rank` (1-based) on `board`. */

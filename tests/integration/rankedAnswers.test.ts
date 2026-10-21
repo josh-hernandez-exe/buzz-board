@@ -368,3 +368,36 @@ describe("rules chosen at game creation", () => {
     expect(scores[t2!]).toBeGreaterThan(0);
   });
 });
+
+describe("teams changing mid-game", () => {
+  it("a deleted team never blocks play or undo, and a new team joins the next board", async () => {
+    const created = await createGame({ teams: 3 });
+    const ra = created.admin.rankedAnswers;
+    const content = sampleContent(3);
+    content.rules = presetRules("roundRobin", 3);
+    await ra.saveDraft({ draft: content, expectedRevision: 0 });
+    await ra.start();
+    const [main1, main2] = content.boards.filter((b) => b.role === "main");
+    const [t1, t2, t3] = created.gameTeams.map((t) => t.id);
+    await act(ra, { type: "startBoard", boardId: main1!.id });
+    // Team 1 scores the top answer, then is deleted.
+    await act(ra, { type: "answer", answerId: main1!.answers[0]!.id });
+    await created.admin.gameAdmin.removeTeam({ gameTeamId: t1! });
+
+    // Undoing the action that scored the deleted team still works.
+    const { step } = await ra.hostView();
+    await ra.undo({ expectedStep: step, requestId: rid() });
+    // Play goes on: Team 1's turn again (deleted), then Team 2 scores.
+    await act(ra, { type: "answer", answerId: null });
+    await act(ra, { type: "answer", answerId: main1!.answers[1]!.id });
+    const scores = await currentScores(created.game.id);
+    expect(scores[t2!]).toBeGreaterThan(0);
+
+    // A team added now plays the next board; the deleted one doesn't.
+    const added = await created.admin.gameAdmin.addTeam();
+    await act(ra, { type: "closeBoard" });
+    await act(ra, { type: "startBoard", boardId: main2!.id });
+    const view = await ra.hostView();
+    expect(view.state!.board!.teams).toEqual([t2, t3, added.id]);
+  });
+});

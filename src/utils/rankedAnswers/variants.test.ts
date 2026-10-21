@@ -416,3 +416,64 @@ describe("target score", () => {
     expect(projectPublic(c, state, "running").targetScore).toBe(300);
   });
 });
+
+describe("open answering", () => {
+  const credit = (n: number, teams: string[]): Action => ({
+    type: "credit",
+    answerId: a(n),
+    teams,
+  });
+
+  it("any team, any order: every team that got a row scores it", () => {
+    const c = content({ playStyle: "open" });
+    const { totals, board: b } = play(
+      c,
+      ["A", "B", "C"],
+      [start(), credit(3, ["C"]), credit(1, ["A", "B"]), credit(5, [])],
+    );
+    expect(totals).toEqual({ A: 50, B: 50, C: 30 });
+    expect(b.phase).toBe("open");
+    expect(b.revealed.find((r) => r.rank === 5)).toMatchObject({
+      teams: [],
+      points: 0,
+    });
+  });
+
+  it("refuses an answer already on the board, and closes when all are found", () => {
+    const c = content({ playStyle: "open" });
+    const { state } = play(c, two, [start(), credit(1, ["A"])]);
+    expect(apply(c, state, credit(1, ["B"]))._unsafeUnwrapErr()).toEqual({
+      kind: "answerShown",
+    });
+    const all = play(c, two, [
+      start(),
+      ...[1, 2, 3, 4, 5].map((n) => credit(n, ["A"])),
+    ]);
+    expect(all.board.phase).toBe("closed");
+  });
+
+  it("split and unique-only sharing, and a miss penalty", () => {
+    const split = play(
+      content({ playStyle: "open", sharedAnswers: "split" }),
+      two,
+      [start(), credit(1, ["A", "B"])],
+    );
+    expect(split.totals).toEqual({ A: 25, B: 25 });
+    const unique = play(
+      content({ playStyle: "open", sharedAnswers: "uniqueOnly" }),
+      two,
+      [start(), credit(1, ["A", "B"]), credit(2, ["B"])],
+    );
+    expect(unique.totals).toEqual({ A: 0, B: 40 });
+    const penalty = play(content({ playStyle: "open", missPenalty: 4 }), two, [
+      start(),
+      { type: "miss", team: "A" },
+    ]);
+    expect(penalty.totals).toEqual({ A: -4, B: 0 });
+  });
+
+  it("is suggested for three or more teams", () => {
+    expect(presetRules("open", 5).playStyle).toBe("open");
+    expect(resolveRules(presetRules("open", 5)).sharedAnswers).toBe("full");
+  });
+});
