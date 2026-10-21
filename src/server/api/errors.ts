@@ -11,6 +11,8 @@ import { type StaffError } from "@/server/staff/staffService";
 import { type RosterError } from "@/server/roster/rosterService";
 import { type IdentityError } from "@/server/identity/identityService";
 import { type ChatError } from "@/server/chat/chatService";
+import { type ModeError } from "@/server/modes/rankedAnswersService";
+import { type EngineError } from "@/utils/rankedAnswers/engine";
 import { nameErrorMessage } from "@/utils/displayName";
 import { SCORE_LIMITS } from "@/server/scores/scoreMath";
 import { helpHref } from "@/help/manifest";
@@ -24,7 +26,8 @@ export type ServiceError =
   | StaffError
   | RosterError
   | IdentityError
-  | ChatError;
+  | ChatError
+  | ModeError;
 
 const number = (n: number) => n.toLocaleString("en-US");
 
@@ -105,6 +108,8 @@ const ERROR_HELP: Partial<Record<ServiceError["kind"], string>> = {
   chatUnavailable: helpHref("chat", "why-cant-i-send-a-message"),
   invalidMessage: helpHref("chat", "why-cant-i-send-a-message"),
   cannotMute: helpHref("chat", "how-do-i-moderate-chat"),
+  preflightBlocked: helpHref("ranked-answers", "how-do-i-set-up-boards"),
+  stepConflict: helpHref("ranked-answers", "running-a-board"),
 };
 
 /** "about 3 more minutes", from server time, so device clocks don't matter. */
@@ -437,5 +442,65 @@ function baseError(error: ServiceError): TRPCError {
         code: "INTERNAL_SERVER_ERROR",
         message: "Score history is inconsistent; the change was not applied.",
       });
+    case "invalidContent":
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message: `The boards couldn't be saved: ${error.issues.join("; ")}`,
+      });
+    case "draftConflict":
+      return new TRPCError({
+        code: "CONFLICT",
+        message:
+          "Someone else saved these boards while you were editing. Your changes are still here: copy them (Export), reload, and apply them again.",
+      });
+    case "modeAlreadyStarted":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "This game mode has already started, so its boards can't be changed.",
+      });
+    case "modeNotRunning":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "The game mode isn't running.",
+      });
+    case "preflightBlocked":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: `Fix these before starting: ${error.problems.join(" ")}`,
+      });
+    case "stepConflict":
+      return new TRPCError({
+        code: "CONFLICT",
+        message:
+          "Another host changed the board first. Your screen has been updated; check it and try again.",
+      });
+    case "modeRule":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: engineMessage(error.error),
+      });
+    case "nothingToUndoInMode":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "There's nothing to undo.",
+      });
+  }
+}
+
+function engineMessage(error: EngineError): string {
+  switch (error.kind) {
+    case "wrongPhase":
+      return "That can't be done at this point in the board.";
+    case "unknownBoard":
+      return "That board doesn't exist.";
+    case "boardAlreadyPlayed":
+      return "That board has already been played.";
+    case "unknownAnswer":
+      return "That isn't one of this board's answers.";
+    case "unknownTeam":
+      return "That team can't answer right now.";
+    case "badTeams":
+      return "Choose at least two different teams from this game.";
   }
 }

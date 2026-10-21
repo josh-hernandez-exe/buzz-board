@@ -1,3 +1,4 @@
+import type { PublicModeView } from "@/utils/rankedAnswers/projection";
 import type { Prisma } from "@prisma/client";
 import type { Game, GameTeam, GameUser, User } from "@prisma/client";
 
@@ -114,6 +115,8 @@ export type PublicGameState = {
     numPlayers: number;
     score: number;
   }>;
+  /** The running game mode's board, never including hidden answers. */
+  mode: PublicModeView | null;
 };
 
 export type GameTeamFromPublicState = PublicGameState["gameTeams"][number];
@@ -164,6 +167,8 @@ export type PrivateGameState = {
     gameUserId: GameUser["id"] | null;
     gameTeamId: GameTeam["id"];
   } | null;
+  /** The running game mode's board, never including hidden answers. */
+  mode: PublicModeView | null;
 };
 
 export type GameTeamFromPrivateState = PrivateGameState["gameTeams"][number];

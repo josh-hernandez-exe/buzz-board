@@ -22,6 +22,7 @@ import { InformationTab } from "./InformationTab";
 import { GameScope } from "@/app/_components/client/GameScope";
 import { PlayerHeader } from "@/app/_components/client/PlayerStatus";
 import { ChatPanel } from "@/app/_components/client/ChatPanel";
+import { LiveRankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
 
 export default async function GameUserPage({
   params,
@@ -101,6 +102,7 @@ export default async function GameUserPage({
                 <TabsTrigger value="information">Info</TabsTrigger>
               </TabsList>
               <TabsContent value="buzzer" className="flex flex-col gap-4">
+                <LiveRankedAnswersBoard />
                 <GameBuzzerTab gameUserId={gameUser.id} />
                 <GameWhoBuzzedIn gameUserId={gameUser.id} />
               </TabsContent>

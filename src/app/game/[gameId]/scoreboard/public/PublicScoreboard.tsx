@@ -11,6 +11,7 @@ import {
   PublicLiveGameStateProvider,
   usePublicLiveGameState,
 } from "@/app/_components/client/LiveGameState";
+import { RankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
 import { Button } from "@/app/_components/ui/button";
 import { env } from "@/env";
 
@@ -75,13 +76,21 @@ function AudienceDisplay({
         </Button>
       </header>
 
-      <p
-        role="status"
-        data-testid="display-status"
-        className="text-center text-4xl font-bold"
-      >
-        {buzzerLine(state)}
-      </p>
+      {state.mode?.status === "running" ? (
+        <RankedAnswersBoard
+          view={state.mode}
+          names={Object.fromEntries(gameTeams.map((t) => [t.id, t.name]))}
+          size="large"
+        />
+      ) : (
+        <p
+          role="status"
+          data-testid="display-status"
+          className="text-center text-4xl font-bold"
+        >
+          {buzzerLine(state)}
+        </p>
+      )}
 
       {game.joinCode && (
         <section

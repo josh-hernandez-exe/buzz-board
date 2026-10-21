@@ -90,6 +90,14 @@ export const HELP_ARTICLES = [
     facts: ["chatLimits"],
   },
   {
+    id: "ranked-answers",
+    title: "Ranked Answers (family-feud style)",
+    summary:
+      "Set up boards of ranked answers, choose a play style for 2 to 50 teams, run each board, fix mistakes and go back to the buzzer.",
+    audiences: ["host", "player"],
+    facts: [],
+  },
+  {
     id: "troubleshooting",
     title: "Troubleshooting",
     summary:

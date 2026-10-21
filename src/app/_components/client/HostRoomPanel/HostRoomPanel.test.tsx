@@ -66,6 +66,7 @@ function gameState(game: Partial<PrivateGameState["game"]> = {}, players = 0) {
       ]),
     ),
     buzzWinner: null,
+    mode: null,
   };
 }
 

@@ -85,6 +85,7 @@ function gameState(
       },
     },
     buzzWinner: null,
+    mode: null,
     ...rest,
   };
 }

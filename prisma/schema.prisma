@@ -128,6 +128,7 @@ model Game {
   chatChannels     ChatChannel[]
   chatMessages     ChatMessage[]
   chatMutes        ChatMute[]
+  gameMode         GameMode?
 
   @@unique([createdById, creationRequestId])
 }
@@ -404,4 +405,33 @@ model ChatMute {
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
   @@unique([gameId, actorKey])
+}
+
+/// An optional integrated game mode (for example Ranked Answers) for one
+/// game. The draft is edited freely; starting freezes it into `content`, and
+/// play advances `state`. Ending hands the room back to basic controls for
+/// good; scores, roster and chat are unaffected.
+model GameMode {
+  id            String    @id @default(cuid())
+  gameId        String    @unique
+  /// "rankedAnswers".
+  kind          String    @db.VarChar(32)
+  /// "draft", "running" or "ended".
+  status        String    @default("draft") @db.VarChar(16)
+  draft         Json
+  /// Bumped on every draft save, so two editors can't overwrite each other.
+  draftRevision Int       @default(0)
+  /// The draft as frozen at start.
+  content       Json?
+  state         Json?
+  /// Earlier states with the points each step awarded, for "undo last".
+  history       Json      @default("[]")
+  /// Bumped on every change while running; actions name the step they saw.
+  step          Int       @default(0)
+  startedAt     DateTime?
+  endedAt       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
 }

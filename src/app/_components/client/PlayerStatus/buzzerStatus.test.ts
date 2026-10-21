@@ -69,6 +69,7 @@ function state(
       },
     },
     buzzWinner: overrides.buzzWinner ?? null,
+    mode: null,
   };
 }
 

@@ -24,6 +24,7 @@ import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { HostRoomPanel } from "@/app/_components/client/HostRoomPanel";
 import { HelpersPanel } from "@/app/_components/client/HelpersPanel";
 import { ChatPanel } from "@/app/_components/client/ChatPanel";
+import { RankedAnswersPanel } from "@/app/_components/client/RankedAnswersPanel";
 import { ROLE_LABEL, can, type StaffRoleName } from "@/utils/capabilities";
 
 export function GameAdminInfo({
@@ -83,6 +84,9 @@ export function GameAdminInfo({
           {runsGame && (
             <TabsTrigger value="team-management">Team Management</TabsTrigger>
           )}
+          {runsGame && (
+            <TabsTrigger value="ranked-answers">Ranked Answers</TabsTrigger>
+          )}
           <TabsTrigger value="player-management">Player Management</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
           <TabsTrigger value="helpers">Helpers</TabsTrigger>
@@ -123,6 +127,13 @@ export function GameAdminInfo({
                 );
               })}
             </>
+          )}
+        </TabsContent>
+        <TabsContent value="ranked-answers">
+          {isPending ? (
+            <Skeleton className="h-[400px] w-full" />
+          ) : (
+            runsGame && <RankedAnswersPanel />
           )}
         </TabsContent>
         <TabsContent value="player-management">

@@ -4,6 +4,7 @@ import type { Result } from "neverthrow";
 
 import { parseScoreMap } from "@/server/scores/scoreMath";
 import { getBuzzWinner } from "@/server/buzzer/buzzerService";
+import { publicModeView } from "@/utils/rankedAnswers/projection";
 import { err, ok } from "neverthrow";
 
 import type { PublicGameState, PrivateGameState, GameSettings } from "@/types";
@@ -29,6 +30,7 @@ export async function getPublicGameState({
       status: true,
       code: true,
       joiningOpen: true,
+      gameMode: { select: { status: true, content: true, state: true } },
       gameTeams: {
         select: {
           id: true,
@@ -81,6 +83,7 @@ export async function getPublicGameState({
       numPlayers: gameTeam._count.gameUsers,
       score: scoreboardState[gameTeam.id] ?? 0,
     })),
+    mode: publicModeView(game.gameMode),
   };
 
   data.gameTeams.sort((a, b) => a.index - b.index);
@@ -100,6 +103,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       status: true,
       finishedAt: true,
       joiningOpen: true,
+      gameMode: { select: { status: true, content: true, state: true } },
       teamAssignment: true,
       chatEnabled: true,
       gameTeams: {
@@ -160,6 +164,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
 
   const data: PrivateGameState = {
     buzzWinner,
+    mode: publicModeView(game.gameMode),
     game: {
       id: game.id,
       name: game.name,

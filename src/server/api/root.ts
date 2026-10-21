@@ -3,6 +3,7 @@ import { gameAdminRouter } from "@/server/api/routers/gameAdmin";
 import { gameUserRouter } from "@/server/api/routers/gameUser";
 import { gameGeneralRouter } from "@/server/api/routers/gameGeneral";
 import { publicRouter } from "@/server/api/routers/public";
+import { rankedAnswersRouter } from "@/server/api/routers/rankedAnswers";
 import { chatRouter } from "@/server/api/routers/chat";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
@@ -18,6 +19,7 @@ export const appRouter = createTRPCRouter({
   gameAdmin: gameAdminRouter,
   gameGeneral: gameGeneralRouter,
   chat: chatRouter,
+  rankedAnswers: rankedAnswersRouter,
 });
 
 // export type definition of API
