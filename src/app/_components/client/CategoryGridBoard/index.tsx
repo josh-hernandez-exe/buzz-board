@@ -1,6 +1,7 @@
 "use client";
 
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
+import { MediaBlock } from "@/app/_components/client/MediaBlock";
 import { cn } from "@/app/_lib/utils";
 import type { PublicGridView } from "@/utils/categoryGrid/projection";
 
@@ -83,6 +84,7 @@ export function CategoryGridBoard({
           >
             {clue.prompt}
           </p>
+          <MediaBlock media={clue.promptMedia} large={large} />
           {clue.answer !== null ? (
             <p
               data-testid="grid-answer"
@@ -99,6 +101,9 @@ export function CategoryGridBoard({
                 Answer (hidden from players): {hostAnswer}
               </p>
             )
+          )}
+          {clue.answer !== null && (
+            <MediaBlock media={clue.answerMedia} large={large} />
           )}
           {clue.attempts.length > 0 && (
             <ul

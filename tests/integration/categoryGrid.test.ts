@@ -62,7 +62,7 @@ describe("setup", () => {
     const view = await admin.categoryGrid.hostView();
     expect(view.status).toBe("draft");
     expect(view.preflight.blocking).toEqual([]);
-    expect(view.draft.modes.categoryGrid.rules).toEqual({
+    expect(view.draft.modes.categoryGrid?.rules).toEqual({
       wrongAnswerPenalty: "clueValue",
     });
     // The Ranked Answers tab knows the game uses a grid.
@@ -196,7 +196,7 @@ describe("play", () => {
     const created = await createGame({ teams: 3 });
     const cg = created.admin.categoryGrid;
     const bank = sampleBank();
-    bank.modes.categoryGrid.rules = { wrongAnswerPenalty: "clueValue" };
+    bank.modes.categoryGrid!.rules = { wrongAnswerPenalty: "clueValue" };
     await cg.saveDraft({ draft: bank, expectedRevision: 0 });
     await cg.start();
     const [a, b, c] = created.gameTeams.map((t) => t.id);

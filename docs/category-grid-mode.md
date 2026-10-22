@@ -12,7 +12,7 @@ A quiz-show grid: categories across the top, clues worth more as you go down. It
 
 | Part | Where | Notes |
 | --- | --- | --- |
-| Content | [content.ts](../src/utils/categoryGrid/content.ts) | The plan's Question Bank v1 shape (`schemaVersion`, `kind`, `title`, `questions`, `modes.categoryGrid.columns/rules`), **text only**: media fields are refused for now. Other layouts (`modes.pubQuiz`) are kept. Up to 8 categories × 10 rows; rectangular. Preflight blocks empty titles, clues or answers, missing or repeated questions and ragged grids. |
+| Content | [content.ts](../src/utils/categoryGrid/content.ts) | The plan's Question Bank v1 shape (`schemaVersion`, `kind`, `title`, `questions`, `modes.categoryGrid.columns/rules`), with image/GIF, audio and YouTube media ([media.ts](../src/utils/media.ts): HTTPS only, no credentials, exact YouTube hosts, privacy-enhanced embeds). Other layouts (`modes.pubQuiz`) are kept. Up to 8 categories × 10 rows; rectangular. Preflight blocks empty titles, clues or answers, missing or repeated questions and ragged grids. |
 | Rules | content.ts | `wrongAnswerLockout` (default on) and `wrongAnswerPenalty` (`none` default, or `clueValue`), as in the plan |
 | Engine | [engine.ts](../src/utils/categoryGrid/engine.ts) | Pure reducer. Open a clue (the selecting team's pick) → judge right or wrong → reveal → back to the grid. A right answer scores and takes the next pick; an unanswered or voided clue leaves the pick where it was. Host can pass the pick. A void takes back only that clue's points. |
 | Projection | [projection.ts](../src/utils/categoryGrid/projection.ts) | Closed tiles carry only label and points. A clue's text appears while it's open, and its answer only once shown. Accepted answers and host notes never reach players. |
@@ -44,7 +44,7 @@ The host opens the buzzer themselves after reading the clue ("deliberately opens
 ## Evidence
 
 - [engine.test.ts](../src/utils/categoryGrid/engine.test.ts):
-  - Sample validity and preflight, and text-only refusal of media.
+  - Sample validity and preflight, media accepted and unsafe media blocked, and media sent only while a clue is open.
   - Scoring and the pick, lockout and penalty, void, wrong-phase refusals.
   - Undo honesty and privacy of the projection.
   - 300 randomised games checking that seen clues stay used, seen answers stay seen, players never get an unshown answer, and totals equal replaying history.
@@ -58,6 +58,6 @@ The host opens the buzzer themselves after reading the clue ("deliberately opens
 
 ## Not done yet
 
-- **Media** (image, audio, YouTube) from Question Bank v1. Imports with media are refused rather than silently dropped.
+- **Uploads** (PR20, UploadThing): media is added by link only. Uploads need a provider account and your approval.
 - **Wagers / "daily doubles"**, a final round, and timers. These are not in the plan's MVP either.
 - **A shared question library** across modes (Phase 4A) and Sequential Quiz (Phase 4C).

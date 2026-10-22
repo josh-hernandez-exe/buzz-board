@@ -63,23 +63,57 @@ describe("content", () => {
     expect(problems).toMatch(/Category 1 needs a title/);
     expect(problems).toMatch(/the clue is empty/);
     const ragged = structuredClone(sampleBank());
-    ragged.modes.categoryGrid.columns[0]!.cells.pop();
+    ragged.modes.categoryGrid!.columns[0]!.cells.pop();
     expect(gridPreflight(ragged, 2).blocking).toContain(
       "Every category needs the same number of clues.",
     );
     const missing = structuredClone(sampleBank());
-    missing.modes.categoryGrid.columns[0]!.cells[0]!.questionId = "nope";
+    missing.modes.categoryGrid!.columns[0]!.cells[0]!.questionId = "nope";
     expect(gridPreflight(missing, 2).blocking.join()).toMatch(
       /question "nope" doesn't exist/,
     );
   });
 
-  it("rejects media and unknown fields, as the text-only format", () => {
-    const b = sampleBank() as unknown as {
+  it("accepts media, refuses unknown fields, and blocks unsafe media at start", () => {
+    const b = structuredClone(sampleBank());
+    b.questions[0]!.prompt.media = [
+      { type: "image", url: "https://x.example/tree.png", alt: "A tree" },
+    ];
+    expect(bankSchema.safeParse(b).success).toBe(true);
+    const odd = structuredClone(b) as unknown as {
       questions: { prompt: Record<string, unknown> }[];
     };
-    b.questions[0]!.prompt.media = [{ type: "image", url: "https://x" }];
-    expect(bankSchema.safeParse(b).success).toBe(false);
+    odd.questions[0]!.prompt.html = "<b>";
+    expect(bankSchema.safeParse(odd).success).toBe(false);
+    b.questions[1]!.prompt.media = [
+      { type: "image", url: "javascript:alert(1)", alt: "x" },
+    ];
+    expect(gridPreflight(b, 2).blocking.join()).toMatch(/isn't a safe link/);
+  });
+
+  it("only sends a clue's media while it's open, and the answer's once shown", () => {
+    const b = structuredClone(sampleBank());
+    const q = b.questions.find((x) => x.id === "cat1-1")!;
+    q.prompt.media = [
+      { type: "image", url: "https://x.example/flake.png", alt: "A snowflake" },
+      { type: "image", url: "javascript:alert(1)", alt: "bad" },
+    ];
+    q.answer.media = [
+      { type: "image", url: "https://x.example/six.png", alt: "Six sides" },
+    ];
+    const s0 = initialGridState(["A", "B"]);
+    expect(JSON.stringify(projectGrid(b, s0, "running"))).not.toContain(
+      "flake.png",
+    );
+    const s1 = applyGrid(b, s0, open("cat1:0"))._unsafeUnwrap().state;
+    const clue = projectGrid(b, s1, "running").clue!;
+    expect(clue.promptMedia.map((m) => m.url)).toEqual([
+      "https://x.example/flake.png",
+    ]);
+    expect(clue.answerMedia).toEqual([]);
+    expect(JSON.stringify(clue)).not.toContain("six.png");
+    const s2 = applyGrid(b, s1, { type: "revealAnswer" })._unsafeUnwrap().state;
+    expect(projectGrid(b, s2, "running").clue!.answerMedia).toHaveLength(1);
   });
 });
 

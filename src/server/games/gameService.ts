@@ -1,6 +1,7 @@
 import {
   bankSchema,
   emptyBank,
+  gridOf,
   type Bank,
   type GridRules,
 } from "@/utils/categoryGrid/content";
@@ -130,7 +131,7 @@ async function insertGame(data: {
             data: {
               gameId: created.id,
               kind: data.modeDraft.kind,
-              draft: data.modeDraft.draft as Prisma.InputJsonValue,
+              draft: data.modeDraft.draft,
               draftRevision: 1,
             },
           });
@@ -612,7 +613,7 @@ function withGridRules(bank: Bank, rules: GridRules): Bank {
     ...bank,
     modes: {
       ...bank.modes,
-      categoryGrid: { ...bank.modes.categoryGrid, rules },
+      categoryGrid: { ...gridOf(bank), rules },
     },
   };
 }

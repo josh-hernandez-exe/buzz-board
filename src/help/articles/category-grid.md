@@ -5,13 +5,31 @@ Category Grid is a quiz-show grid: categories across the top and clues worth mor
 Choose **Category Grid** under **Game** when you create a game, and tick **Start with the sample grid** to begin from a filled-in holiday trivia grid. The host desk then opens on the **Category Grid** tab. You can also set one up later in any game from that tab (owners and co-hosts only).
 
 1. Give the grid a title and type a title for each category.
-2. Select a tile to edit its **clue** (what everyone sees), its **answer**, any wordings you'll **also accept**, and private **host notes**.
+2. Select a tile to edit its **clue** (what everyone sees), its **answer**, any wordings you'll **also accept**, and private **host notes**. Clues and answers can also have up to four pieces of **media** each: pictures or GIFs, audio, or YouTube videos (see below).
 3. Set each row's value in the **Value** column. Use **Add category** (up to 8) and **Add row** (up to 10) to change the size. Every category has the same number of clues.
 4. Choose the rules: whether **a wrong answer locks the team out of that clue** (on by default), and whether **wrong answers lose the clue's value**.
 5. **Save grid**. Anything under **Fix before starting** must be fixed first.
 6. When everyone has joined, **Start Category Grid**. The clues are locked from then on.
 
-**Import or export** shows the grid as text in the question bank format, so you can keep a backup or reuse it in another game. Clues are text only for now: images, audio and video aren't supported yet.
+**Import or export** shows the grid as text in the question bank format, so you can keep a backup or reuse it in another game.
+
+## Can clues have pictures, sound or video?
+
+Yes, up to four per clue and four per answer, added by link:
+
+| Type | What you need | How it plays |
+| --- | --- | --- |
+| **Picture or GIF** | A full `https://` link and a description (alt text), which mustn't give the answer away | Pictures show when the clue opens. GIFs wait for **Play animation** (a `.gif` link is marked animated for you) |
+| **Audio** | A full `https://` link to a sound file and a label | The browser's own player; nothing loads until someone presses play. Optional start time |
+| **YouTube** | A YouTube video link (watch, share, Shorts or embed) and a label | **Load video** shows it from youtube-nocookie.com, the privacy-enhanced player. Optional start time |
+
+- **When media loads:** nothing loads while the grid is showing, only when its clue opens. Answer media appears with the answer.
+- **If something doesn't load:** the screen says so, with **Retry** and **Open original**. Nobody's score changes.
+- **Where the files live:** links are used as they are, straight from where the files are hosted. The app doesn't upload or copy them.
+  - Use only media you have the right to share.
+  - Remember that anyone with the link can open it.
+  - Check everything plays on the computer that shares the display before the event.
+- **Sound:** play it from the shared display computer, so the call hears it once.
 
 Keep your answers private: clues stay hidden until opened, and answers until shown. Only owners and co-hosts see them early.
 

@@ -165,3 +165,68 @@ test("Ranked Answers open answering: any team, any time, several at once", async
   await hostContext.close();
   await display.context().close();
 });
+
+test("grid media: added in the editor, loaded only when the clue opens, failures shown", async ({
+  browser,
+  baseURL,
+}) => {
+  const gameName = `Media ${Date.now()}`;
+  const hostContext = await browser.newContext();
+  await signInAsNewHost(hostContext, baseURL!, "Media Host");
+  const desk = await hostContext.newPage();
+  acceptDialogs(desk);
+  await desk.goto("/dashboard");
+  await desk.getByLabel("Game name").fill(gameName);
+  await desk.getByRole("radio", { name: /^Category Grid/ }).check();
+  await desk.getByRole("button", { name: "Create game" }).click();
+  await desk.waitForURL("**/admin");
+  const game = await db.game.findFirstOrThrow({ where: { name: gameName } });
+
+  // Add a picture and a video to the first clue.
+  await desk
+    .getByRole("button", { name: "Edit Winter Science for 100" })
+    .click();
+  const clueMedia = desk.getByRole("group", { name: /^Clue media/ });
+  await clueMedia.getByRole("button", { name: "+ Picture" }).click();
+  await desk.getByLabel("Media 1 link").fill("https://media.invalid/flake.png");
+  await desk.getByLabel("Media 1 description").fill("A snowflake up close");
+  await clueMedia.getByRole("button", { name: "+ YouTube" }).click();
+  await desk.getByLabel("Media 2 link").fill("https://example.com/not-youtube");
+  await expect(
+    desk.getByTestId("media-row").getByText(/isn't a YouTube video link/),
+  ).toBeVisible();
+  await desk
+    .getByLabel("Media 2 link")
+    .fill("https://youtu.be/dQw4w9WgXcQ?si=tracking");
+  await desk.getByLabel("Media 2 label").fill("Snow falling");
+  await desk.getByRole("button", { name: "Save grid" }).click();
+  await expect(desk.getByRole("button", { name: "Saved" })).toBeVisible();
+
+  const display = await browser.newPage();
+  await display.goto(`/game/${game.id}/scoreboard/public`);
+  await desk.getByRole("button", { name: "Start Category Grid" }).click();
+  await expect(display.getByTestId("grid-board")).toBeVisible();
+  // Nothing loads while the grid is showing.
+  await expect(display.locator("img[src*='flake.png']")).toHaveCount(0);
+  await expect(display.getByTestId("media-block")).toHaveCount(0);
+
+  await desk.getByRole("gridcell", { name: "Winter Science for 100" }).click();
+  const media = display.getByTestId("media-block");
+  await expect(media).toBeVisible();
+  // The address can't resolve: the failure is shown, with Retry.
+  await expect(
+    media.getByText('Couldn\'t load the picture "A snowflake up close".'),
+  ).toBeVisible();
+  await expect(media.getByRole("button", { name: "Retry" })).toBeVisible();
+  // The video waits for a click, then embeds from the privacy domain.
+  await media.getByRole("tab", { name: /Snow falling/ }).click();
+  await expect(display.locator("iframe")).toHaveCount(0);
+  await media.getByRole("button", { name: /Load video/ }).click();
+  await expect(display.locator("iframe")).toHaveAttribute(
+    "src",
+    /^https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ\?/,
+  );
+
+  await hostContext.close();
+  await display.context().close();
+});

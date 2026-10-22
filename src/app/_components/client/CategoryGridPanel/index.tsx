@@ -6,6 +6,7 @@ import { CategoryGridBoard } from "@/app/_components/client/CategoryGridBoard";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { OtherModeNotice } from "@/app/_components/client/RankedAnswersPanel";
+import { QuestionEditor } from "@/app/_components/client/QuestionEditor";
 import { Button } from "@/app/_components/ui/button";
 import { Notice } from "@/app/_components/ui/page";
 import { cn } from "@/app/_lib/utils";
@@ -15,6 +16,7 @@ import {
   bankSchema,
   cellKey,
   findCell,
+  gridOf,
   gridPreflight,
   GRID_LIMITS,
   resolveGridRules,
@@ -90,7 +92,7 @@ const blankQuestion = (id: string): Question => ({
 function nextId(bank: Bank, prefix: string) {
   const taken = new Set([
     ...bank.questions.map((q) => q.id),
-    ...bank.modes.categoryGrid.columns.map((c) => c.id),
+    ...gridOf(bank).columns.map((c) => c.id),
   ]);
   for (let n = 1; ; n++) {
     const id = `${prefix}${n}`;
@@ -136,7 +138,7 @@ function GridEditor({ view }: { view: HostView }) {
     setDirty(true);
     save.reset();
   };
-  const grid = draft.modes.categoryGrid;
+  const grid = gridOf(draft);
   const columns = grid.columns;
   const rows = columns[0]?.cells.length ?? 0;
   const rules = resolveGridRules(grid.rules);
@@ -426,10 +428,9 @@ function GridEditor({ view }: { view: HostView }) {
       </div>
 
       {found?.question && selected && (
-        <CellEditor
+        <QuestionEditor
           key={selected}
-          category={found.column.title || "This category"}
-          label={found.cell.label}
+          title={`${found.column.title || "This category"} for ${found.cell.label}`}
           question={found.question}
           onChange={(q) => setQuestion(found.question!.id, q)}
           onClose={() => setSelected(null)}
@@ -530,98 +531,6 @@ function GridEditor({ view }: { view: HostView }) {
   );
 }
 
-function CellEditor({
-  category,
-  label,
-  question,
-  onChange,
-  onClose,
-}: {
-  category: string;
-  label: string;
-  question: Question;
-  onChange: (q: Question) => void;
-  onClose: () => void;
-}) {
-  const accepted = question.answer.acceptedAnswers ?? [];
-  const [acceptedText, setAcceptedText] = useState(accepted.join(", "));
-  return (
-    <section
-      aria-label="Edit clue"
-      className="border-primary flex flex-col gap-3 rounded-lg border-2 p-3 text-sm"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold">
-          {category} for {label}
-        </h3>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          Done
-        </Button>
-      </div>
-      <label className="flex flex-col gap-1">
-        Clue (what everyone sees)
-        <textarea
-          className={`${field} min-h-16`}
-          maxLength={GRID_LIMITS.maxText}
-          value={question.prompt.text}
-          onChange={(e) =>
-            onChange({ ...question, prompt: { text: e.target.value } })
-          }
-        />
-      </label>
-      <label className="flex flex-col gap-1">
-        Answer
-        <input
-          className={field}
-          maxLength={GRID_LIMITS.maxText}
-          value={question.answer.text}
-          onChange={(e) =>
-            onChange({
-              ...question,
-              answer: { ...question.answer, text: e.target.value },
-            })
-          }
-        />
-      </label>
-      <label className="flex flex-col gap-1">
-        Also accept (comma-separated, private to hosts)
-        <input
-          className={field}
-          value={acceptedText}
-          onChange={(e) => setAcceptedText(e.target.value)}
-          onBlur={() => {
-            const list = acceptedText
-              .split(",")
-              .map((x) => x.trim())
-              .filter(Boolean)
-              .slice(0, GRID_LIMITS.maxAccepted);
-            const { acceptedAnswers: _old, ...rest } = question.answer;
-            onChange({
-              ...question,
-              answer:
-                list.length > 0 ? { ...rest, acceptedAnswers: list } : rest,
-            });
-          }}
-        />
-      </label>
-      <label className="flex flex-col gap-1">
-        Host notes (private)
-        <textarea
-          className={`${field} min-h-12`}
-          maxLength={GRID_LIMITS.maxText}
-          value={question.hostNotes ?? ""}
-          onChange={(e) => {
-            const { hostNotes: _old, ...rest } = question;
-            onChange(
-              e.target.value ? { ...rest, hostNotes: e.target.value } : rest,
-            );
-          }}
-        />
-      </label>
-    </section>
-  );
-}
-
 function BankJson({
   bank,
   onImport,
@@ -634,8 +543,8 @@ function BankJson({
   return (
     <div className="flex flex-col gap-2 text-sm">
       <p className="text-muted-foreground">
-        The grid as a question bank (Buzz Board question bank format, version 1,
-        text only). Copy it to keep a backup, or paste one to replace the grid.
+        The grid as a question bank (Buzz Board question bank format, version
+        1). Copy it to keep a backup, or paste one to replace the grid.
       </p>
       <textarea
         aria-label="Question bank JSON"
@@ -731,7 +640,7 @@ function GridControls({ view }: { view: HostView }) {
   const busy = act.isPending || undo.isPending;
   const running = view.status === "running";
   const clue = state.clue;
-  const rules = resolveGridRules(content.modes.categoryGrid.rules);
+  const rules = resolveGridRules(gridOf(content).rules);
   const found = clue ? findCell(content, clue.cell) : null;
 
   // Whoever holds the buzz now, to pre-fill "who answered".

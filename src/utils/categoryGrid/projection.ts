@@ -4,7 +4,9 @@
  * answer only once it's shown. Accepted answers and host notes never leave
  * the server except to hosts.
  */
-import { findCell, type Bank } from "./content";
+import { safeMediaList, type Media } from "@/utils/media";
+
+import { findCell, gridOf, type Bank } from "./content";
 import { gridPhase, type GridPhase, type GridState } from "./engine";
 
 export type PublicTile = {
@@ -22,8 +24,11 @@ export type PublicClue = {
   label: string;
   points: number;
   prompt: string;
+  /** Safe media only; loaded by the viewer's browser once the clue opens. */
+  promptMedia: Media[];
   /** null until the answer is shown. */
   answer: string | null;
+  answerMedia: Media[];
   phase: "open" | "answered";
   lockedOut: string[];
   attempts: { team: string; correct: boolean }[];
@@ -46,7 +51,7 @@ export function projectGrid(
   state: GridState,
   status: "running" | "ended",
 ): PublicGridView {
-  const columns = bank.modes.categoryGrid.columns.map((column) => ({
+  const columns = gridOf(bank).columns.map((column) => ({
     title: column.title,
     tiles: column.cells.map((cell, row): PublicTile => {
       const key = `${column.id}:${row}`;
@@ -71,7 +76,11 @@ export function projectGrid(
         label: found.cell.label,
         points: found.cell.points,
         prompt: found.question.prompt.text,
+        promptMedia: safeMediaList(found.question.prompt.media),
         answer: state.clue.answerShown ? found.question.answer.text : null,
+        answerMedia: state.clue.answerShown
+          ? safeMediaList(found.question.answer.media)
+          : [],
         phase: state.clue.phase,
         lockedOut: state.clue.lockedOut,
         attempts: state.clue.attempts.map(({ team, correct }) => ({

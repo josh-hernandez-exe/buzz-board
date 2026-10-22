@@ -1,10 +1,14 @@
 /**
  * Category Grid content: a question bank and a grid that places questions
  * in columns (categories) and rows (values). The document shape follows the
- * plan's Shared JSON Question Bank v1 (text only for now: no media), so a
- * bank exported here can be imported elsewhere. Pure and browser-safe.
+ * plan's Shared JSON Question Bank v1, including image/GIF, audio and
+ * YouTube media (see ../media.ts), so a bank exported here can be imported
+ * elsewhere. The same bank feeds Category Grid (`modes.categoryGrid`) and
+ * Sequential Quiz (`modes.pubQuiz`). Pure and browser-safe.
  */
 import { z } from "zod";
+
+import { mediaListSchema, mediaProblems } from "@/utils/media";
 
 export const GRID_LIMITS = {
   maxColumns: 8,
@@ -28,10 +32,16 @@ const text = (max: number) => z.string().trim().max(max);
 export const questionSchema = z
   .object({
     id: idSchema,
-    prompt: z.object({ text: text(GRID_LIMITS.maxText) }).strict(),
+    prompt: z
+      .object({
+        text: text(GRID_LIMITS.maxText),
+        media: mediaListSchema.optional(),
+      })
+      .strict(),
     answer: z
       .object({
         text: text(GRID_LIMITS.maxText),
+        media: mediaListSchema.optional(),
         acceptedAnswers: z
           .array(text(GRID_LIMITS.maxAcceptedLength))
           .max(GRID_LIMITS.maxAccepted)
@@ -68,6 +78,13 @@ export const gridRulesSchema = z
   })
   .strict();
 
+export const quizLayoutSchema = z
+  .object({
+    questionOrder: z.array(idSchema).max(GRID_LIMITS.maxQuestions),
+    pointsPerQuestion: z.number().int().positive().max(GRID_LIMITS.maxPoints),
+  })
+  .strict();
+
 export const bankSchema = z
   .object({
     $schema: z.string().optional(),
@@ -82,9 +99,10 @@ export const bankSchema = z
             columns: z.array(columnSchema).min(1).max(GRID_LIMITS.maxColumns),
             rules: gridRulesSchema.optional(),
           })
-          .strict(),
-        // Other layouts (for example a quiz order) are kept as they are.
-        pubQuiz: z.unknown().optional(),
+          .strict()
+          .optional(),
+        /** Sequential Quiz: questions in play order, and points for each. */
+        pubQuiz: quizLayoutSchema.optional(),
       })
       .strict(),
   })
@@ -95,6 +113,12 @@ export type Cell = z.infer<typeof cellSchema>;
 export type Column = z.infer<typeof columnSchema>;
 export type GridRules = z.infer<typeof gridRulesSchema>;
 export type Bank = z.infer<typeof bankSchema>;
+export type QuizLayout = z.infer<typeof quizLayoutSchema>;
+export type GridLayout = NonNullable<Bank["modes"]["categoryGrid"]>;
+
+/** The grid layout, or an empty one for a bank without a grid. */
+export const gridOf = (bank: Bank): GridLayout =>
+  bank.modes.categoryGrid ?? { columns: [] };
 
 export type ResolvedGridRules = {
   wrongAnswerLockout: boolean;
@@ -117,7 +141,7 @@ export function findCell(bank: Bank, key: string) {
   const at = key.lastIndexOf(":");
   const columnId = key.slice(0, at);
   const row = Number(key.slice(at + 1));
-  const column = bank.modes.categoryGrid.columns.find((c) => c.id === columnId);
+  const column = gridOf(bank).columns.find((c) => c.id === columnId);
   const cell = Number.isInteger(row) ? column?.cells[row] : undefined;
   if (!column || !cell) return null;
   const question = bank.questions.find((q) => q.id === cell.questionId);
@@ -125,7 +149,7 @@ export function findCell(bank: Bank, key: string) {
 }
 
 export function allCellKeys(bank: Bank): string[] {
-  return bank.modes.categoryGrid.columns.flatMap((c) =>
+  return gridOf(bank).columns.flatMap((c) =>
     c.cells.map((_cell, row) => cellKey(c.id, row)),
   );
 }
@@ -157,12 +181,26 @@ export function emptyBank(columns = 5, rows = 5): Bank {
 
 export type GridPreflight = { blocking: string[]; warnings: string[] };
 
+/** What a question needs before it can be played (grid or quiz). */
+export function questionProblems(q: Question): string[] {
+  const problems: string[] = [];
+  if (!q.prompt.text && !q.prompt.media?.length) {
+    problems.push("the clue is empty (add text or media).");
+  }
+  if (!q.answer.text) problems.push("the answer is empty.");
+  for (const m of [...(q.prompt.media ?? []), ...(q.answer.media ?? [])]) {
+    problems.push(...mediaProblems(m));
+  }
+  return problems;
+}
+
 /** What stops a grid starting, and what the host should know. */
 export function gridPreflight(bank: Bank, teamCount: number): GridPreflight {
   const blocking: string[] = [];
   const warnings: string[] = [];
-  const { columns } = bank.modes.categoryGrid;
+  const { columns } = gridOf(bank);
   if (teamCount < 1) blocking.push("Add at least one team or player.");
+  if (columns.length === 0) blocking.push("Add at least one category.");
   const rows = columns[0]?.cells.length ?? 0;
   if (columns.some((c) => c.cells.length !== rows)) {
     blocking.push("Every category needs the same number of clues.");
@@ -191,8 +229,7 @@ export function gridPreflight(bank: Bank, teamCount: number): GridPreflight {
         blocking.push(`${where}: question "${cell.questionId}" is used twice.`);
       }
       used.add(cell.questionId);
-      if (!q.prompt.text) blocking.push(`${where}: the clue is empty.`);
-      if (!q.answer.text) blocking.push(`${where}: the answer is empty.`);
+      blocking.push(...questionProblems(q).map((p) => `${where}: ${p}`));
     });
   });
   const unused = bank.questions.filter((q) => !used.has(q.id)).length;

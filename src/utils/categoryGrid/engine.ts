@@ -11,7 +11,7 @@
  */
 import { err, ok, type Result } from "neverthrow";
 
-import { findCell, resolveGridRules, type Bank } from "./content";
+import { findCell, gridOf, resolveGridRules, type Bank } from "./content";
 
 export type ClueAttempt = {
   team: string;
@@ -92,7 +92,7 @@ export function applyGrid(
   state: GridState,
   action: GridAction,
 ): Result<GridStep, GridError> {
-  const rules = resolveGridRules(bank.modes.categoryGrid.rules);
+  const rules = resolveGridRules(gridOf(bank).rules);
   const phase = gridPhase(state);
   const scores: Record<string, number> = {};
   const award = (team: string, points: number) => {

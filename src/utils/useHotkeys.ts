@@ -22,7 +22,9 @@ export function useHotkeys(
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
       if (
-        target?.closest("input, textarea, select, [contenteditable='true']") ||
+        target?.closest(
+          "input, textarea, select, audio, video, [contenteditable='true'], [data-media]",
+        ) ||
         document.querySelector("[role='dialog'], [role='alertdialog']")
       ) {
         return;
