@@ -37,11 +37,13 @@ import {
 import type { GridError } from "@/utils/categoryGrid/engine";
 import type { ModeKind } from "@/utils/modes";
 import type { EngineError } from "@/utils/rankedAnswers/engine";
+import type { QuizError } from "@/utils/sequentialQuiz/engine";
 
 /** Rule refusals from a mode's engine, as API errors. */
 export type ModeRuleError =
   | { kind: "modeRule"; error: EngineError }
-  | { kind: "gridRule"; error: GridError };
+  | { kind: "gridRule"; error: GridError }
+  | { kind: "quizRule"; error: QuizError };
 
 export type GameKitError =
   | GameTransactionError
@@ -88,6 +90,23 @@ export type ModeModule<
   ) => Result<{ state: State; scores: Record<string, number> }, RuleError>;
   /** Undo that never hides what people have seen. */
   undo: (current: State, previous: State) => State;
+  /**
+   * Optional: adds facts only the server knows (for example which teams
+   * have answered) to an action before it's applied, inside the lock.
+   */
+  enrich?: (
+    tx: GameTx,
+    gameId: string,
+    content: Content,
+    state: State,
+    action: Action,
+  ) => Promise<Action>;
+  /**
+   * Optional: actions that don't need the host's screen to be current
+   * (they still run one at a time, and check their own conflicts), such as
+   * two co-hosts marking different answers.
+   */
+  ignoresStep?: (action: Action) => boolean;
   ruleError: (error: RuleError) => ModeRuleError;
 };
 
@@ -347,7 +366,7 @@ export async function actInModeSession<C, S, A extends { type: string }, E>(
       if (mode?.status !== "running" || mode.kind !== module.kind) {
         return err({ kind: "modeNotRunning" });
       }
-      if (mode.step !== expectedStep) {
+      if (mode.step !== expectedStep && !module.ignoresStep?.(action)) {
         return err({ kind: "stepConflict", step: mode.step });
       }
       const content = module.parseDraft(mode.content);
@@ -356,11 +375,11 @@ export async function actInModeSession<C, S, A extends { type: string }, E>(
       }
       const stored = mode.state as S;
       const teams = (await teamsInOrder(tx, gameId)).map((t) => t.id);
-      const step = module.apply(
-        content.value,
-        module.withTeams(stored, action, teams),
-        action,
-      );
+      const current = module.withTeams(stored, action, teams);
+      const enriched = module.enrich
+        ? await module.enrich(tx, gameId, content.value, current, action)
+        : action;
+      const step = module.apply(content.value, current, enriched);
       if (step.isErr()) return err(module.ruleError(step.error));
       const scored = await applyModeScores(
         tx,

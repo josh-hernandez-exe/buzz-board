@@ -13,6 +13,8 @@ import {
   type Rules,
 } from "@/utils/rankedAnswers/content";
 import { sampleContent } from "@/utils/rankedAnswers/sample";
+import { emptyQuizBank } from "@/utils/sequentialQuiz/content";
+import { sampleQuizBank } from "@/utils/sequentialQuiz/sample";
 import {
   type BuzzerMode,
   GameFormat,
@@ -164,6 +166,7 @@ export async function createGame({
   buzzerMode,
   rankedAnswers,
   categoryGrid,
+  sequentialQuiz,
   requestId,
 }: {
   ownerId: string;
@@ -175,6 +178,8 @@ export async function createGame({
   rankedAnswers?: { rules: Rules; sampleBoards?: boolean };
   /** Or set it up for Category Grid with these rules. */
   categoryGrid?: { rules: GridRules; sampleGrid?: boolean };
+  /** Or set it up for Sequential Quiz. */
+  sequentialQuiz?: { pointsPerQuestion: number; sampleQuiz?: boolean };
   requestId?: string;
 }): Promise<Result<Created, GameServiceError>> {
   if (requestId) {
@@ -225,7 +230,19 @@ export async function createGame({
                 ),
               ),
             }
-          : undefined,
+          : sequentialQuiz
+            ? {
+                kind: "sequentialQuiz",
+                draft: bankSchema.parse(
+                  withQuizPoints(
+                    sequentialQuiz.sampleQuiz
+                      ? sampleQuizBank()
+                      : emptyQuizBank(),
+                    sequentialQuiz.pointsPerQuestion,
+                  ),
+                ),
+              }
+            : undefined,
       requestId,
     }),
   );
@@ -262,23 +279,8 @@ export async function duplicateGame({
       settings: source.settings ?? {},
       teamAssignment: source.teamAssignment,
       buzzerMode: source.buzzerMode,
-      // Ranked Answers rules and boards come along, ready to play again.
       // Game mode rules and content come along, ready to play again.
-      modeDraft: source.gameMode
-        ? source.gameMode.kind === "categoryGrid"
-          ? {
-              kind: "categoryGrid",
-              draft: bankSchema.parse(
-                source.gameMode.content ?? source.gameMode.draft,
-              ),
-            }
-          : {
-              kind: "rankedAnswers",
-              draft: contentSchema.parse(
-                source.gameMode.content ?? source.gameMode.draft,
-              ),
-            }
-        : undefined,
+      modeDraft: copiedModeDraft(source.gameMode),
       teamNames:
         source.format === GameFormat.team
           ? source.gameTeams.map((team) => team.name)
@@ -606,6 +608,40 @@ export async function deleteGame({
       },
     ),
   );
+}
+
+/**
+ * The source game's mode content, as a draft for the copy. A mode whose
+ * kind or content this version can't read is left behind rather than
+ * failing the whole copy.
+ */
+function copiedModeDraft(
+  mode: { kind: string; content: unknown; draft: unknown } | null,
+): { kind: ModeKind; draft: Content | Bank } | undefined {
+  const raw = mode?.content ?? mode?.draft;
+  switch (mode?.kind) {
+    case "categoryGrid":
+    case "sequentialQuiz": {
+      const bank = bankSchema.safeParse(raw);
+      return bank.success ? { kind: mode.kind, draft: bank.data } : undefined;
+    }
+    case "rankedAnswers": {
+      const content = contentSchema.safeParse(raw);
+      return content.success
+        ? { kind: "rankedAnswers", draft: content.data }
+        : undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
+function withQuizPoints(bank: Bank, pointsPerQuestion: number): Bank {
+  const quiz = bank.modes.pubQuiz ?? { questionOrder: [], pointsPerQuestion };
+  return {
+    ...bank,
+    modes: { ...bank.modes, pubQuiz: { ...quiz, pointsPerQuestion } },
+  };
 }
 
 function withGridRules(bank: Bank, rules: GridRules): Bank {

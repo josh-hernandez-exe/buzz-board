@@ -18,6 +18,7 @@ import { PlayerHeader } from "@/app/_components/client/PlayerStatus";
 import { PlayerTabs } from "@/app/_components/client/PlayerTabs";
 import { LiveRankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
 import { LiveCategoryGrid } from "@/app/_components/client/CategoryGridBoard";
+import { LiveSequentialQuiz } from "@/app/_components/client/SequentialQuizBoard";
 import { LiveFinalStandings } from "@/app/_components/client/FinalStandings";
 
 export default async function GameUserPage({
@@ -91,6 +92,7 @@ export default async function GameUserPage({
                 <LiveFinalStandings gameUserId={gameUser.id} />
                 <LiveRankedAnswersBoard />
                 <LiveCategoryGrid />
+                <LiveSequentialQuiz />
                 <GameBuzzerTab gameUserId={gameUser.id} />
                 <GameWhoBuzzedIn gameUserId={gameUser.id} />
               </>

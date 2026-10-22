@@ -1,6 +1,6 @@
 # Game Kit
 
-Game Kit is the shared runner behind every game mode. A mode such as Ranked Answers or Category Grid is a small **module**; everything the modes share is written and tested once in [gameKit.ts](../src/server/modes/gameKit.ts). It's the plan's PR14–PR18 (W21–W23), built inside the app, not as a separate platform.
+Game Kit is the shared runner behind every game mode. A mode such as Ranked Answers, Category Grid or [Sequential Quiz](./sequential-quiz-mode.md) is a small **module**; everything the modes share is written and tested once in [gameKit.ts](../src/server/modes/gameKit.ts). It's the plan's PR14–PR18 (W21–W23), built inside the app, not as a separate platform.
 
 ## What the runner guarantees, for every mode
 
@@ -23,7 +23,7 @@ Game Kit is the shared runner behind every game mode. A mode such as Ranked Answ
    - `content.ts`: a zod schema for drafts (unfinished drafts allowed) and `preflight(content, teamCount)` returning `{ blocking, warnings }`.
    - `engine.ts`: `initialState(teams)`, `apply(content, state, action) → Result<{ state, scores }, RuleError>`, and an honest `undo(current, previous)`.
    - `projection.ts`: the public view. It must never include hidden content. Test it with "the hidden text is not in the JSON".
-2. **A module** in `src/server/modes/<mode>Service.ts`: a `ModeModule` object (`kind`, `parseDraft`, `emptyDraft`, `preflight`, `initialState`, `withTeams`, `apply`, `undo`, `ruleError`), plus one-line wrappers that call the runner.
+2. **A module** in `src/server/modes/<mode>Service.ts`: a `ModeModule` object (`kind`, `parseDraft`, `emptyDraft`, `preflight`, `initialState`, `withTeams`, `apply`, `undo`, `ruleError`), plus one-line wrappers that call the runner. Two optional hooks: `enrich(tx, gameId, content, state, action)` fills in server-side facts before `apply` (Sequential Quiz adds which teams answered), and `ignoresStep(action)` exempts actions that carry their own conflict check from the stale-step rule (quiz marks carry the verdict the screen showed).
 3. **Register** the kind in [modes.ts](../src/utils/modes.ts) (`MODE_KINDS`, `MODE_LABEL`, a branch in `publicGameModeView`), add a rule-error variant to `ModeRuleError` and its messages in [errors.ts](../src/server/api/errors.ts).
 4. **Router** with `staffProcedure("runGame")`: `hostView`, `saveDraft`, `discardDraft`, `start`, `act`, `undo`, `end`. Copy [categoryGrid.ts](../src/server/api/routers/categoryGrid.ts).
 5. **UI:** a host panel (editor before start, controls after), a public board component, a desk tab, an option in the create form, and a Help article.

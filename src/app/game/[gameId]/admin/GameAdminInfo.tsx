@@ -12,6 +12,7 @@ import { HostGameBar } from "@/app/_components/client/HostGameBar";
 import { HostRoomPanel } from "@/app/_components/client/HostRoomPanel";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { RankedAnswersPanel } from "@/app/_components/client/RankedAnswersPanel";
+import { SequentialQuizPanel } from "@/app/_components/client/SequentialQuizPanel";
 import { RosterPanel } from "@/app/_components/client/RosterPanel";
 import { ScoresPanel } from "@/app/_components/client/ScoresPanel";
 import {
@@ -23,6 +24,12 @@ import {
 import type { PrivateGameState } from "@/types";
 import { can, type StaffRoleName } from "@/utils/capabilities";
 import type { ModeKind } from "@/utils/modes";
+
+const MODE_TAB: Record<ModeKind, string> = {
+  rankedAnswers: "ranked-answers",
+  categoryGrid: "category-grid",
+  sequentialQuiz: "quiz",
+};
 
 /**
  * The host desk. Play holds everything needed mid-question; the other tabs
@@ -42,17 +49,14 @@ export function GameAdminInfo({
   modeFirst?: boolean;
 }) {
   const runsGame = can(staffRole, "runGame");
-  // A game runs one mode: show its tab, or both while none is chosen.
-  const showRanked = runsGame && modeKind !== "categoryGrid";
-  const showGrid = runsGame && modeKind !== "rankedAnswers";
+  // A game runs one mode: show its tab, or all of them while none is chosen.
+  const shows = (kind: ModeKind) =>
+    runsGame && (modeKind === null || modeKind === kind);
+  const showRanked = shows("rankedAnswers");
+  const showGrid = shows("categoryGrid");
+  const showQuiz = shows("sequentialQuiz");
   const [activeTab, setActiveTab] = useState(
-    !runsGame
-      ? "players"
-      : modeFirst && modeKind === "categoryGrid"
-        ? "category-grid"
-        : modeFirst
-          ? "ranked-answers"
-          : "play",
+    !runsGame ? "players" : modeFirst && modeKind ? MODE_TAB[modeKind] : "play",
   );
   const { data } = useLiveGameState();
   const state = data ?? initialGameState;
@@ -70,6 +74,7 @@ export function GameAdminInfo({
           {showGrid && (
             <TabsTrigger value="category-grid">Category Grid</TabsTrigger>
           )}
+          {showQuiz && <TabsTrigger value="quiz">Quiz</TabsTrigger>}
           <TabsTrigger value="players">Players</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
           <TabsTrigger value="room">Room</TabsTrigger>
@@ -90,6 +95,11 @@ export function GameAdminInfo({
         {showGrid && (
           <TabsContent value="category-grid">
             <CategoryGridPanel />
+          </TabsContent>
+        )}
+        {showQuiz && (
+          <TabsContent value="quiz">
+            <SequentialQuizPanel />
           </TabsContent>
         )}
         <TabsContent value="players" className="flex flex-col gap-4">

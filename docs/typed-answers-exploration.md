@@ -104,6 +104,10 @@ So the two combine rather than compete:
    - Keeping steals secret.
 3. **Never make typing the way to decide speed.** The buzzer stays the source of "who first".
 
+## Update: typed answers in Sequential Quiz
+
+The typed-answer core now exists, but only inside [Sequential Quiz](./sequential-quiz-mode.md), where typing is the whole point. That covers the `TeamAnswer` storage, any-member saving with conflict checks, host-only grouping and marking, and privacy. Ranked Answers all-play and steals still use spoken answers. Slices 1–2 above can reuse the quiz's storage and answer box if the owner decides to build them (T1).
+
 ## Decisions for the owner
 
 | # | Decision | Options | Suggested |

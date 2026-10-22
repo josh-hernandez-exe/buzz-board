@@ -208,10 +208,20 @@ export const gameAdminRouter = createTRPCRouter({
           data: { gameTeamId: null },
         });
         await tx.gameTeam.delete({ where: { id: gameTeam.id } });
-        await tx.gameTeam.updateMany({
+        // One at a time, lowest first: (gameId, index) is unique and checked
+        // row by row, so a single "index - 1" update could collide depending
+        // on the order Postgres visits the rows.
+        const later = await tx.gameTeam.findMany({
           where: { gameId, index: { gt: gameTeam.index } },
-          data: { index: { decrement: 1 } },
+          orderBy: { index: "asc" },
+          select: { id: true, index: true },
         });
+        for (const team of later) {
+          await tx.gameTeam.update({
+            where: { id: team.id },
+            data: { index: team.index - 1 },
+          });
+        }
         return true;
       });
       if (removed.isErr()) throw toTRPCError(removed.error);

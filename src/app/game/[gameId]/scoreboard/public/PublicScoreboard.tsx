@@ -13,6 +13,7 @@ import {
 } from "@/app/_components/client/LiveGameState";
 import { RankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
 import { CategoryGridBoard } from "@/app/_components/client/CategoryGridBoard";
+import { SequentialQuizBoard } from "@/app/_components/client/SequentialQuizBoard";
 import { FinalStandings } from "@/app/_components/client/FinalStandings";
 import { ModeEndedNotice } from "@/app/_components/client/ModeEndedNotice";
 import { Button } from "@/app/_components/ui/button";
@@ -108,6 +109,13 @@ function AudienceDisplay({
       {state.mode?.kind === "categoryGrid" &&
       state.mode.status === "running" ? (
         <CategoryGridBoard view={state.mode} names={teamNames} size="large" />
+      ) : state.mode?.kind === "sequentialQuiz" &&
+        state.mode.status === "running" ? (
+        <SequentialQuizBoard
+          view={state.mode}
+          teams={gameTeams.map((t) => ({ id: t.id, name: t.name }))}
+          size="large"
+        />
       ) : state.mode?.kind === "rankedAnswers" &&
         state.mode.status === "running" ? (
         <RankedAnswersBoard

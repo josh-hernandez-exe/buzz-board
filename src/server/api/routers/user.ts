@@ -57,6 +57,13 @@ export const userRouter = createTRPCRouter({
               sampleGrid: z.boolean().optional(),
             })
             .optional(),
+          /** Or set it up for Sequential Quiz. */
+          sequentialQuiz: z
+            .object({
+              pointsPerQuestion: z.number().int().min(1).max(10_000),
+              sampleQuiz: z.boolean().optional(),
+            })
+            .optional(),
           requestId: z
             .string()
             .min(8)
@@ -73,7 +80,12 @@ export const userRouter = createTRPCRouter({
           teamCount: input.teamCount,
           buzzerMode: input.buzzerMode,
           rankedAnswers: input.rankedAnswers,
+          // One mode per game: the first one given wins.
           categoryGrid: input.rankedAnswers ? undefined : input.categoryGrid,
+          sequentialQuiz:
+            input.rankedAnswers ?? input.categoryGrid
+              ? undefined
+              : input.sequentialQuiz,
           requestId: input.requestId,
         });
         if (result.isErr()) throw toTRPCError(result.error);

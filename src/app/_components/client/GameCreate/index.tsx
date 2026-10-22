@@ -23,8 +23,8 @@ const { minTeams: MIN_TEAMS, maxTeams: MAX_TEAMS } = GAME_LIMITS;
 
 /**
  * One short form: name, format, (for team games) team count, how buzzing
- * works, and optionally a game mode (Ranked Answers or Category Grid) with
- * its rules. Boards, clues, chat and everything else can be set up later
+ * works, and optionally a game mode (Ranked Answers, Category Grid or
+ * Sequential Quiz) with its rules. Boards, clues, chat and everything else can be set up later
  * from the host desk.
  */
 export function CreateGame() {
@@ -36,6 +36,9 @@ export function CreateGame() {
   const [gameType, setGameType] = useState<"basic" | ModeKind>("basic");
   const ranked = gameType === "rankedAnswers";
   const gridGame = gameType === "categoryGrid";
+  const quizGame = gameType === "sequentialQuiz";
+  const [sampleQuiz, setSampleQuiz] = useState(true);
+  const [quizPoints, setQuizPoints] = useState(1);
   const [sampleBoards, setSampleBoards] = useState(true);
   const [sampleGrid, setSampleGrid] = useState(true);
   const [gridLockout, setGridLockout] = useState(true);
@@ -81,6 +84,9 @@ export function CreateGame() {
                 },
                 sampleGrid,
               }
+            : undefined,
+          sequentialQuiz: quizGame
+            ? { pointsPerQuestion: quizPoints, sampleQuiz }
             : undefined,
           requestId: requestId.current,
         });
@@ -212,6 +218,11 @@ export function CreateGame() {
               "Category Grid (quiz-show grid)",
               "Categories across the top, clues worth more as you go down. Teams pick a clue and buzz in to answer.",
             ],
+            [
+              "sequentialQuiz",
+              "Sequential Quiz (pub-quiz rounds)",
+              "Questions in order. Every team types an answer on a phone; you mark them and reveal the answer to everyone at once. No buzzing.",
+            ],
           ] as const
         ).map(([value, label, hint]) => (
           <label key={label} className="flex items-start gap-2">
@@ -248,6 +259,37 @@ export function CreateGame() {
           <p className="text-muted-foreground text-xs">
             Every rule can still be changed on the host desk until you start
             Ranked Answers.
+          </p>
+        </div>
+      )}
+
+      {quizGame && (
+        <div className="border-border flex flex-col gap-2 rounded-lg border p-3 text-sm">
+          <label className="flex items-center gap-2">
+            Points per correct answer
+            <input
+              type="number"
+              min={1}
+              max={10_000}
+              value={quizPoints}
+              onChange={(e) => {
+                const n = Math.round(Number(e.target.value));
+                if (n >= 1 && n <= 10_000) setQuizPoints(n);
+              }}
+              className="field w-24 px-2 py-1"
+            />
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={sampleQuiz}
+              onChange={(e) => setSampleQuiz(e.target.checked)}
+            />
+            Start with sample questions (holiday trivia you can edit or replace)
+          </label>
+          <p className="text-muted-foreground text-xs">
+            Write and order the questions on the host desk until you start the
+            quiz.
           </p>
         </div>
       )}

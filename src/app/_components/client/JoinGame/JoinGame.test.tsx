@@ -1,6 +1,19 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// input-otp sets timers of up to 6 seconds that can outlive a test and fire
+// after the environment is torn down ("window is not defined"). Fake timers
+// that keep pace with real time let user events run, and are dropped after
+// each test.
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+});
+afterEach(() => {
+  cleanup();
+  vi.clearAllTimers();
+  vi.useRealTimers();
+});
 
 type Preview = { gameName: string; nickname: string; teamName: string | null };
 

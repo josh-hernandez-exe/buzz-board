@@ -19,6 +19,8 @@ export const RATE_LIMITS = {
   unknownCode: { limit: 30, windowSeconds: 300 },
   /** Recovery and invitation link redemptions from one address. */
   redeemLink: { limit: 30, windowSeconds: 600 },
+  /** Quiz answer saves by one player (keyed by player, not address). */
+  teamAnswer: { limit: 60, windowSeconds: 60 },
 } as const;
 export type RateLimitName = keyof typeof RATE_LIMITS;
 

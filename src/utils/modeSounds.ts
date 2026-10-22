@@ -33,5 +33,13 @@ export function modeSoundCues(
     else if (a.answer === null && b.answer !== null) cues.push("reveal");
     return cues;
   }
+  if (next.kind === "sequentialQuiz" && prev.kind === "sequentialQuiz") {
+    // The reveal: a fanfare if anyone got it, otherwise the plain reveal.
+    if (prev.phase !== "revealed" && next.phase === "revealed") {
+      if (next.voided) return [];
+      return next.correct.length > 0 ? ["correct"] : ["reveal"];
+    }
+    return [];
+  }
   return [];
 }

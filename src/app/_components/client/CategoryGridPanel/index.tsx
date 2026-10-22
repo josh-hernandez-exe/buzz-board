@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { CategoryGridBoard } from "@/app/_components/client/CategoryGridBoard";
+import { BankJson } from "@/app/_components/client/BankJson";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { OtherModeNotice } from "@/app/_components/client/RankedAnswersPanel";
@@ -13,7 +14,6 @@ import { cn } from "@/app/_lib/utils";
 import { helpHref } from "@/help/manifest";
 import { api, type RouterOutputs } from "@/trpc/react";
 import {
-  bankSchema,
   cellKey,
   findCell,
   gridOf,
@@ -440,6 +440,7 @@ function GridEditor({ view }: { view: HostView }) {
       {showJson && (
         <BankJson
           bank={draft}
+          description="The grid as a question bank. Copy it to keep a backup, or paste one to replace the grid."
           onImport={(b) => {
             update(b);
             setSelected(null);
@@ -527,65 +528,6 @@ function GridEditor({ view }: { view: HostView }) {
         )}
       </div>
       <ErrorNotice error={save.error ?? start.error ?? discard.error} />
-    </div>
-  );
-}
-
-function BankJson({
-  bank,
-  onImport,
-}: {
-  bank: Bank;
-  onImport: (b: Bank) => void;
-}) {
-  const [text, setText] = useState(() => JSON.stringify(bank, null, 2));
-  const [problem, setProblem] = useState<string | null>(null);
-  return (
-    <div className="flex flex-col gap-2 text-sm">
-      <p className="text-muted-foreground">
-        The grid as a question bank (Buzz Board question bank format, version
-        1). Copy it to keep a backup, or paste one to replace the grid.
-      </p>
-      <textarea
-        aria-label="Question bank JSON"
-        className={`${field} min-h-48 font-mono text-xs`}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-      />
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            let raw: unknown;
-            try {
-              raw = JSON.parse(text);
-            } catch {
-              setProblem("That isn't valid JSON.");
-              return;
-            }
-            const parsed = bankSchema.safeParse(raw);
-            if (!parsed.success) {
-              setProblem(
-                parsed.error.issues
-                  .slice(0, 5)
-                  .map((i) => `${i.path.join(".") || "file"}: ${i.message}`)
-                  .join("; "),
-              );
-              return;
-            }
-            setProblem(null);
-            onImport(parsed.data);
-          }}
-        >
-          Import
-        </Button>
-      </div>
-      {problem && (
-        <p role="alert" className="text-destructive">
-          {problem}
-        </p>
-      )}
     </div>
   );
 }

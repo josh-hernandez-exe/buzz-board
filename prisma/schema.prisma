@@ -136,6 +136,7 @@ model Game {
   gameMode         GameMode?
   buzzQueue        BuzzQueueEntry[]
   buzzerHistory    BuzzerHistory?
+  teamAnswers      TeamAnswer[]
 
   @@unique([createdById, creationRequestId])
 }
@@ -487,3 +488,30 @@ model BuzzerHistory {
 
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
 }
+
+/// Sequential Quiz: one team's (or individual's) typed answer to one
+/// question. Replaced in place until the host locks answers; each team's
+/// row is separate, so teams never wait for each other. Private to the
+/// team and to owners and co-hosts.
+model TeamAnswer {
+  id          String   @id @default(cuid())
+  gameId      String
+  /// The question as played: "<position>:<questionId>", so a question
+  /// that appears twice gets two separate answers.
+  questionKey String   @db.VarChar(140)
+  /// The scoring unit. Not a foreign key: the answer stays as evidence if
+  /// the team is deleted.
+  gameTeamId  String
+  text        String   @db.VarChar(500)
+  /// Bumped on every save; a stale save from a teammate is refused.
+  revision    Int      @default(1)
+  /// Who saved it last (a player ID; not a foreign key, like the team).
+  savedById   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, questionKey, gameTeamId])
+}
+

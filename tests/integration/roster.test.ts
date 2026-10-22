@@ -178,6 +178,33 @@ describe("teams", () => {
   });
 });
 
+describe("removing teams", () => {
+  it("re-indexes whatever order the rows are stored in", async () => {
+    const { admin, game, gameTeams } = await createGame({ teams: 6 });
+    // An update moves a row to the end of the table: store the teams in
+    // descending index order, the order that collided on (gameId, index).
+    for (const team of [...gameTeams].reverse()) {
+      await db.gameTeam.update({
+        where: { id: team.id },
+        data: { name: `${team.name} ` },
+      });
+    }
+    await admin.gameAdmin.removeTeam({ gameTeamId: gameTeams[0]!.id });
+    await admin.gameAdmin.removeTeam({ gameTeamId: gameTeams[3]!.id });
+
+    const remaining = await db.gameTeam.findMany({
+      where: { gameId: game.id },
+      orderBy: { index: "asc" },
+    });
+    expect(remaining.map((t) => [t.id, t.index])).toEqual([
+      [gameTeams[1]!.id, 1],
+      [gameTeams[2]!.id, 2],
+      [gameTeams[4]!.id, 3],
+      [gameTeams[5]!.id, 4],
+    ]);
+  });
+});
+
 describe("game scoping", () => {
   it("does not give players admin procedures", async () => {
     const { game } = await createGame();

@@ -12,6 +12,9 @@ import { type RosterError } from "@/server/roster/rosterService";
 import { type IdentityError } from "@/server/identity/identityService";
 import { type ChatError } from "@/server/chat/chatService";
 import { type GameKitError } from "@/server/modes/gameKit";
+import { type AnswerError } from "@/server/modes/sequentialQuizService";
+import { type QuizError } from "@/utils/sequentialQuiz/engine";
+import { isModeKind, MODE_LABEL } from "@/utils/modes";
 import { type EngineError } from "@/utils/rankedAnswers/engine";
 import { type GridError } from "@/utils/categoryGrid/engine";
 import { nameErrorMessage } from "@/utils/displayName";
@@ -28,7 +31,8 @@ export type ServiceError =
   | RosterError
   | IdentityError
   | ChatError
-  | GameKitError;
+  | GameKitError
+  | AnswerError;
 
 const number = (n: number) => n.toLocaleString("en-US");
 
@@ -120,6 +124,9 @@ const ERROR_HELP: Partial<Record<ServiceError["kind"], string>> = {
   nothingToUndoBuzzer: helpHref("buzzing", "how-do-undo-and-redo-work"),
   nothingToRedoBuzzer: helpHref("buzzing", "how-do-undo-and-redo-work"),
   gridRule: helpHref("category-grid", "running-the-grid"),
+  quizRule: helpHref("sequential-quiz", "running-the-quiz"),
+  answersClosed: helpHref("sequential-quiz", "answering-on-your-phone"),
+  answerConflict: helpHref("sequential-quiz", "answering-on-your-phone"),
   otherMode: helpHref("category-grid", "how-do-i-go-back-to-the-buzzer"),
 };
 
@@ -468,7 +475,7 @@ function baseError(error: ServiceError): TRPCError {
     case "otherMode":
       return new TRPCError({
         code: "PRECONDITION_FAILED",
-        message: `This game is set up for ${error.mode === "categoryGrid" ? "Category Grid" : "Ranked Answers"}. Discard that setup first to use this game mode instead.`,
+        message: `This game is set up for ${isModeKind(error.mode) ? MODE_LABEL[error.mode] : "another game mode"}. Discard that setup first to use this game mode instead.`,
       });
     case "modeAlreadyStarted":
       return new TRPCError({
@@ -502,6 +509,30 @@ function baseError(error: ServiceError): TRPCError {
         code: "PRECONDITION_FAILED",
         message: gridMessage(error.error),
       });
+    case "quizRule":
+      return new TRPCError({
+        code:
+          error.error.kind === "gradeConflict"
+            ? "CONFLICT"
+            : "PRECONDITION_FAILED",
+        message: quizMessage(error.error),
+      });
+    case "answersClosed":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "Answers are closed for this question. Your answer wasn't saved.",
+      });
+    case "emptyAnswer":
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Type an answer before saving.",
+      });
+    case "answerConflict":
+      return new TRPCError({
+        code: "CONFLICT",
+        message: `${error.savedBy} changed your team's answer to "${error.text}". Check it, then save again if you still want yours.`,
+      });
     case "queueEntryNotFound":
       return new TRPCError({
         code: "NOT_FOUND",
@@ -533,6 +564,25 @@ function baseError(error: ServiceError): TRPCError {
         code: "PRECONDITION_FAILED",
         message: "There's nothing to undo.",
       });
+  }
+}
+
+function quizMessage(error: QuizError): string {
+  switch (error.kind) {
+    case "quizWrongPhase":
+      return error.phase === "open"
+        ? "Lock answers first."
+        : error.phase === "finished"
+          ? "The quiz is finished."
+          : "That can't be done at this point in the question.";
+    case "noMoreQuestions":
+      return "That was the last question. Finish the quiz.";
+    case "unknownTeam":
+      return "That team isn't in this game.";
+    case "gradeConflict":
+      return "Another host marked that answer first. Check it and mark again if needed.";
+    case "ungraded":
+      return `Mark every team first (${error.teams.length} still unmarked), or use "Mark the rest wrong".`;
   }
 }
 

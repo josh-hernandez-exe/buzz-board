@@ -114,6 +114,14 @@ export const HELP_ARTICLES = [
     facts: [],
   },
   {
+    id: "sequential-quiz",
+    title: "Sequential Quiz (pub-quiz rounds)",
+    summary:
+      "Questions in order, answers typed by each team, marked by the host and revealed together. Set up, answer on a phone, mark and fix mistakes.",
+    audiences: ["host", "player"],
+    facts: [],
+  },
+  {
     id: "troubleshooting",
     title: "Troubleshooting",
     summary:

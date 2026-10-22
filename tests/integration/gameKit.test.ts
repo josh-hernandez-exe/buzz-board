@@ -130,7 +130,7 @@ describe("Game Kit runner with a synthetic mode", () => {
           ...request,
           expectedStep: 2,
           requestId: rid(),
-          action: { type: "enter", room: "hall", team: b! },
+          action: { type: "enter" as const, room: "hall", team: b! },
         })
       ).isErr(),
     ).toBe(true);
@@ -177,7 +177,7 @@ describe("Game Kit runner with a synthetic mode", () => {
           ...request,
           expectedStep: 3,
           requestId: rid(),
-          action: { type: "enter", room: "attic", team: b! },
+          action: { type: "enter" as const, room: "attic", team: b! },
         })
       )._unsafeUnwrapErr().kind,
     ).toBe("modeNotRunning");
