@@ -494,7 +494,11 @@ function QuizControls({ view }: { view: HostView }) {
     lastStep.current = next;
   };
   const act = api.sequentialQuiz.act.useMutation({
-    onSuccess: advanced,
+    // Marks skip the step check, so their reply says nothing about whether
+    // this screen is up to date: only step-checked actions advance it.
+    onSuccess: (result, { action }) => {
+      if (action.type !== "grade") advanced(result);
+    },
     onSettled: refresh,
   });
   const undo = api.sequentialQuiz.undo.useMutation({
@@ -517,12 +521,14 @@ function QuizControls({ view }: { view: HostView }) {
     responsesQuery.data?.questionKey === publicView?.question?.key
       ? (responsesQuery.data?.responses ?? [])
       : [];
-  // The verdicts this screen shows: sent with each mark so two hosts
-  // marking the same team can't silently overwrite each other.
+  // The question and verdicts this screen shows: sent with each mark so two
+  // hosts can't silently overwrite each other, and a mark from a screen
+  // that hasn't caught up never lands on the next question.
   const grades = state.grades;
   const grade = (teams: string[], verdict: "correct" | "incorrect") =>
     send({
       type: "grade",
+      key: publicView?.question?.key ?? "",
       teams,
       verdict,
       from: Object.fromEntries(teams.map((t) => [t, grades[t] ?? null])),

@@ -29,9 +29,35 @@ function quizView(mode: PublicGameModeView | null) {
   return mode;
 }
 
-async function act(sq: Quiz, action: Action) {
-  const { step } = await sq.hostView();
-  return sq.act({ action, expectedStep: step, requestId: rid() });
+type Grade = Extract<Action, { type: "grade" }>;
+/** A grade may leave out `key`: it's filled with the current question. */
+type LooseAction =
+  | Exclude<Action, Grade>
+  | (Omit<Grade, "key"> & { key?: string });
+
+async function currentKey(sq: Quiz) {
+  return (await sq.hostView()).view?.question?.key ?? "";
+}
+
+async function act(sq: Quiz, action: LooseAction) {
+  const view = await sq.hostView();
+  const full: Action =
+    action.type === "grade"
+      ? { ...action, key: action.key ?? view.view?.question?.key ?? "" }
+      : action;
+  return sq.act({ action: full, expectedStep: view.step, requestId: rid() });
+}
+
+/** Saves an answer to the question the player's screen shows. */
+async function submit(
+  p: { player: ReturnType<typeof requestCaller> },
+  input: { text: string; baseRevision: number },
+) {
+  const { questionKey } = await p.player.sequentialQuiz.myAnswer();
+  return p.player.sequentialQuiz.submitAnswer({
+    ...input,
+    questionKey: questionKey ?? "none",
+  });
 }
 
 /** A started sample quiz with auto team assignment and players on teams. */
@@ -129,11 +155,11 @@ describe("answering", () => {
     expect(bea!.team).not.toBe(ada!.team);
 
     await expect(
-      ada!.player.sequentialQuiz.submitAnswer({ text: "x", baseRevision: 0 }),
+      submit(ada!, { text: "x", baseRevision: 0 }),
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
     await act(sq, { type: "next" });
-    const saved = await ada!.player.sequentialQuiz.submitAnswer({
+    const saved = await submit(ada!, {
       text: "  Zebra crossing  ",
       baseRevision: 0,
     });
@@ -197,13 +223,13 @@ describe("answering", () => {
     const { sq, players } = await readyQuiz();
     const [ada, , cy] = players;
     await act(sq, { type: "next" });
-    await ada!.player.sequentialQuiz.submitAnswer({
+    await submit(ada!, {
       text: "Six",
       baseRevision: 0,
     });
     // Cy started from an empty answer: refused, told what Ada saved.
     await expect(
-      cy!.player.sequentialQuiz.submitAnswer({ text: "6", baseRevision: 0 }),
+      submit(cy!, { text: "6", baseRevision: 0 }),
     ).rejects.toMatchObject({
       code: "CONFLICT",
       message: expect.stringContaining(
@@ -212,14 +238,14 @@ describe("answering", () => {
     });
     // Having seen it, Cy replaces it.
     await expect(
-      cy!.player.sequentialQuiz.submitAnswer({ text: "6", baseRevision: 1 }),
+      submit(cy!, { text: "6", baseRevision: 1 }),
     ).resolves.toMatchObject({ revision: 2 });
     expect(await ada!.player.sequentialQuiz.myAnswer()).toMatchObject({
       answer: { text: "6", revision: 2, savedBy: "Cy" },
     });
 
     await expect(
-      ada!.player.sequentialQuiz.submitAnswer({
+      submit(ada!, {
         text: "   ",
         baseRevision: 2,
       }),
@@ -227,7 +253,7 @@ describe("answering", () => {
 
     await act(sq, { type: "lock" });
     await expect(
-      ada!.player.sequentialQuiz.submitAnswer({
+      submit(ada!, {
         text: "Six",
         baseRevision: 2,
       }),
@@ -238,7 +264,7 @@ describe("answering", () => {
     // Reopening lets the team answer again.
     await act(sq, { type: "reopen" });
     await expect(
-      ada!.player.sequentialQuiz.submitAnswer({
+      submit(ada!, {
         text: "Six",
         baseRevision: 2,
       }),
@@ -257,7 +283,7 @@ describe("answering", () => {
       answer: null,
     });
     await expect(
-      loner.player.sequentialQuiz.submitAnswer({
+      submit(loner, {
         text: "Six",
         baseRevision: 0,
       }),
@@ -272,7 +298,7 @@ describe("answering", () => {
     await sq.saveDraft({ draft: sampleQuizBank(), expectedRevision: 0 });
     await sq.start();
     await act(sq, { type: "next" });
-    await solo.player.sequentialQuiz.submitAnswer({
+    await submit(solo, {
       text: "six",
       baseRevision: 0,
     });
@@ -353,9 +379,11 @@ describe("marking and scores", () => {
     // Both screens show Ada's team unmarked, and both mark it: marks don't
     // need the latest step, but the second sees a different verdict now.
     const stale = (await sq.hostView()).step;
+    const key = await currentKey(sq);
     await sq.act({
       action: {
         type: "grade",
+        key,
         teams: [ada!.team],
         verdict: "correct",
         from: { [ada!.team]: null },
@@ -367,6 +395,7 @@ describe("marking and scores", () => {
       co.act({
         action: {
           type: "grade",
+          key,
           teams: [ada!.team],
           verdict: "incorrect",
           from: { [ada!.team]: null },
@@ -379,6 +408,7 @@ describe("marking and scores", () => {
     await co.act({
       action: {
         type: "grade",
+        key,
         teams: [bea!.team],
         verdict: "incorrect",
         from: { [bea!.team]: null },
@@ -398,6 +428,47 @@ describe("marking and scores", () => {
         requestId: rid(),
       }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  it("refuses a mark or a save meant for a question that has moved on", async () => {
+    const { sq, players } = await readyQuiz();
+    const [ada] = players;
+    await act(sq, { type: "next" });
+    const first = await currentKey(sq);
+    await act(sq, { type: "lock" });
+    await act(sq, { type: "void" });
+    await act(sq, { type: "next" });
+    // A save still on its way from question 1 isn't stored for question 2.
+    await expect(
+      ada!.player.sequentialQuiz.submitAnswer({
+        questionKey: first,
+        text: "Six",
+        baseRevision: 0,
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect((await ada!.player.sequentialQuiz.myAnswer()).answer).toBeNull();
+
+    await act(sq, { type: "lock" });
+    // A mark from a screen still showing question 1, where the team was
+    // unmarked too, doesn't land on question 2.
+    const { step } = await sq.hostView();
+    await expect(
+      sq.act({
+        action: {
+          type: "grade",
+          key: first,
+          teams: [ada!.team],
+          verdict: "correct",
+          from: { [ada!.team]: null },
+        },
+        expectedStep: step,
+        requestId: rid(),
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringContaining("moved to another question") as unknown,
+    });
+    expect((await sq.hostView()).state?.grades).toEqual({});
   });
 
   it("a deleted team never blocks the reveal", async () => {
@@ -423,7 +494,7 @@ describe("marking and scores", () => {
     const { game, sq, players } = await readyQuiz();
     const [ada] = players;
     await act(sq, { type: "next" });
-    await ada!.player.sequentialQuiz.submitAnswer({
+    await submit(ada!, {
       text: "Six",
       baseRevision: 0,
     });
@@ -445,7 +516,7 @@ describe("marking and scores", () => {
     expect(ended.mode?.status).toBe("ended");
     expect(ended.game.isBuzzerListening).toBe(false);
     await expect(
-      ada!.player.sequentialQuiz.submitAnswer({
+      submit(ada!, {
         text: "Six",
         baseRevision: 0,
       }),

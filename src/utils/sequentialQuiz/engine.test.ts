@@ -41,11 +41,15 @@ function play(b: Bank, actions: QuizAction[], teams = TEAMS) {
   return { state, totals };
 }
 
+/** The key of the first question, where most of these tests mark. */
+const FIRST = `0:${sampleQuizBank().modes.pubQuiz!.questionOrder[0]}`;
+
 const grade = (
   teams: string[],
   verdict: "correct" | "incorrect",
   from: Record<string, null> = Object.fromEntries(teams.map((t) => [t, null])),
-): QuizAction => ({ type: "grade", teams, verdict, from });
+  key = FIRST,
+): QuizAction => ({ type: "grade", key, teams, verdict, from });
 
 describe("Sequential Quiz content", () => {
   it("ships a sample quiz that is ready to start", () => {
@@ -191,6 +195,7 @@ describe("Sequential Quiz engine", () => {
     // With the current verdict it goes through.
     const changed = run(b, state, {
       type: "grade",
+      key: FIRST,
       teams: ["a"],
       verdict: "incorrect",
       from: { a: "correct" },
@@ -199,6 +204,45 @@ describe("Sequential Quiz engine", () => {
     expect(
       applyQuiz(b, state, grade(["zz"], "correct"))._unsafeUnwrapErr(),
     ).toEqual({ kind: "unknownTeam", team: "zz" });
+  });
+
+  it("refuses a mark meant for another question", () => {
+    const b = quiz();
+    const { state } = play(b, [
+      { type: "next" },
+      { type: "lock" },
+      { type: "void" },
+      { type: "next" },
+      { type: "lock" },
+    ]);
+    // A screen still showing question 1, where "a" was unmarked too.
+    expect(
+      applyQuiz(b, state, grade(["a"], "correct"))._unsafeUnwrapErr(),
+    ).toEqual({ kind: "staleQuestion" });
+    const second = questionKey(b, state)!;
+    expect(
+      run(b, state, grade(["a"], "correct", { a: null }, second)).state.grades,
+    ).toEqual({ a: "correct" });
+  });
+
+  it("undo never reopens answering once the answer was shown", () => {
+    const b = quiz();
+    const steps: QuizAction[] = [
+      { type: "next" },
+      { type: "lock" },
+      grade(["a", "b", "c"], "correct"),
+      { type: "reveal" },
+    ];
+    const states = [initialQuizState(TEAMS)];
+    for (const a of steps) states.push(run(b, states.at(-1)!, a).state);
+    // Undo the reveal, the marks and the lock, in turn.
+    let current = states.at(-1)!;
+    for (let i = states.length - 2; i >= 1; i--) {
+      current = undoQuiz(current, states[i]!);
+      expect(current.answerShown).toBe(true);
+      expect(current.phase).not.toBe("open");
+    }
+    expect(projectQuiz(b, current, "running").question?.answer).not.toBeNull();
   });
 
   it("reopens answers until the answer has been shown", () => {
@@ -347,6 +391,7 @@ describe("Sequential Quiz invariants under random play and undo", () => {
           if (before.answerShown && before.position === state.position) {
             expect(state.answerShown).toBe(true);
           }
+          if (state.phase === "open") expect(state.answerShown).toBe(false);
           continue;
         }
         const team = pick(TEAMS);
@@ -356,6 +401,7 @@ describe("Sequential Quiz invariants under random play and undo", () => {
           { type: "reopen" },
           {
             type: "grade",
+            key: questionKey(b, state) ?? "",
             teams: [team],
             verdict: rand() < 0.5 ? "correct" : "incorrect",
             from: { [team]: state.grades[team] ?? null },

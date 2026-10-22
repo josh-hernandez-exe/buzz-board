@@ -512,7 +512,8 @@ function baseError(error: ServiceError): TRPCError {
     case "quizRule":
       return new TRPCError({
         code:
-          error.error.kind === "gradeConflict"
+          error.error.kind === "gradeConflict" ||
+          error.error.kind === "staleQuestion"
             ? "CONFLICT"
             : "PRECONDITION_FAILED",
         message: quizMessage(error.error),
@@ -581,6 +582,8 @@ function quizMessage(error: QuizError): string {
       return "That team isn't in this game.";
     case "gradeConflict":
       return "Another host marked that answer first. Check it and mark again if needed.";
+    case "staleQuestion":
+      return "The quiz moved to another question before that mark was saved. Check the current question and mark again.";
     case "ungraded":
       return `Mark every team first (${error.teams.length} still unmarked), or use "Mark the rest wrong".`;
   }

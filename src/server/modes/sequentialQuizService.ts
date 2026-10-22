@@ -157,24 +157,33 @@ async function running(gameId: string) {
  * player last saw (0 for none): if a teammate saved since, nothing is
  * overwritten and the current answer comes back.
  */
+export type SavedAnswer = {
+  text: string;
+  revision: number;
+  savedBy: string;
+  savedAt: Date;
+};
+
 export async function submitTeamAnswer({
   gameId,
   gameUserId,
+  questionKey: shownKey,
   text,
   baseRevision,
 }: {
   gameId: string;
   gameUserId: string;
+  /** The question the player's screen showed. */
+  questionKey: string;
   text: string;
   baseRevision: number;
-}): Promise<Result<{ revision: number; savedAt: Date }, AnswerError>> {
+}): Promise<Result<SavedAnswer, AnswerError>> {
   const clean = text.trim().slice(0, QUIZ_LIMITS.maxAnswerLength);
   // A blank answer isn't an answer: it stays a draft on the device.
   if (!clean) return err({ kind: "emptyAnswer" });
-  type Saved = { revision: number; savedAt: Date };
   const outcome = await withGameLock(
     gameId,
-    async (tx): Promise<Result<Saved, AnswerError>> => {
+    async (tx): Promise<Result<SavedAnswer, AnswerError>> => {
       const mode = await tx.gameMode.findUnique({ where: { gameId } });
       const bank =
         mode?.kind === QUIZ_KIND && mode.status === "running"
@@ -184,10 +193,13 @@ export async function submitTeamAnswer({
       if (!bank?.success || state?.phase !== "open") {
         return err({ kind: "answersClosed" });
       }
-      const key = questionKey(bank.data, state)!;
+      const key = questionKey(bank.data, state);
+      // The question moved on while this save was on its way: it was an
+      // answer to a closed question, never to the new one.
+      if (!key || key !== shownKey) return err({ kind: "answersClosed" });
       const player = await tx.gameUser.findFirst({
         where: { id: gameUserId, gameId, removedAt: null },
-        select: { gameTeamId: true },
+        select: { gameTeamId: true, name: true },
       });
       if (!player?.gameTeamId) return err({ kind: "notOnTeam" });
       const where = {
@@ -230,7 +242,12 @@ export async function submitTeamAnswer({
               savedById: gameUserId,
             },
           });
-      return ok({ revision: saved.revision, savedAt: saved.updatedAt });
+      return ok({
+        text: saved.text,
+        revision: saved.revision,
+        savedBy: player.name,
+        savedAt: saved.updatedAt,
+      });
     },
   );
   return outcome.isErr() ? err(outcome.error) : outcome.value;

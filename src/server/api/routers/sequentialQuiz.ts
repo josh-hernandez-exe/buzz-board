@@ -31,6 +31,7 @@ const requestId = z
   .min(8)
   .max(64)
   .regex(/^[A-Za-z0-9_-]+$/);
+const key = z.string().min(1).max(140);
 const verdict = z.enum(["correct", "incorrect", "missing"]).nullable();
 
 const actionSchema = z.discriminatedUnion("type", [
@@ -39,6 +40,7 @@ const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("reopen") }),
   z.object({
     type: z.literal("grade"),
+    key,
     teams: z.array(id).min(1).max(64),
     verdict: z.enum(["correct", "incorrect"]),
     from: z.record(id, verdict),
@@ -133,6 +135,8 @@ export const sequentialQuizRouter = createTRPCRouter({
   submitAnswer: protectedGameUserProcedure
     .input(
       z.object({
+        /** The question the player's screen showed. */
+        questionKey: key,
         text: z.string().max(QUIZ_LIMITS.maxAnswerLength * 2),
         baseRevision: z.number().int().min(0),
       }),

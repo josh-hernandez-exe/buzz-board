@@ -307,9 +307,16 @@ export function QuizAnswerBox({
       ? saved.revision
       : (active?.base ?? saved?.revision ?? 0);
     submit.mutate(
-      { text, baseRevision: base },
+      { questionKey: key, text, baseRevision: base },
       {
-        onSuccess: () => setDraft(null),
+        onSuccess: (saved) => {
+          // Show what was saved at once, not the old answer until the
+          // refetch lands (editing then would start from a stale revision).
+          utils.sequentialQuiz.myAnswer.setData(undefined, (old) =>
+            old?.questionKey === key ? { ...old, answer: saved } : old,
+          );
+          setDraft(null);
+        },
         // On a conflict the refetch shows the teammate's answer above this
         // draft ("Saving yours replaces it"); nothing is lost either way.
         onSettled: () => void utils.sequentialQuiz.myAnswer.invalidate(),

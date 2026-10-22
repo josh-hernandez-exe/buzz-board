@@ -43,10 +43,13 @@ export type QuizAction =
   | { type: "reopen" }
   /**
    * Grade one or more teams. `from` is what the host's screen showed for
-   * each, so two hosts grading the same answer can't silently overwrite.
+   * each, so two hosts grading the same answer can't silently overwrite;
+   * `key` is the question the screen showed, so a mark from a screen that
+   * hasn't caught up never lands on the next question.
    */
   | {
       type: "grade";
+      key: string;
       teams: string[];
       verdict: "correct" | "incorrect";
       from: Record<string, Verdict | null>;
@@ -65,6 +68,7 @@ export type QuizError =
   | { kind: "noMoreQuestions" }
   | { kind: "unknownTeam"; team: string }
   | { kind: "gradeConflict"; team: string }
+  | { kind: "staleQuestion" }
   | { kind: "ungraded"; teams: string[] };
 
 export const quizOrder = (bank: Bank) =>
@@ -134,6 +138,9 @@ export function applyQuiz(
         : wrong();
     case "grade": {
       if (phase !== "locked") return wrong();
+      if (action.key !== questionKey(bank, state)) {
+        return err({ kind: "staleQuestion" });
+      }
       const bad = action.teams.find((t) => !state.teams.includes(t));
       if (bad) return err({ kind: "unknownTeam", team: bad });
       for (const t of action.teams) {
@@ -200,6 +207,11 @@ export function undoQuiz(current: QuizState, previous: QuizState): QuizState {
     !restored.answerShown
   ) {
     restored.answerShown = true;
+  }
+  // Answering never reopens once people have seen the answer: undoing past
+  // the lock stays locked.
+  if (restored.answerShown && restored.phase === "open") {
+    restored.phase = "locked";
   }
   return restored;
 }

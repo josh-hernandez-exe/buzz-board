@@ -30,7 +30,7 @@ It warns about repeated questions, questions left out of the order, and more tha
 - **Marking** is per team. The desk groups identical answers (case, accents, spaces and punctuation ignored) so one tap marks a group. **Mark exact matches correct** marks every answer equal to the answer or an accepted wording. **Mark the rest wrong** marks unmarked teams that answered as wrong and teams that didn't as missing.
 - **Reveal** awards `pointsPerQuestion` to each team marked correct, once, through the shared score writer.
 - **Void** closes the question with no points and without showing the answer.
-- **Undo** reverses the last action and its points. Undoing a reveal returns to marking with the answer still showing, and answering can't reopen after that.
+- **Undo** reverses the last action and its points. Undoing a reveal returns to marking with the answer still showing. Answering never reopens after that, even when undoing back past the lock.
 
 ## Team answers
 
@@ -46,7 +46,7 @@ It warns about repeated questions, questions left out of the order, and more tha
 
 ## Concurrent hosts
 
-Marks don't need the latest step, so two hosts can mark different teams at once. Each mark carries the verdict its screen showed (`from`). If another host changed that team's mark first, the mark is refused (`CONFLICT`) and the screen refreshes. Every other action still needs the latest step.
+Marks don't need the latest step, so two hosts can mark different teams at once. Each mark carries the verdict its screen showed (`from`). If another host changed that team's mark first, the mark is refused (`CONFLICT`) and the screen refreshes. Each mark and each answer save also carries the question its screen showed, so neither can land on the next question if the quiz moved on while it was being sent. Marks don't advance a desk's view of the step, so the desk's next step-checked action is still checked against what it last showed. Every other action still needs the latest step.
 
 ## Tests
 

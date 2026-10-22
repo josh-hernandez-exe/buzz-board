@@ -33,6 +33,8 @@ const INITIAL_CONNECT_WAIT_MS = 1_000;
 export class GameChangeBus {
   private readonly instanceId = randomUUID();
   private readonly listeners = new Map<string, Set<Listener>>();
+  /** The Redis message handler per subscribed game, to unsubscribe it exactly. */
+  private readonly handlers = new Map<string, (message: string) => void>();
   private publisher?: RedisClient;
   private publisherReady?: Promise<void>;
   private subscriber?: RedisClient;
@@ -46,10 +48,10 @@ export class GameChangeBus {
     if (!set) {
       set = new Set();
       this.listeners.set(gameId, set);
+      const handler = (message: string) => this.onMessage(gameId, message);
+      this.handlers.set(gameId, handler);
       this.getSubscriber()
-        .subscribe(CHANNEL_PREFIX + gameId, (message) =>
-          this.onMessage(gameId, message),
-        )
+        .subscribe(CHANNEL_PREFIX + gameId, handler)
         // Listeners load their first state before SUBSCRIBE is confirmed, so
         // a change made by another process in between would be missed.
         // Reload once now that every later change will be announced.
@@ -66,8 +68,14 @@ export class GameChangeBus {
       const current = this.listeners.get(gameId);
       if (!current?.delete(listener) || current.size > 0) return;
       this.listeners.delete(gameId);
+      const handler = this.handlers.get(gameId);
+      this.handlers.delete(gameId);
+      // Unsubscribe this handler, not the whole channel: node-redis then
+      // marks the channel as unsubscribing, so a listener arriving before
+      // Redis confirms sends a fresh SUBSCRIBE. Without the handler, the
+      // confirmation would also drop the newcomer's subscription.
       this.subscriber
-        ?.unsubscribe(CHANNEL_PREFIX + gameId)
+        ?.unsubscribe(CHANNEL_PREFIX + gameId, handler)
         .catch((error) =>
           logger.warn(`Could not unsubscribe from game ${gameId}`, error),
         );

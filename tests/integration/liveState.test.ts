@@ -231,6 +231,37 @@ describe("Redis loss", () => {
     await Promise.all([listener.close(), publisher.close()]);
   });
 
+  it("keeps receiving another process's changes when the last viewer leaves and one returns at once", async () => {
+    const listener = new GameChangeBus(process.env.KV_URL!);
+    const publisher = new GameChangeBus(process.env.KV_URL!);
+    const gameId = `rejoin-${Date.now()}`;
+    const stop = listener.listen(gameId, () => undefined);
+    await eventually(
+      () => channelSubscribers(gameId),
+      (n) => n === 1,
+    );
+    // The only viewer leaves and another arrives before Redis has
+    // confirmed the unsubscribe (a display reloading, say).
+    stop();
+    let received = 0;
+    listener.listen(gameId, () => (received += 1));
+    expect(
+      await eventually(
+        () => channelSubscribers(gameId),
+        (n) => n === 1,
+      ),
+    ).toBe(1);
+    const before = received;
+    await publisher.notify(gameId);
+    expect(
+      await eventually(
+        () => received,
+        (n) => n > before,
+      ),
+    ).toBeGreaterThan(before);
+    await Promise.all([listener.close(), publisher.close()]);
+  });
+
   it("recovers the current buzz winner from PostgreSQL after Redis loses its data", async () => {
     const { admin, game, gameTeams } = await createGame();
     const guest = await joinAsGuest(game.code);
