@@ -16,6 +16,25 @@ For the first event: a holiday, family-feud style game for several families on a
 | 1 week | Short second rehearsal with the final content; send families the join link and a one-line "how to join" | Families know they need only a phone and the link |
 | Day before | **Duplicate** the rehearsed game into a fresh game for the event, and check it opens on the right tab with the content | Fresh game ready, join code noted |
 
+## Load results so far
+
+All runs were local: a production build, PostgreSQL and Redis in Docker, and 100 bots plus 4 staff and display clients, all on one 4-vCPU, 16 GB machine.
+
+| Run | Buzzing | Invariants | Buzz ack p95 | Chat send p95 | Chat delivery p95 | Speed targets |
+| --- | --- | --- | --- | --- | --- | --- |
+| `776ddb8` | First buzz | All pass | 1,391 ms | 927 ms | 1,667 ms | 2 of 5 |
+| `ec40618` | First buzz | All pass | 1,490 ms | 1,032 ms | 1,958 ms | 2 of 5 |
+| `315ca95` | **Queue** (83 rounds, 498 entries, 0 rule violations) | All pass | 1,358 ms | 984 ms | 1,685 ms | 2 of 5 |
+
+**Correctness held at 100 bots in every run:**
+- One winner per window, or the queue keeping its rules.
+- Scores matching.
+- No private leaks.
+- Muted players can still buzz.
+- No unexpected errors.
+
+**Speed:** the targets (p95 under 500 ms for buzzes and sends, chat under 1 s) are still missed on this machine, where the bots share the CPU with the server. Queued buzzing is no slower than first-buzz. A family event is far below 100 people, but run the soak on hardware like the real host before relying on these numbers.
+
 ## Dress rehearsal script (about 60 minutes)
 
 **People:** you as owner on a laptop, a co-host on a second computer, a moderator, and at least six players on their own phones in three or more teams. Use a mix of iPhone and Android, Wi-Fi and mobile data. Join them all to a video call.
