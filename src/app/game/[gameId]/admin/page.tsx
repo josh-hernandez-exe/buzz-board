@@ -12,6 +12,7 @@ import { AppHeader } from "@/app/_components/server/AppHeader";
 import { PageShell } from "@/app/_components/ui/page";
 import { staffRoleFor } from "@/server/staff/staffService";
 import { db } from "@/server/db";
+import { isModeKind } from "@/utils/modes";
 
 export default async function GameAdminPage({
   params,
@@ -66,14 +67,10 @@ export default async function GameAdminPage({
           <GameAdminInfo
             gameState={currentGameState}
             staffRole={staffRole}
-            modeKind={
-              mode?.kind === "categoryGrid"
-                ? "categoryGrid"
-                : mode
-                  ? "rankedAnswers"
-                  : null
+            modeKind={mode && isModeKind(mode.kind) ? mode.kind : null}
+            modeFirst={
+              !!mode && isModeKind(mode.kind) && mode.status !== "ended"
             }
-            modeFirst={!!mode && mode.status !== "ended"}
           />
         </PageShell>
       </GameScope>

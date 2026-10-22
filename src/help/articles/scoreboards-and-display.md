@@ -20,7 +20,9 @@ Each click is saved once, even if your connection retries it. Scores have limits
 
 ## How do undo and redo work?
 
-**Undo** steps back through score changes one at a time, and **Redo** steps forward again in the same order. Making a new change after undoing clears the changes you could have redone. **Undo score** and **Redo** are only for scores: they don't change the buzzer or teams. The buzzer has its own undo; see [Buzzing modes and undo](/help/buzzing).
+**Undo** steps back through score changes one at a time, and **Redo** steps forward again in the same order. Making a new change after undoing clears the changes you could have redone. While a game mode (Ranked Answers or Category Grid) is running, **Undo score** only reaches changes made since the mode last changed the scores, so the mode's board and the scores stay in step. The mode has its own **Undo last action**.
+
+**Undo score** and **Redo** are only for scores: they don't change the buzzer or teams. The buzzer has its own undo; see [Buzzing modes and undo](/help/buzzing).
 
 ## Can two hosts change scores at the same time?
 

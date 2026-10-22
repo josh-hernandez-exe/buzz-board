@@ -27,9 +27,18 @@ afterAll(async () => {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * This process's app connections only: other test files' connections can
+ * still be closing on the shared Redis server, which made a global count
+ * flaky.
+ */
 async function redisConnectionCount() {
   const list = await redis.sendCommand<string>(["CLIENT", "LIST"]);
-  return list.trim().split("\n").length;
+  const mine = `name=buzz-board:${process.pid}:`;
+  return list
+    .trim()
+    .split("\n")
+    .filter((line) => line.includes(mine)).length;
 }
 
 async function channelSubscribers(gameId: string) {
@@ -145,6 +154,8 @@ describe("stream lifetime", () => {
     warm.controller.abort();
     await warm.finished;
     const baseline = await redisConnectionCount();
+    // The shared publisher and subscriber are named and counted.
+    expect(baseline).toBeGreaterThan(0);
 
     const streams = await Promise.all(
       Array.from({ length: 20 }, () => publicStream(game.id)),

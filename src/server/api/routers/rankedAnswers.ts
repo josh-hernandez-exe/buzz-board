@@ -120,6 +120,9 @@ export const rankedAnswersRouter = createTRPCRouter({
       ),
     ),
   end: hostProcedure.mutation(({ ctx }) =>
-    control(ctx.gameSession.id, endMode(ctx.gameSession.id)),
+    control(
+      ctx.gameSession.id,
+      endMode(ctx.gameSession.id, ctx.session.user.id),
+    ),
   ),
 });

@@ -8,6 +8,7 @@ import { RankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard"
 import { RankedRulesEditor } from "@/app/_components/client/RankedRulesEditor";
 import { Button } from "@/app/_components/ui/button";
 import { Notice } from "@/app/_components/ui/page";
+import { isModeKind, MODE_LABEL } from "@/utils/modes";
 import { helpHref } from "@/help/manifest";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { newRequestId } from "@/utils/requestId";
@@ -78,7 +79,7 @@ export function RankedAnswersPanel() {
 
 /** The game is set up for a different mode; explain how to switch. */
 export function OtherModeNotice({ mode }: { mode: string }) {
-  const name = mode === "categoryGrid" ? "Category Grid" : "Ranked Answers";
+  const name = isModeKind(mode) ? MODE_LABEL[mode] : "another game mode";
   return (
     <Notice tone="info">
       This game is set up for <strong>{name}</strong>. A game runs one game

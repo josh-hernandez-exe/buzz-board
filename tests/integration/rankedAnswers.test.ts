@@ -451,3 +451,68 @@ describe("void a board", () => {
     expect(await currentScores(created.game.id)).toEqual(beforeVoid);
   });
 });
+
+describe("score history and handoff (W23)", () => {
+  it("the scoreboard's own undo can't pull points out from under the board", async () => {
+    const created = await createGame({ teams: 2 });
+    const ra = created.admin.rankedAnswers;
+    const content = sampleContent(2);
+    content.rules = presetRules("roundRobin", 2);
+    await ra.saveDraft({ draft: content, expectedRevision: 0 });
+    const [a] = created.gameTeams.map((t) => t.id);
+    // A manual change before the mode can still be undone later...
+    await created.admin.gameAdmin.addScore({
+      requestId: rid(),
+      changes: { [a!]: 5 },
+    });
+    await ra.start();
+    const main = content.boards.find((x) => x.role === "main")!;
+    await act(ra, { type: "startBoard", boardId: main.id });
+    await act(ra, { type: "answer", answerId: main.answers[0]!.id });
+    const afterBoard = await currentScores(created.game.id);
+
+    // ...but not once a mode has scored: the board and scores stay in step.
+    await expect(created.admin.gameAdmin.undoScore()).rejects.toMatchObject({
+      message: expect.stringContaining("nothing to undo") as unknown,
+    });
+    // A manual change after the mode's points is undoable as usual.
+    await created.admin.gameAdmin.addScore({
+      requestId: rid(),
+      changes: { [a!]: 1 },
+    });
+    await created.admin.gameAdmin.undoScore();
+    expect(await currentScores(created.game.id)).toEqual(afterBoard);
+  });
+
+  it("use basic controls closes the buzzer and sets an undo barrier, in one step", async () => {
+    const created = await createGame({ teams: 2 });
+    const ra = created.admin.rankedAnswers;
+    const content = sampleContent(2);
+    content.rules = presetRules("buzzRace", 2);
+    await ra.saveDraft({ draft: content, expectedRevision: 0 });
+    await ra.start();
+    await created.admin.gameAdmin.startBuzzer();
+    const [a] = created.gameTeams.map((t) => t.id);
+    await created.admin.gameAdmin.addScore({
+      requestId: rid(),
+      changes: { [a!]: 3 },
+    });
+
+    await ra.end();
+
+    const game = await db.game.findUniqueOrThrow({
+      where: { id: created.game.id },
+    });
+    expect(game.isBuzzerListening).toBe(false);
+    expect((await ra.hostView()).status).toBe("ended");
+    // Undo can't reach back past the handoff.
+    await expect(created.admin.gameAdmin.undoScore()).rejects.toBeDefined();
+    expect((await currentScores(created.game.id))[a!]).toBe(3);
+    const receipt = await db.gameOperation.findFirst({
+      where: { gameId: created.game.id, action: "mode.handoff" },
+    });
+    expect(receipt).not.toBeNull();
+    // Ending again changes nothing.
+    await expect(ra.end()).resolves.toEqual({ changed: false });
+  });
+});

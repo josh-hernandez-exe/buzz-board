@@ -97,6 +97,9 @@ export const categoryGridRouter = createTRPCRouter({
       ),
     ),
   end: hostProcedure.mutation(({ ctx }) =>
-    control(ctx.gameSession.id, endGrid(ctx.gameSession.id)),
+    control(
+      ctx.gameSession.id,
+      endGrid(ctx.gameSession.id, ctx.session.user.id),
+    ),
   ),
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
+import { ModeEndedNotice } from "@/app/_components/client/ModeEndedNotice";
 import type {
   PublicBoard,
   PublicModeView,
@@ -239,6 +240,14 @@ export function RankedAnswersBoard({
 /** The board for a player page, from the page's live game state. */
 export function LiveRankedAnswersBoard() {
   const { data } = useLiveGameState();
+  if (data?.mode?.status === "ended") {
+    return (
+      <ModeEndedNotice
+        mode={data.mode}
+        gameFinished={data.game.status === "finished"}
+      />
+    );
+  }
   if (data?.mode?.kind !== "rankedAnswers" || data.mode.status !== "running") {
     return null;
   }

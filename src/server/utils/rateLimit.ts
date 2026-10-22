@@ -1,5 +1,7 @@
 import { createClient } from "redis";
 
+import { redisClientName } from "@/server/live/gameChangeBus";
+
 import { env } from "@/env";
 import { logger } from "@/logger";
 
@@ -28,6 +30,7 @@ function redis(): RedisClient {
   if (!client) {
     client = createClient({
       url: env.KV_URL,
+      name: redisClientName("rate-limit"),
       // Fail fast while Redis is down; limits then allow the request.
       disableOfflineQueue: true,
       socket: {

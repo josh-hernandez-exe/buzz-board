@@ -130,7 +130,7 @@ describe("undo / redo history", () => {
     await admin.gameAdmin.undoScore();
     expect(await score()).toBe(0);
     await expect(admin.gameAdmin.undoScore()).rejects.toThrow(
-      "No past states to undo",
+      "There's nothing to undo.",
     );
   });
 
@@ -155,7 +155,7 @@ describe("undo / redo history", () => {
     await admin.gameAdmin.redoScore();
     expect(await score()).toBe(30);
     await expect(admin.gameAdmin.redoScore()).rejects.toThrow(
-      "No past states to redo",
+      "There's nothing to redo.",
     );
 
     const scoreboard = await db.scoreboard.findUniqueOrThrow({
@@ -185,7 +185,7 @@ describe("undo / redo history", () => {
 
     expect(await score()).toBe(11);
     await expect(admin.gameAdmin.redoScore()).rejects.toThrow(
-      "No past states to redo",
+      "There's nothing to redo.",
     );
   });
 });

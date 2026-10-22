@@ -8,6 +8,11 @@ import { logger } from "@/logger";
 type Listener = () => void;
 type RedisClient = ReturnType<typeof createClient>;
 
+/** "buzz-board:<pid>:<role>": no spaces, as Redis client names require. */
+export function redisClientName(role: string) {
+  return `buzz-board:${process.pid}:${role}`;
+}
+
 const CHANNEL_PREFIX = "buzz-board:game-changed:";
 const INITIAL_CONNECT_WAIT_MS = 1_000;
 
@@ -168,6 +173,8 @@ export class GameChangeBus {
   ): RedisClient {
     const client = createClient({
       url: this.redisUrl,
+      // Named per process, so CLIENT LIST shows who owns each connection.
+      name: redisClientName(role),
       ...options,
       socket: {
         connectTimeout: 5_000,

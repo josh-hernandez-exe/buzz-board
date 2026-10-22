@@ -36,10 +36,14 @@ Players see the grid and the open clue above their buzzer, and the audience disp
   - An answer that was shown stays on screen, so you can judge again.
 - **Void this clue** is for a clue that went wrong, for example a mistake in the question. It takes back every point that clue gave or took, gives the pick back, and marks the tile as void.
 
-You can also change scores by hand on the **Play** tab. While the grid is running, use **Undo last action** instead, so the grid and the scores stay in step.
+You can also change scores by hand on the **Play** tab. The scoreboard's **Undo score** only reaches changes made since the grid last changed the scores, so it can never take points away from the grid. Use **Undo last action** for those.
 
 ## How do I go back to the buzzer?
 
-**Use basic controls** stops the grid for good in this room. Players, teams, chat and scores stay. To play the grid again, duplicate the game: the copy keeps the clues and rules.
+**Use basic controls** stops the grid for good in this room. Players, teams, chat and scores stay.
+
+- **The buzzer closes.** Open it when you're ready.
+- **Players and the display** are told the game carries on with the buzzer.
+- **The scoreboard's Undo score** only reaches changes made after this point. To play the grid again, duplicate the game: the copy keeps the clues and rules.
 
 A game runs one game mode at a time. To switch a game from Ranked Answers to Category Grid (or back) before it starts, use **Discard setup** on the mode you don't want.

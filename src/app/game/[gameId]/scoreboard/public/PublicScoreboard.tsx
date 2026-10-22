@@ -14,6 +14,7 @@ import {
 import { RankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
 import { CategoryGridBoard } from "@/app/_components/client/CategoryGridBoard";
 import { FinalStandings } from "@/app/_components/client/FinalStandings";
+import { ModeEndedNotice } from "@/app/_components/client/ModeEndedNotice";
 import { Button } from "@/app/_components/ui/button";
 import { cn } from "@/app/_lib/utils";
 import { env } from "@/env";
@@ -99,6 +100,11 @@ function AudienceDisplay({
         </Button>
       </header>
 
+      <ModeEndedNotice
+        mode={state.mode}
+        gameFinished={game.status === GameStatus.finished}
+        large
+      />
       {state.mode?.kind === "categoryGrid" &&
       state.mode.status === "running" ? (
         <CategoryGridBoard view={state.mode} names={teamNames} size="large" />

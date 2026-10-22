@@ -78,8 +78,14 @@ Players see the board above their buzzer, and the audience display shows it in l
 
 Two hosts can run a board together. If you both press something at the same moment, only the first counts, and the other screen updates so you can check before trying again.
 
-You can also change scores by hand on the **Play** tab at any time. While Ranked Answers is running, use **Undo last action** rather than the scoreboard's undo, so the board and the scores stay in step.
+You can also change scores by hand on the **Play** tab at any time. The scoreboard's **Undo score** only reaches changes made since Ranked Answers last changed the scores, so it can never take points away from the board. Use **Undo last action** for those.
 
 ## How do I go back to the buzzer?
 
-**Use basic controls** stops Ranked Answers for good in this room. Players, teams, chat and scores all stay, and you carry on with the buzzer and manual scores. To play Ranked Answers again, duplicate the game.
+**Use basic controls** stops Ranked Answers for good in this room. Players, teams, chat and scores all stay, and you carry on with the buzzer and manual scores.
+
+- **The buzzer closes.** Open it when you're ready; nothing reopens by itself.
+- **Players and the audience display** are told the game carries on with the buzzer.
+- **The scoreboard's Undo score** only reaches changes you make after this point.
+
+To play Ranked Answers again, duplicate the game.

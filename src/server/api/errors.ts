@@ -11,9 +11,8 @@ import { type StaffError } from "@/server/staff/staffService";
 import { type RosterError } from "@/server/roster/rosterService";
 import { type IdentityError } from "@/server/identity/identityService";
 import { type ChatError } from "@/server/chat/chatService";
-import { type ModeError } from "@/server/modes/rankedAnswersService";
+import { type GameKitError } from "@/server/modes/gameKit";
 import { type EngineError } from "@/utils/rankedAnswers/engine";
-import { type GridModeError } from "@/server/modes/categoryGridService";
 import { type GridError } from "@/utils/categoryGrid/engine";
 import { nameErrorMessage } from "@/utils/displayName";
 import { SCORE_LIMITS } from "@/server/scores/scoreMath";
@@ -29,8 +28,7 @@ export type ServiceError =
   | RosterError
   | IdentityError
   | ChatError
-  | ModeError
-  | GridModeError;
+  | GameKitError;
 
 const number = (n: number) => n.toLocaleString("en-US");
 
@@ -278,12 +276,13 @@ function baseError(error: ServiceError): TRPCError {
     case "nothingToUndo":
       return new TRPCError({
         code: "BAD_REQUEST",
-        message: "No past states to undo",
+        message:
+          "There's nothing to undo. Points a game mode gave are undone with that mode's own Undo.",
       });
     case "nothingToRedo":
       return new TRPCError({
         code: "BAD_REQUEST",
-        message: "No past states to redo",
+        message: "There's nothing to redo.",
       });
     case "inviteNotFound":
       return new TRPCError({
