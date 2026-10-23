@@ -1,4 +1,4 @@
-Category Grid is a quiz-show grid: categories across the top and clues worth more as you go down. A team picks a clue, everyone buzzes in, and a right answer scores the clue's value and gets the next pick. Points go straight onto the normal scoreboard.
+Category Grid is a jeopardy style game mode: categories across the top and clues worth more as you go down. A team picks a clue, everyone buzzes in, and a right answer scores the clue's value and gets the next pick. Points go straight onto the normal scoreboard.
 
 ## How do I set up a grid?
 

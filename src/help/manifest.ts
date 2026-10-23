@@ -107,7 +107,7 @@ export const HELP_ARTICLES = [
   },
   {
     id: "category-grid",
-    title: "Category Grid (quiz-show grid)",
+    title: "Category Grid (jeopardy style)",
     summary:
       "Set up a grid of categories and clues, run it with the buzzer, give the next pick, and fix mistakes with undo or void.",
     audiences: ["host", "player"],

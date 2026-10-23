@@ -21,8 +21,8 @@ export default async function Home() {
             <Wordmark />
           </h1>
           <p className="text-muted-foreground max-w-md text-lg">
-            Buzzers, a live scoreboard and family-feud style boards for trivia,
-            quizzes and game nights.
+            Buzzers, a live scoreboard, and family-feud and jeopardy style
+            boards for trivia, quizzes and game nights.
           </p>
         </section>
         <div className="grid gap-4 sm:grid-cols-2" aria-label="Get started">

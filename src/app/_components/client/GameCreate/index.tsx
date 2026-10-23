@@ -235,7 +235,7 @@ export function CreateGame() {
             ],
             [
               "categoryGrid",
-              "Category Grid (quiz-show grid)",
+              "Category Grid (jeopardy style)",
               "Categories across the top, clues worth more as you go down. Teams pick a clue and buzz in to answer.",
             ],
             [

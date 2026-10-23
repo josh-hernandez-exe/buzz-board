@@ -64,9 +64,9 @@ export function CategoryGridPanel() {
       className="bg-surface border-border flex w-full flex-col gap-4 rounded-xl border p-4 shadow-sm"
     >
       <p className="text-muted-foreground text-sm">
-        <strong>Category Grid</strong>: categories across the top, clues worth
-        more as you go down. A team picks a clue, everyone buzzes, and a right
-        answer scores and picks next.{" "}
+        <strong>Category Grid</strong>: jeopardy style, with categories across
+        the top and clues worth more as you go down. A team picks a clue,
+        everyone buzzes, and a right answer scores and picks next.{" "}
         <a
           className="underline"
           href={helpHref("category-grid")}

@@ -25,5 +25,10 @@ test("a database-backed session can access the dashboard", async ({
   await page.goto("/dashboard");
 
   await expect(page.getByRole("heading", { name: "My games" })).toBeVisible();
+  // A new host with no games is pointed at the host guide, in place.
+  await expect(page.getByTestId("no-games")).toContainText("New to hosting?");
+  await expect(
+    page.getByRole("link", { name: "Read the host guide" }),
+  ).toHaveAttribute("href", "/help/host-quickstart");
   await context.close();
 });

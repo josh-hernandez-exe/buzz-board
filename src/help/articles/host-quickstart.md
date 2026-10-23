@@ -18,7 +18,7 @@ The bar at the top always shows the game's name and status, the join code, **Cop
 | --- | --- |
 | **Play** | The buzzer and scores: everything you need during a question. |
 | **Ranked Answers** | Family-feud style boards. See [Ranked Answers](/help/ranked-answers). |
-| **Category Grid** | A quiz-show grid of categories and clues. See [Category Grid](/help/category-grid). A game shows the tab of the mode it's set up for, or both before you choose. |
+| **Category Grid** | Jeopardy style categories and clues. See [Category Grid](/help/category-grid). A game shows the tab of the mode it's set up for, or both before you choose. |
 | **Players** | Teams (add, delete, lock switching) and every player (rename, move, remove). |
 | **Chat** | Turn chat on and moderate it. See [Chat](/help/chat). |
 | **Room** | The QR code, who may join, helpers, and finishing, duplicating or deleting the game. |

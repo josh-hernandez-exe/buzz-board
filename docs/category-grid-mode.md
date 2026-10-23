@@ -1,6 +1,6 @@
 # Category Grid mode
 
-A quiz-show grid: categories across the top, clues worth more as you go down. It's the plan's **Category Grid** module (W15, PR25 in the [delivery plan](./buzz-board-game-kit-delivery-plan.md)). It's built directly, like [Ranked Answers](./ranked-answers-mode.md), rather than on the full Game Kit platform, and uses the same patterns: a pure engine, a game-locked service, a public projection and a host desk tab. How hosts use it is in the [Help article](../src/help/articles/category-grid.md).
+A jeopardy style grid: categories across the top, clues worth more as you go down. It's the plan's **Category Grid** module (W15, PR25 in the [delivery plan](./buzz-board-game-kit-delivery-plan.md)). It's built directly, like [Ranked Answers](./ranked-answers-mode.md), rather than on the full Game Kit platform, and uses the same patterns: a pure engine, a game-locked service, a public projection and a host desk tab. How hosts use it is in the [Help article](../src/help/articles/category-grid.md).
 
 ## Choosing a game mode
 

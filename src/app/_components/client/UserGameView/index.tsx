@@ -1,5 +1,6 @@
 "use client";
 
+import { helpHref } from "@/help/manifest";
 import { useState } from "react";
 
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
@@ -27,6 +28,23 @@ export function UserGameView({
   const all = gameInfo.data;
   const finishedCount = all.filter((g) => g.status === "finished").length;
   const games = hideFinished ? all.filter((g) => g.status !== "finished") : all;
+
+  // First run: point a new host at the guide where they're looking, rather
+  // than a permanent button every returning host has to skip past.
+  if (all.length === 0) {
+    return (
+      <p data-testid="no-games" className="text-muted-foreground text-sm">
+        No games yet. Create one above: it takes a minute. New to hosting?{" "}
+        <a
+          className="text-foreground underline"
+          href={helpHref("host-quickstart")}
+        >
+          Read the host guide
+        </a>{" "}
+        (about 3 minutes).
+      </p>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2">
