@@ -49,6 +49,7 @@ function gameState(game: Partial<PrivateGameState["game"]> = {}, players = 0) {
       joiningOpen: true,
       teamAssignment: "auto",
       chatEnabled: false,
+      captainsOnly: false,
       buzzerMode: "first",
       ...game,
     },

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { PrivateGameState } from "@/types";
 
-import { buzzerStatus } from "./buzzerStatus";
+import { buzzerStatus, captainFor } from "./buzzerStatus";
 
 function state(
   overrides: {
@@ -10,6 +10,7 @@ function state(
     buzzWinner?: PrivateGameState["buzzWinner"];
     rejected?: string[];
     selfTeam?: string | null;
+    captain?: string | null;
     queue?: PrivateGameState["buzzQueue"];
   } = {},
 ): PrivateGameState {
@@ -27,6 +28,7 @@ function state(
       joiningOpen: true,
       teamAssignment: "auto",
       chatEnabled: false,
+      captainsOnly: false,
       buzzerMode: "first",
       ...overrides.game,
     },
@@ -39,6 +41,7 @@ function state(
       score: 0,
       allowMemberRename: true,
       nameVersion: 0,
+      captainId: id === "t1" ? (overrides.captain ?? null) : "rival",
     })),
     gameUsers: {
       me: {
@@ -210,5 +213,36 @@ describe("buzzerStatus", () => {
           .message,
       ).toBe("Foxes got it.");
     });
+  });
+
+  it("lets only the captain press in a captains-only game", () => {
+    const open = (captainsOnly: boolean) =>
+      state({
+        game: { isBuzzerListening: true, captainsOnly },
+        captain: "mate",
+      });
+    expect(buzzerStatus(open(true), "me")).toEqual({
+      canBuzz: false,
+      tone: "waiting",
+      message: "Buzzer open: only your captain, Cy, can buzz.",
+    });
+    expect(buzzerStatus(open(true), "mate").canBuzz).toBe(true);
+    expect(buzzerStatus(open(false), "me").canBuzz).toBe(true);
+    expect(captainFor(open(true), "me")).toBe("Cy");
+    expect(captainFor(open(true), "mate")).toBeNull();
+    // Team news still reaches everyone on the team.
+    const won = state({
+      game: { captainsOnly: true },
+      captain: "mate",
+      buzzWinner: { gameUserId: "mate", gameTeamId: "t1" },
+    });
+    expect(buzzerStatus(won, "me").message).toBe("Your team buzzed in first!");
+    // No captain yet (an empty team just joined): nobody is locked out.
+    expect(
+      buzzerStatus(
+        state({ game: { isBuzzerListening: true, captainsOnly: true } }),
+        "me",
+      ).canBuzz,
+    ).toBe(true);
   });
 });

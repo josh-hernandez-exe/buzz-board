@@ -15,6 +15,7 @@ import {
 import { sampleContent } from "@/utils/rankedAnswers/sample";
 import { emptyQuizBank } from "@/utils/sequentialQuiz/content";
 import { sampleQuizBank } from "@/utils/sequentialQuiz/sample";
+import { repairCaptains } from "@/server/roster/captains";
 import {
   type BuzzerMode,
   GameFormat,
@@ -91,8 +92,8 @@ async function insertGame(data: {
   settings?: Prisma.InputJsonValue;
   teamAssignment?: TeamAssignment;
   buzzerMode?: BuzzerMode;
-  /** A Ranked Answers draft (rules and boards) to set up with the game. */
-  /** A game mode draft (Ranked Answers or Category Grid) to set up with the game. */
+  captainsOnly?: boolean;
+  /** A game mode draft to set up with the game. */
   modeDraft?: { kind: ModeKind; draft: Content | Bank };
   requestId?: string;
 }): Promise<Created> {
@@ -112,6 +113,8 @@ async function insertGame(data: {
             settings: data.settings ?? {},
             teamAssignment: data.teamAssignment,
             buzzerMode: data.buzzerMode,
+            captainsOnly:
+              data.format === GameFormat.team && (data.captainsOnly ?? false),
             creationRequestId: data.requestId,
             createdById: data.ownerId,
             gameAdmins: { create: { userId: data.ownerId } },
@@ -164,6 +167,7 @@ export async function createGame({
   format,
   teamCount = GAME_LIMITS.defaultTeams,
   buzzerMode,
+  captainsOnly,
   rankedAnswers,
   categoryGrid,
   sequentialQuiz,
@@ -174,6 +178,8 @@ export async function createGame({
   format: GameFormat;
   teamCount?: number;
   buzzerMode?: BuzzerMode;
+  /** Team games: only each team's captain buzzes and answers. */
+  captainsOnly?: boolean;
   /** Set the game up for Ranked Answers with these rules. */
   rankedAnswers?: { rules: Rules; sampleBoards?: boolean };
   /** Or set it up for Category Grid with these rules. */
@@ -210,6 +216,7 @@ export async function createGame({
           ? Array.from({ length: teamCount }, (_, i) => `Team ${i + 1}`)
           : [],
       buzzerMode,
+      captainsOnly,
       modeDraft: rankedAnswers
         ? {
             kind: "rankedAnswers",
@@ -279,6 +286,7 @@ export async function duplicateGame({
       settings: source.settings ?? {},
       teamAssignment: source.teamAssignment,
       buzzerMode: source.buzzerMode,
+      captainsOnly: source.captainsOnly,
       // Game mode rules and content come along, ready to play again.
       modeDraft: copiedModeDraft(source.gameMode),
       teamNames:
@@ -405,6 +413,7 @@ export async function joinGame({
           gameTeamId,
         },
       });
+      await repairCaptains(tx, game.id);
       return ok({
         gameUser,
         token: newToken,

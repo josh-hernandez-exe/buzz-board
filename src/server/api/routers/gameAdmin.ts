@@ -1,3 +1,4 @@
+import { setCaptain, setCaptainsOnly } from "@/server/roster/captains";
 import { randomUUID } from "node:crypto";
 
 import { BuzzerMode, GameFormat, TeamAssignment } from "@prisma/client";
@@ -358,6 +359,14 @@ export const gameAdminRouter = createTRPCRouter({
         setJoiningOpen(gameId, input.open),
       ),
     ),
+  /** Team games: only each team's captain buzzes and saves answers. */
+  setCaptainsOnly: protectedGameAdminProcedure
+    .input(z.object({ captainsOnly: z.boolean() }))
+    .mutation(async ({ ctx, input }) =>
+      gameControl(ctx.gameSession.id, (gameId) =>
+        setCaptainsOnly(gameId, input.captainsOnly),
+      ),
+    ),
   setTeamAssignment: protectedGameAdminProcedure
     .input(z.object({ teamAssignment: z.nativeEnum(TeamAssignment) }))
     .mutation(async ({ ctx, input }) =>
@@ -499,6 +508,18 @@ export const gameAdminRouter = createTRPCRouter({
       .mutation(async ({ ctx, input }) =>
         gameControl(ctx.gameSession.id, (gameId) =>
           renameTeam({ gameId, ...input, actor: { kind: "staff" } }),
+        ),
+      ),
+    /** Makes a player their team's captain. */
+    setCaptain: staffProcedure("moveRoster")
+      .input(z.object({ gameUserId: z.string() }))
+      .mutation(async ({ ctx, input }) =>
+        gameControl(ctx.gameSession.id, (gameId) =>
+          setCaptain({
+            gameId,
+            gameUserId: input.gameUserId,
+            actor: { kind: "staff" },
+          }),
         ),
       ),
     removePlayer: staffProcedure("removePlayers")

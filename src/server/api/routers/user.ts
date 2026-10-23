@@ -43,6 +43,8 @@ export const userRouter = createTRPCRouter({
             .optional(),
           /** "queue": every buzz queues in order. Default: first buzz wins. */
           buzzerMode: z.enum([BuzzerMode.first, BuzzerMode.queue]).optional(),
+          /** Team games: only each team's captain buzzes and answers. */
+          captainsOnly: z.boolean().optional(),
           /** Set the game up for Ranked Answers with these rules. */
           rankedAnswers: z
             .object({
@@ -79,11 +81,12 @@ export const userRouter = createTRPCRouter({
           format: input.format,
           teamCount: input.teamCount,
           buzzerMode: input.buzzerMode,
+          captainsOnly: input.captainsOnly,
           rankedAnswers: input.rankedAnswers,
           // One mode per game: the first one given wins.
           categoryGrid: input.rankedAnswers ? undefined : input.categoryGrid,
           sequentialQuiz:
-            input.rankedAnswers ?? input.categoryGrid
+            (input.rankedAnswers ?? input.categoryGrid)
               ? undefined
               : input.sequentialQuiz,
           requestId: input.requestId,

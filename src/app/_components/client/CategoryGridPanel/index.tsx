@@ -8,6 +8,7 @@ import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { OtherModeNotice } from "@/app/_components/client/RankedAnswersPanel";
 import { QuestionEditor } from "@/app/_components/client/QuestionEditor";
+import { QuestionLibrary } from "@/app/_components/client/QuestionLibrary";
 import { Button } from "@/app/_components/ui/button";
 import { Notice } from "@/app/_components/ui/page";
 import { cn } from "@/app/_lib/utils";
@@ -24,6 +25,11 @@ import {
   type Question,
 } from "@/utils/categoryGrid/content";
 import { sampleBank } from "@/utils/categoryGrid/sample";
+import {
+  describeUse,
+  pruneBlankUnused,
+  questionUses,
+} from "@/utils/questionBank/library";
 import { newRequestId } from "@/utils/requestId";
 import { hotkeyHint, useHotkeys } from "@/utils/useHotkeys";
 
@@ -107,6 +113,7 @@ function GridEditor({ view }: { view: HostView }) {
   const [dirty, setDirty] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [showJson, setShowJson] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
 
   // Pick up another host's save, unless there are unsaved edits here.
   if (!dirty && view.draftRevision !== revision) {
@@ -173,16 +180,25 @@ function GridEditor({ view }: { view: HostView }) {
       },
     });
   };
+  // Removing tiles keeps their questions in the library unless they are
+  // blank and unused (the quiz may use them too).
   const removeColumn = (ci: number) => {
-    const removed = new Set(columns[ci]!.cells.map((c) => c.questionId));
-    update({
-      ...draft,
-      questions: draft.questions.filter((q) => !removed.has(q.id)),
-      modes: {
-        ...draft.modes,
-        categoryGrid: { ...grid, columns: columns.filter((_c, i) => i !== ci) },
-      },
-    });
+    const removed = columns[ci]!.cells.map((c) => c.questionId);
+    update(
+      pruneBlankUnused(
+        {
+          ...draft,
+          modes: {
+            ...draft.modes,
+            categoryGrid: {
+              ...grid,
+              columns: columns.filter((_c, i) => i !== ci),
+            },
+          },
+        },
+        removed,
+      ),
+    );
     setSelected(null);
   };
   const addRow = () => {
@@ -202,19 +218,56 @@ function GridEditor({ view }: { view: HostView }) {
     });
   };
   const removeRow = () => {
-    const removed = new Set(columns.map((c) => c.cells.at(-1)!.questionId));
-    update({
-      ...draft,
-      questions: draft.questions.filter((q) => !removed.has(q.id)),
-      modes: {
-        ...draft.modes,
-        categoryGrid: {
-          ...grid,
-          columns: columns.map((c) => ({ ...c, cells: c.cells.slice(0, -1) })),
+    const removed = columns.map((c) => c.cells.at(-1)!.questionId);
+    update(
+      pruneBlankUnused(
+        {
+          ...draft,
+          modes: {
+            ...draft.modes,
+            categoryGrid: {
+              ...grid,
+              columns: columns.map((c) => ({
+                ...c,
+                cells: c.cells.slice(0, -1),
+              })),
+            },
+          },
         },
-      },
-    });
+        removed,
+      ),
+    );
     setSelected(null);
+  };
+  /** Puts a library question on the selected tile. */
+  const placeOnTile = (key: string, questionId: string) => {
+    const at = findCell(draft, key);
+    if (!at) return;
+    const previous = at.cell.questionId;
+    update(
+      pruneBlankUnused(
+        {
+          ...draft,
+          modes: {
+            ...draft.modes,
+            categoryGrid: {
+              ...grid,
+              columns: columns.map((c) =>
+                c.id !== at.column.id
+                  ? c
+                  : {
+                      ...c,
+                      cells: c.cells.map((cell, i) =>
+                        i === at.row ? { ...cell, questionId } : cell,
+                      ),
+                    },
+              ),
+            },
+          },
+        },
+        [previous],
+      ),
+    );
   };
   const setRowPoints = (ri: number, points: number) =>
     setGrid({
@@ -228,6 +281,15 @@ function GridEditor({ view }: { view: HostView }) {
 
   const check = gridPreflight(draft, view.teams.length);
   const found = selected ? findCell(draft, selected) : null;
+  const uses = questionUses(draft);
+  const otherUses = found?.question
+    ? (uses.get(found.question.id) ?? []).filter(
+        (u) =>
+          u.kind !== "grid" ||
+          u.columnId !== found.column.id ||
+          u.row !== found.row,
+      )
+    : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -409,7 +471,11 @@ function GridEditor({ view }: { view: HostView }) {
           size="sm"
           onClick={() => {
             if (
-              window.confirm("Replace the grid with the sample holiday grid?")
+              window.confirm(
+                draft.modes.pubQuiz
+                  ? "Replace the whole question bank, including its quiz order, with the sample holiday grid?"
+                  : "Replace the grid with the sample holiday grid?",
+              )
             ) {
               update(sampleBank());
               setSelected(null);
@@ -425,15 +491,58 @@ function GridEditor({ view }: { view: HostView }) {
         >
           {showJson ? "Hide import/export" : "Import or export"}
         </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-expanded={showLibrary}
+          onClick={() => setShowLibrary((s) => !s)}
+        >
+          {showLibrary ? "Hide question library" : "Question library"}
+        </Button>
       </div>
 
       {found?.question && selected && (
         <QuestionEditor
-          key={selected}
-          title={`${found.column.title || "This category"} for ${found.cell.label}`}
+          key={`${selected}:${found.question.id}`}
+          title={`${found.column.title || "This category"} for ${found.cell.label}${
+            otherUses.length > 0
+              ? ` (also ${otherUses.map(describeUse).join(", ")}: edits change every use)`
+              : ""
+          }`}
           question={found.question}
           onChange={(q) => setQuestion(found.question!.id, q)}
           onClose={() => setSelected(null)}
+        />
+      )}
+      {found && selected && !showLibrary && (
+        <Button
+          variant="link"
+          size="sm"
+          className="self-start"
+          onClick={() => setShowLibrary(true)}
+        >
+          Use a different question from the library
+        </Button>
+      )}
+
+      {showLibrary && (
+        <QuestionLibrary
+          bank={draft}
+          onChange={update}
+          pick={
+            found && selected
+              ? {
+                  label: "Use for this tile",
+                  onPick: (id) => placeOnTile(selected, id),
+                  blocked: (id) =>
+                    id === found.cell.questionId
+                      ? "Already on this tile"
+                      : (uses.get(id) ?? []).some((u) => u.kind === "grid")
+                        ? "Already on the grid"
+                        : null,
+                }
+              : undefined
+          }
         />
       )}
 

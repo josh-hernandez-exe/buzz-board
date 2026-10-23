@@ -7,6 +7,7 @@ import {
   type GameTx,
 } from "@/server/db/gameTransaction";
 import { releaseTeamsFromQueue } from "@/server/buzzer/buzzerService";
+import { repairCaptains } from "@/server/roster/captains";
 import { generateToken } from "@/server/utils/codeGeneration";
 import { normalizeName, type NameError } from "@/utils/displayName";
 import type { GameSettings } from "@/types";
@@ -313,6 +314,7 @@ export async function movePlayer({
           where: { id: gameUserId },
           data: { gameTeamId: targetGameTeamId },
         });
+        await repairCaptains(tx, gameId);
         return ok({ changed: true });
       },
     ),
@@ -356,6 +358,7 @@ export async function removePlayer({
         if (game.format === GameFormat.individual && player.gameTeamId) {
           await releaseTeamsFromQueue(tx, gameId, [player.gameTeamId]);
         }
+        await repairCaptains(tx, gameId);
         return ok({ changed: true });
       },
     ),

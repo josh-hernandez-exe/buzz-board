@@ -13,6 +13,7 @@ import { type IdentityError } from "@/server/identity/identityService";
 import { type ChatError } from "@/server/chat/chatService";
 import { type GameKitError } from "@/server/modes/gameKit";
 import { type AnswerError } from "@/server/modes/sequentialQuizService";
+import { type CaptainError } from "@/server/roster/captains";
 import { type QuizError } from "@/utils/sequentialQuiz/engine";
 import { isModeKind, MODE_LABEL } from "@/utils/modes";
 import { type EngineError } from "@/utils/rankedAnswers/engine";
@@ -32,7 +33,8 @@ export type ServiceError =
   | IdentityError
   | ChatError
   | GameKitError
-  | AnswerError;
+  | AnswerError
+  | CaptainError;
 
 const number = (n: number) => n.toLocaleString("en-US");
 
@@ -78,6 +80,8 @@ const ERROR_HELP: Partial<Record<ServiceError["kind"], string>> = {
     "can-i-save-my-player-to-an-account",
   ),
   teamRejected: helpHref("troubleshooting", "why-cant-i-buzz"),
+  captainOnly: helpHref("teams-and-names", "what-are-team-captains"),
+  notCaptain: helpHref("teams-and-names", "what-are-team-captains"),
   notOnTeam: helpHref("teams-and-names", "how-do-players-get-a-team"),
   invalidAmount: helpHref("scoreboards-and-display", "how-do-i-change-scores"),
   scoreOutOfRange: helpHref(
@@ -244,6 +248,17 @@ function baseError(error: ServiceError): TRPCError {
       return new TRPCError({
         code: "CONFLICT",
         message: "Game is not listening for buzzers",
+      });
+    case "captainOnly":
+      return new TRPCError({
+        code: "FORBIDDEN",
+        message: `Only your team captain, ${error.captain}, can do that in this game.`,
+      });
+    case "notCaptain":
+      return new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Only the team captain (or a host) can choose who captains the team.",
       });
     case "teamRejected":
       return new TRPCError({

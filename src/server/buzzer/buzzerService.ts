@@ -10,6 +10,7 @@ import {
 import { err, ok, type Result } from "neverthrow";
 
 import { db as defaultDb } from "@/server/db";
+import { mayActForTeam } from "@/server/roster/captains";
 import {
   withGameLock,
   type GameTransactionError,
@@ -38,7 +39,9 @@ export type BuzzError =
   | { kind: "notListening" }
   | { kind: "gameFinished" }
   | { kind: "teamRejected" }
-  | { kind: "requestIdReused" };
+  | { kind: "requestIdReused" }
+  /** Captains-only game: someone else buzzes for this team. */
+  | { kind: "captainOnly"; captain: string };
 
 export type BuzzWinner = {
   /** Null only for a team selected before claims were recorded (pre-PR04). */
@@ -214,9 +217,7 @@ async function normalizeQueue(tx: GameTx, gameId: string, window: number) {
       data: { status: BuzzQueueStatus.skipped },
     });
     entries = entries.map((e) =>
-      duplicates.includes(e.id)
-        ? { ...e, status: BuzzQueueStatus.skipped }
-        : e,
+      duplicates.includes(e.id) ? { ...e, status: BuzzQueueStatus.skipped } : e,
     );
   }
   const answering = entries.filter(
@@ -658,11 +659,22 @@ export async function buzzIn({
 
   const gameUser = await defaultDb.gameUser.findFirst({
     where: { id: gameUserId, gameId },
-    select: { gameTeamId: true },
+    select: {
+      gameTeamId: true,
+      gameTeam: { select: { captainId: true } },
+      game: { select: { format: true, captainsOnly: true } },
+    },
   });
   if (!gameUser) return err({ kind: "participantNotFound" });
-  if (!gameUser.gameTeamId) return err({ kind: "notOnTeam" });
+  if (!gameUser.gameTeamId || !gameUser.gameTeam) {
+    return err({ kind: "notOnTeam" });
+  }
   const gameTeamId = gameUser.gameTeamId;
+  const rules = gameUser.game;
+  // Checked before the claim, so a teammate's buzz never closes the window.
+  if (!mayActForTeam(rules, gameUser.gameTeam, gameUserId)) {
+    return err(await captainOnly(defaultDb, gameUser.gameTeam.captainId));
+  }
 
   const outcome = await withGameLock(
     gameId,
@@ -670,21 +682,28 @@ export async function buzzIn({
       // Closing the window is the claim's first statement and takes the game
       // row lock. When everyone buzzes at once, the others wait only for
       // this short transaction, then match no row and answer straight away.
-      const closed = await tx.$queryRaw<{ buzzerWindow: number }[]>`
+      const closed = await tx.$queryRaw<
+        { buzzerWindow: number; captainsOnly: boolean; format: GameFormat }[]
+      >`
         UPDATE "Game" SET "isBuzzerListening" = false
         WHERE id = ${gameId} AND "isBuzzerListening"
           AND status <> 'finished'::"GameStatus"
           AND "buzzerMode" = 'first'::"BuzzerMode"
-        RETURNING "buzzerWindow"`;
+        RETURNING "buzzerWindow", "captainsOnly", format`;
       if (closed.length === 0) return null;
 
       // Re-read under the lock: the host may have reopened the buzzer (which
       // rejects the previous winner's team) since the checks above.
       const team = await tx.gameTeam.findFirst({
         where: { id: gameTeamId, gameId },
-        select: { buzzerState: true },
+        select: { buzzerState: true, captainId: true },
       });
       if (!team) throw new BuzzRejected({ kind: "notOnTeam" });
+      // The captain or the rule may have changed since the check above:
+      // decide with what the lock holds.
+      if (!mayActForTeam(closed[0]!, team, gameUserId)) {
+        throw new BuzzRejected(await captainOnly(tx, team.captainId));
+      }
       if (team.buzzerState === BuzzerState.rejected) {
         throw new BuzzRejected({ kind: "teamRejected" });
       }
@@ -755,13 +774,15 @@ async function queueBuzzIn({
             isBuzzerListening: true,
             buzzerWindow: true,
             buzzerMode: true,
+            format: true,
+            captainsOnly: true,
           },
         }),
         tx.gameUser.findFirst({
           where: { id: gameUserId, gameId },
           select: {
             gameTeamId: true,
-            gameTeam: { select: { buzzerState: true } },
+            gameTeam: { select: { buzzerState: true, captainId: true } },
           },
         }),
       ]);
@@ -771,6 +792,9 @@ async function queueBuzzIn({
       }
       if (gameUser.gameTeam.buzzerState === BuzzerState.rejected) {
         return err({ kind: "teamRejected" });
+      }
+      if (!mayActForTeam(game, gameUser.gameTeam, gameUserId)) {
+        return err(await captainOnly(tx, gameUser.gameTeam.captainId));
       }
       const window = game.buzzerWindow;
       const active = await tx.buzzQueueEntry.findFirst({
@@ -817,6 +841,19 @@ async function queueBuzzIn({
     },
   );
   return outcome.isErr() ? err(outcome.error) : outcome.value;
+}
+
+async function captainOnly(
+  client: Pick<GameTx, "gameUser">,
+  captainId: string | null,
+): Promise<BuzzError> {
+  const captain = captainId
+    ? await client.gameUser.findUnique({
+        where: { id: captainId },
+        select: { name: true },
+      })
+    : null;
+  return { kind: "captainOnly", captain: captain?.name ?? "your captain" };
 }
 
 /** Rolls back the claim transaction with a domain answer. */

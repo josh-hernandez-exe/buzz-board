@@ -6,6 +6,7 @@ import { BankJson } from "@/app/_components/client/BankJson";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { QuestionEditor } from "@/app/_components/client/QuestionEditor";
+import { QuestionLibrary } from "@/app/_components/client/QuestionLibrary";
 import { OtherModeNotice } from "@/app/_components/client/RankedAnswersPanel";
 import { SequentialQuizBoard } from "@/app/_components/client/SequentialQuizBoard";
 import { Button } from "@/app/_components/ui/button";
@@ -13,11 +14,7 @@ import { Notice, StatusPill } from "@/app/_components/ui/page";
 import { cn } from "@/app/_lib/utils";
 import { helpHref } from "@/help/manifest";
 import { api, type RouterOutputs } from "@/trpc/react";
-import {
-  GRID_LIMITS,
-  type Bank,
-  type Question,
-} from "@/utils/categoryGrid/content";
+import { GRID_LIMITS, type Bank } from "@/utils/categoryGrid/content";
 import {
   normalizeAnswer,
   quizPreflight,
@@ -25,6 +22,12 @@ import {
 } from "@/utils/sequentialQuiz/content";
 import { quizOrder, quizPoints } from "@/utils/sequentialQuiz/engine";
 import { sampleQuizBank } from "@/utils/sequentialQuiz/sample";
+import {
+  addQuestion as addToLibrary,
+  describeUse,
+  pruneBlankUnused,
+  questionUses,
+} from "@/utils/questionBank/library";
 import { newRequestId } from "@/utils/requestId";
 import { hotkeyHint, useHotkeys } from "@/utils/useHotkeys";
 
@@ -86,14 +89,6 @@ export function SequentialQuizPanel() {
 
 // ------------------------------------------------------------- editor
 
-function nextQuestionId(bank: Bank) {
-  const taken = new Set(bank.questions.map((q) => q.id));
-  for (let n = 1; ; n++) {
-    const id = `q${n}`;
-    if (!taken.has(id)) return id;
-  }
-}
-
 function QuizEditor({ view }: { view: HostView }) {
   const utils = api.useUtils();
   const [draft, setDraft] = useState<Bank>(view.draft);
@@ -101,6 +96,7 @@ function QuizEditor({ view }: { view: HostView }) {
   const [dirty, setDirty] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [showJson, setShowJson] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
 
   // Pick up another host's save, unless there are unsaved edits here.
   if (!dirty && view.draftRevision !== revision) {
@@ -151,16 +147,16 @@ function QuizEditor({ view }: { view: HostView }) {
       },
     });
   const byId = new Map(draft.questions.map((q) => [q.id, q]));
-  const unused = draft.questions.filter((q) => !order.includes(q.id));
+  const uses = questionUses(draft);
 
   const addQuestion = () => {
-    const id = nextQuestionId(draft);
-    const blank: Question = { id, prompt: { text: "" }, answer: { text: "" } };
+    const added = addToLibrary(draft);
+    if (added.isErr()) return;
+    const { bank, id } = added.value;
     update({
-      ...draft,
-      questions: [...draft.questions, blank],
+      ...bank,
       modes: {
-        ...draft.modes,
+        ...bank.modes,
         pubQuiz: { questionOrder: [...order, id], pointsPerQuestion: points },
       },
     });
@@ -173,8 +169,23 @@ function QuizEditor({ view }: { view: HostView }) {
     setQuiz({ questionOrder: next });
     if (selected === i) setSelected(i + by);
   };
+  // The question stays in the library unless it's blank and unused.
   const removeAt = (i: number) => {
-    setQuiz({ questionOrder: order.filter((_id, n) => n !== i) });
+    update(
+      pruneBlankUnused(
+        {
+          ...draft,
+          modes: {
+            ...draft.modes,
+            pubQuiz: {
+              questionOrder: order.filter((_id, n) => n !== i),
+              pointsPerQuestion: points,
+            },
+          },
+        },
+        [order[i]!],
+      ),
+    );
     setSelected(null);
   };
 
@@ -283,7 +294,10 @@ function QuizEditor({ view }: { view: HostView }) {
         <Button
           variant="secondary"
           size="sm"
-          disabled={order.length >= QUIZ_LIMITS.maxQuestions}
+          disabled={
+            order.length >= QUIZ_LIMITS.maxQuestions ||
+            draft.questions.length >= GRID_LIMITS.maxQuestions
+          }
           onClick={addQuestion}
         >
           Add question
@@ -293,7 +307,11 @@ function QuizEditor({ view }: { view: HostView }) {
           size="sm"
           onClick={() => {
             if (
-              window.confirm("Replace the quiz with the sample holiday quiz?")
+              window.confirm(
+                draft.modes.categoryGrid
+                  ? "Replace the whole question bank, including its grid, with the sample holiday quiz?"
+                  : "Replace the quiz with the sample holiday quiz?",
+              )
             ) {
               update(sampleQuizBank());
               setSelected(null);
@@ -309,38 +327,50 @@ function QuizEditor({ view }: { view: HostView }) {
         >
           {showJson ? "Hide import/export" : "Import or export"}
         </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-expanded={showLibrary}
+          onClick={() => setShowLibrary((s) => !s)}
+        >
+          {showLibrary
+            ? "Hide question library"
+            : `Question library${
+                draft.questions.length > order.length
+                  ? ` (${draft.questions.filter((q) => !uses.get(q.id)).length} unused)`
+                  : ""
+              }`}
+        </Button>
       </div>
 
-      {unused.length > 0 && (
-        <details className="text-sm">
-          <summary className="cursor-pointer">
-            {unused.length} {unused.length === 1 ? "question" : "questions"} in
-            the bank but not in the quiz
-          </summary>
-          <ul className="mt-2 flex flex-col gap-1">
-            {unused.map((q) => (
-              <li key={q.id} className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate">
-                  {q.prompt.text || `(${q.id}, no question yet)`}
-                </span>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={order.length >= QUIZ_LIMITS.maxQuestions}
-                  onClick={() => setQuiz({ questionOrder: [...order, q.id] })}
-                >
-                  Add to quiz
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </details>
+      {showLibrary && (
+        <QuestionLibrary
+          bank={draft}
+          onChange={update}
+          pick={{
+            label: "Add to quiz",
+            onPick: (id) => setQuiz({ questionOrder: [...order, id] }),
+            blocked: (id) =>
+              order.includes(id)
+                ? "Already in the quiz"
+                : order.length >= QUIZ_LIMITS.maxQuestions
+                  ? "The quiz is full"
+                  : null,
+          }}
+        />
       )}
 
       {editing && selected !== null && (
         <QuestionEditor
           key={`${selected}:${editing.id}`}
-          title={`Question ${selected + 1}`}
+          title={`Question ${selected + 1}${
+            (uses.get(editing.id) ?? []).some((u) => u.kind === "grid")
+              ? ` (also ${(uses.get(editing.id) ?? [])
+                  .filter((u) => u.kind === "grid")
+                  .map(describeUse)
+                  .join(", ")}: edits change every use)`
+              : ""
+          }`}
           question={editing}
           onChange={(q) =>
             update({

@@ -33,6 +33,7 @@ export function CreateGame() {
   const [format, setFormat] = useState<GameFormat>(GameFormat.team);
   const [teamCount, setTeamCount] = useState<number>(GAME_LIMITS.defaultTeams);
   const [buzzerMode, setBuzzerMode] = useState<BuzzerMode>(BuzzerMode.first);
+  const [captainsOnly, setCaptainsOnly] = useState(false);
   const [gameType, setGameType] = useState<"basic" | ModeKind>("basic");
   const ranked = gameType === "rankedAnswers";
   const gridGame = gameType === "categoryGrid";
@@ -73,6 +74,7 @@ export function CreateGame() {
           format,
           teamCount: format === GameFormat.team ? teamCount : undefined,
           buzzerMode,
+          captainsOnly: format === GameFormat.team && captainsOnly,
           rankedAnswers: ranked
             ? { rules: shownRules, sampleBoards }
             : undefined,
@@ -197,6 +199,24 @@ export function CreateGame() {
         <p className="text-muted-foreground text-xs">
           You can switch between questions from the host desk.
         </p>
+        {format === GameFormat.team && (
+          <label className="mt-1 flex items-start gap-2">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={captainsOnly}
+              onChange={(e) => setCaptainsOnly(e.target.checked)}
+            />
+            <span className="flex flex-col">
+              Only team captains can buzz and answer
+              <span className="text-muted-foreground text-xs">
+                Off: everyone on a team can. On: the first player to join each
+                team is its captain (you or they can pass it on). You can change
+                this later in the Room tab.
+              </span>
+            </span>
+          </label>
+        )}
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-
 import { JoinQrCode, joinUrl } from "@/app/_components/client/JoinQrCode";
 
 import { GameFormat, GameStatus, TeamAssignment } from "@prisma/client";
@@ -49,6 +48,7 @@ export function HostRoomPanel({ staffRole }: { staffRole: StaffRoleName }) {
 
   const setJoiningOpen = api.gameAdmin.setJoiningOpen.useMutation();
   const setTeamAssignment = api.gameAdmin.setTeamAssignment.useMutation();
+  const setCaptainsOnly = api.gameAdmin.setCaptainsOnly.useMutation();
   const finishGame = api.gameAdmin.finishGame.useMutation();
   const reopenGame = api.gameAdmin.reopenGame.useMutation();
   const duplicateGame = api.gameAdmin.duplicateGame.useMutation({
@@ -154,8 +154,42 @@ export function HostRoomPanel({ staffRole }: { staffRole: StaffRoleName }) {
                 </select>
               </label>
             )}
+            {game.format === GameFormat.team && (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-4">
+                  <label htmlFor="captains-only" className="text-sm">
+                    Only team captains can buzz and answer
+                  </label>
+                  <Switch
+                    id="captains-only"
+                    checked={game.captainsOnly}
+                    disabled={finished || setCaptainsOnly.isPending}
+                    onCheckedChange={(captainsOnly: boolean) =>
+                      setCaptainsOnly.mutate({ captainsOnly })
+                    }
+                  />
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  {game.captainsOnly
+                    ? "Each team's captain (★ on the Players tab) buzzes and saves quiz answers; teammates watch and chat. Change a captain from the Players tab."
+                    : "Off: everyone on a team can buzz and answer. Each team still has a captain (the first to join) ready if you turn this on."}{" "}
+                  <a
+                    href={helpHref("teams-and-names", "what-are-team-captains")}
+                    target="_blank"
+                    rel="noopener"
+                    className="underline"
+                  >
+                    About captains
+                  </a>
+                </p>
+              </div>
+            )}
             <ErrorNotice
-              error={setJoiningOpen.error ?? setTeamAssignment.error}
+              error={
+                setJoiningOpen.error ??
+                setTeamAssignment.error ??
+                setCaptainsOnly.error
+              }
             />
           </section>
         )}

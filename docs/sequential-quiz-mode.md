@@ -35,7 +35,7 @@ It warns about repeated questions, questions left out of the order, and more tha
 ## Team answers
 
 - **Storage.** Answers are stored in their own `TeamAnswer` table, one row per game, question key (`"<position>:<questionId>"`) and team. Mode state doesn't hold them, so teams never wait on each other or on the host. The team ID isn't a foreign key: an answer stays as evidence if the team is deleted.
-- **Who can save.** Any player on the team can save or replace the answer. The plan says "captain", but captains don't exist yet. The answer records who saved it last, and every teammate sees the current answer.
+- **Who can save.** By default any player on the team can save or replace the answer. If the game is **captains-only** (an option at creation and on the Room tab), only the team's captain can, and teammates see a read-only view of the saved answer (`myAnswer.answeredByCaptain`). The answer records who saved it last, and every teammate sees the current answer. See [team captains](./team-captains.md).
 - **No silent overwrites.** A save sends the revision the player last saw. If a teammate saved since, the save is refused with the teammate's answer (`CONFLICT`), and the phone shows it with "Saving yours replaces it" or "Keep theirs".
 - **Checked under the game lock.** Saves are refused once answers are locked ("Answers are closed… your answer wasn't saved"). Blank answers are refused, and saves are limited to 60 per player per minute.
 - **Privacy.**
@@ -56,7 +56,6 @@ Marks don't need the latest step, so two hosts can mark different teams at once.
 
 ## Not built
 
-- Captains (one answerer per team).
 - Timers.
 - Partial credit.
 - A "review every question" screen at the end.

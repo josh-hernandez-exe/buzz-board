@@ -144,6 +144,8 @@ export type PrivateGameState = {
     joiningOpen: Game["joiningOpen"];
     teamAssignment: Game["teamAssignment"];
     chatEnabled: Game["chatEnabled"];
+    /** Team games: only each team's captain buzzes and saves answers. */
+    captainsOnly: Game["captainsOnly"];
   };
   gameTeams: Array<{
     id: GameTeam["id"];
@@ -152,6 +154,8 @@ export type PrivateGameState = {
     buzzerState: GameTeam["buzzerState"];
     allowMemberRename: GameTeam["allowMemberRename"];
     nameVersion: GameTeam["nameVersion"];
+    /** Kept filled whenever the team has members (see captains.ts). */
+    captainId: GameTeam["captainId"];
     gameUsers: Array<GameUser["id"]>;
     score: number;
   }>;

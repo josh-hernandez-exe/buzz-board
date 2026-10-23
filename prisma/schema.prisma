@@ -112,6 +112,8 @@ model Game {
   teamAssignment    TeamAssignment @default(auto)
   /// Chat is off unless a host turns it on.
   chatEnabled       Boolean        @default(false)
+  /// Team games: only each team's captain can buzz and save answers.
+  captainsOnly      Boolean        @default(false)
   /// Client-supplied ID that makes a retried "create game" return the same game.
   creationRequestId String?        @db.VarChar(64)
 
@@ -162,7 +164,9 @@ model GameUser {
 
   user     User?     @relation(fields: [userId], references: [id])
   game     Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameTeam GameTeam? @relation(fields: [gameTeamId], references: [id], onDelete: Cascade)
+  gameTeam GameTeam? @relation("TeamMembers", fields: [gameTeamId], references: [id], onDelete: Cascade)
+  /// The team this player captains, if any.
+  captainOf GameTeam? @relation("TeamCaptain")
 }
 
 enum BuzzerMode {
@@ -194,12 +198,17 @@ model GameTeam {
   /// Staff can lock renaming by team members; staff can still rename it.
   allowMemberRename Boolean     @default(true)
   nameVersion       Int         @default(0)
+  /// The member who buzzes and answers for the team when the game is
+  /// captains-only. Kept filled whenever the team has members: the
+  /// earliest-joined member until staff or the captain choose another.
+  captainId         String?     @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
   game         Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameUsers    GameUser[]
+  gameUsers    GameUser[]    @relation("TeamMembers")
+  captain      GameUser?     @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: SetNull)
   chatChannels ChatChannel[]
 
   @@unique([gameId, index])

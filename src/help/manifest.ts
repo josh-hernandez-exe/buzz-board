@@ -77,7 +77,7 @@ export const HELP_ARTICLES = [
     id: "teams-and-names",
     title: "Teams and names",
     summary:
-      "How new players get a team, switching and freezing teams, changing names, and individual games.",
+      "How new players get a team, switching and freezing teams, team captains, changing names, and individual games.",
     audiences: ["player", "host"],
     facts: ["teamAssignment", "nameLimits"],
   },

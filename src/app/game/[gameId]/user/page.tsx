@@ -7,7 +7,10 @@ import { auth, gameAuth } from "@/server/auth";
 
 import { gameApi, HydrateClient } from "@/trpc/server";
 import { GameBuzzerTab } from "@/app/_components/client/GameBuzzerTab";
-import { TeamSwitcherTab } from "@/app/_components/client/TeamSwitcherTab";
+import {
+  TeamCaptainCard,
+  TeamSwitcherTab,
+} from "@/app/_components/client/TeamSwitcherTab";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
 
@@ -99,11 +102,14 @@ export default async function GameUserPage({
             }
             team={
               isTeamGame ? (
-                <TeamSwitcherTab
-                  game={game}
-                  gameTeams={gameTeams}
-                  initialGameTeamId={gameUser.gameTeamId}
-                />
+                <>
+                  <TeamCaptainCard gameUserId={gameUser.id} />
+                  <TeamSwitcherTab
+                    game={game}
+                    gameTeams={gameTeams}
+                    initialGameTeamId={gameUser.gameTeamId}
+                  />
+                </>
               ) : undefined
             }
             info={

@@ -136,6 +136,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       },
       teamAssignment: true,
       chatEnabled: true,
+      captainsOnly: true,
       gameTeams: {
         select: {
           id: true,
@@ -144,6 +145,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
           buzzerState: true,
           allowMemberRename: true,
           nameVersion: true,
+          captainId: true,
           gameUsers: {
             where: { removedAt: null },
             select: {
@@ -212,6 +214,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       joiningOpen: game.joiningOpen,
       teamAssignment: game.teamAssignment,
       chatEnabled: game.chatEnabled,
+      captainsOnly: game.captainsOnly,
     },
     gameTeams: game.gameTeams.map((gameTeam) => ({
       id: gameTeam.id,
@@ -220,6 +223,7 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       buzzerState: gameTeam.buzzerState,
       allowMemberRename: gameTeam.allowMemberRename,
       nameVersion: gameTeam.nameVersion,
+      captainId: gameTeam.captainId,
       gameUsers: gameTeam.gameUsers.map((gameUser) => gameUser.id),
       score: scoreboardState[gameTeam.id] ?? 0,
     })),

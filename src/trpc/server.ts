@@ -4,6 +4,7 @@ import { createHydrationHelpers } from "@trpc/react-query/rsc";
 import { headers } from "next/headers";
 import { cache } from "react";
 
+import { inertCaller } from "@/server/api/inertCaller";
 import { createCaller, type AppRouter } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 import { createQueryClient } from "./query-client";
@@ -39,5 +40,5 @@ export const gameApi = cache(async (gameId: string) => {
   heads.set("x-trpc-source", "rsc");
   heads.set("x-buzz-board-game-id", gameId);
 
-  return createCaller(await createTRPCContext({ headers: heads }));
+  return inertCaller(createCaller(await createTRPCContext({ headers: heads })));
 });

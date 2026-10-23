@@ -154,6 +154,7 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
     onSuccess: refresh,
   });
   const recovery = api.gameAdmin.roster.createRecoveryLink.useMutation();
+  const makeCaptain = api.gameAdmin.roster.setCaptain.useMutation();
   const [query, setQuery] = useState("");
 
   const isTeamGame = live?.game.format === GameFormat.team;
@@ -239,6 +240,12 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
                     <span className="text-muted-foreground text-sm">
                       {team.gameUsers.length}{" "}
                       {team.gameUsers.length === 1 ? "player" : "players"}
+                      {team.captainId && live.gameUsers[team.captainId] && (
+                        <span data-testid="roster-team-captain">
+                          {" "}
+                          · ★ {live.gameUsers[team.captainId]!.name}
+                        </span>
+                      )}
                     </span>
                     <RenameDialog
                       label={team.name}
@@ -298,7 +305,14 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
                 onChange={(e) => setQuery(e.target.value)}
               />
             </label>
-            <ErrorNotice error={move.error ?? remove.error ?? recovery.error} />
+            <ErrorNotice
+              error={
+                move.error ??
+                remove.error ??
+                recovery.error ??
+                makeCaptain.error
+              }
+            />
             {recoveryUrl && recovery.data && (
               <div className="bg-surface-sunken flex flex-col gap-2 rounded-md p-3 text-sm">
                 <label htmlFor="recovery-url" className="font-medium">
@@ -328,6 +342,15 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
                       #{player.index}
                       {isTeamGame && ` · ${teamName(player.gameTeamId)}`}
                     </span>
+                    {isTeamGame &&
+                      teams.some((t) => t.captainId === player.id) && (
+                        <span
+                          data-testid="roster-captain"
+                          className="bg-accent text-accent-foreground rounded-full px-2 py-0.5 text-xs font-bold"
+                        >
+                          ★ Captain
+                        </span>
+                      )}
                     {!player.allowSelfRename && (
                       <span className="bg-muted rounded-full px-2 py-0.5 text-xs">
                         Name locked
@@ -377,6 +400,21 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
                         ))}
                       </select>
                     )}
+                    {isTeamGame &&
+                      player.gameTeamId &&
+                      !teams.some((t) => t.captainId === player.id) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          aria-label={`Make ${player.name} captain of ${teamName(player.gameTeamId)}`}
+                          disabled={makeCaptain.isPending}
+                          onClick={() =>
+                            makeCaptain.mutate({ gameUserId: player.id })
+                          }
+                        >
+                          Make captain
+                        </Button>
+                      )}
                     {canRecover && !player.isLinked && (
                       <Button
                         variant="outline"

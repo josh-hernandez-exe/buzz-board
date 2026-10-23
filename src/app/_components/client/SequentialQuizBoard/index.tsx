@@ -198,12 +198,16 @@ export function LiveSequentialQuiz() {
     return null;
   }
   const teams = data.gameTeams.map((t) => ({ id: t.id, name: t.name }));
+  const captainKey = `${data.game.captainsOnly}|${data.gameTeams
+    .map((t) => t.captainId)
+    .join(",")}`;
   return (
     <div className="flex flex-col gap-3">
       <SequentialQuizBoard view={data.mode} teams={teams} />
       <QuizAnswerBox
         view={data.mode}
         solo={data.game.format === "individual"}
+        captainKey={captainKey}
       />
     </div>
   );
@@ -218,10 +222,16 @@ type Draft = { key: string; text: string; base: number };
 export function QuizAnswerBox({
   view,
   solo = false,
+  captainKey = "",
 }: {
   view: PublicQuizView;
   /** An individual game: each player is their own team. */
   solo?: boolean;
+  /**
+   * Changes when the captains-only rule or this team's captain changes,
+   * so who may answer is re-read at once.
+   */
+  captainKey?: string;
 }) {
   const yours = solo ? "Your" : "Your team's";
   const you = solo ? "You" : "Your team";
@@ -229,7 +239,7 @@ export function QuizAnswerBox({
   const query = api.sequentialQuiz.myAnswer.useQuery();
   const key = view.question?.key ?? null;
   // A new question, a phase change or any team's save: re-read ours.
-  const refreshKey = `${key}|${view.phase}|${view.answerVersion}`;
+  const refreshKey = `${key}|${view.phase}|${view.answerVersion}|${captainKey}`;
   useEffect(() => {
     void utils.sequentialQuiz.myAnswer.invalidate();
   }, [refreshKey, utils]);
@@ -301,6 +311,24 @@ export function QuizAnswerBox({
   }
 
   if (view.phase !== "open") return null;
+
+  if (mine.answeredByCaptain) {
+    return (
+      <Notice role="status" tone="neutral">
+        <span data-testid="quiz-captain-answers">
+          ★ Your captain, <strong>{mine.answeredByCaptain}</strong>, answers for
+          the team.
+        </span>{" "}
+        {saved ? (
+          <>
+            Saved: &ldquo;{saved.text}&rdquo; (by {saved.savedBy})
+          </>
+        ) : (
+          "Nothing saved yet."
+        )}
+      </Notice>
+    );
+  }
 
   const save = () => {
     const base = overtaken

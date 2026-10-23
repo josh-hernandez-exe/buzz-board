@@ -5,12 +5,18 @@ Sequential Quiz is a pub-quiz round: questions one at a time, in order. Each tea
 Choose **Sequential Quiz** under **Game** when you create a game, and tick **Start with sample questions** to begin from a filled-in holiday quiz. The host desk then opens on the **Quiz** tab. You can also set one up later in any game from that tab (owners and co-hosts only).
 
 1. **Add question**, then select a question to edit its **clue**, **answer**, wordings to **also accept**, private **host notes**, and any **media** (pictures, GIFs, audio or YouTube). See [Category Grid](/help/category-grid#can-clues-have-pictures-sound-or-video) for how media works.
-2. Use the arrows to put the questions in the order you'll ask them. **Remove from quiz** takes a question out of the order but keeps it in the bank.
+2. Use the arrows to put the questions in the order you'll ask them. **✕** takes a question out of the order but keeps it in the library.
 3. Set **Points per correct answer**.
 4. **Save quiz**. Anything under **Fix before starting** must be fixed first.
 5. When everyone has joined, **Start quiz**. The questions are locked from then on.
 
 **Import or export** uses the same question bank format as Category Grid, so one file can hold a grid and a quiz built from the same questions.
+
+**Question library** lists every question in the game's question bank, with where each one is used (for example *Grid: Winter Science 100* or *Quiz #3*). Search it, filter to **Unused**, add a **New question** or **Duplicate** one.
+- Editing a question changes it everywhere it's used.
+- Removing a tile, row, category or quiz position keeps anything you wrote in the library as an unused question; only blank ones are dropped.
+- A question in use can't be deleted: remove its uses first.
+- **Add to quiz** puts a library question at the end of the quiz.
 
 ## Answering on your phone
 
@@ -18,7 +24,7 @@ When the host opens a question, it appears above your buzzer with a **Team answe
 
 - Type your answer and press **Save answer**. It's saved once you see **Saved**, with who saved it and when.
 - You can change it with **Replace** until the host locks answers.
-- Anyone on your team can save or replace the team's answer, and everyone on the team sees the latest one. If a teammate saved a different answer while you were typing, you're shown theirs before anything is overwritten.
+- Anyone on your team can save or replace the team's answer, and everyone on the team sees the latest one. If the host turned on **Only team captains can buzz and answer**, only your [captain](/help/teams-and-names#what-are-team-captains) can save it, and everyone else sees what they saved. If a teammate saved a different answer while you were typing, you're shown theirs before anything is overwritten.
 - Nobody outside your team sees what you typed, not even other teams after the reveal. The audience display only shows which teams have answered.
 - Chat messages don't count as answers, and being muted in chat doesn't stop you answering.
 - After the reveal, your phone shows whether your team got it.

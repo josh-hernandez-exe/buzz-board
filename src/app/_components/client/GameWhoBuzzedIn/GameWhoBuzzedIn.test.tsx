@@ -41,6 +41,7 @@ function gameState(
       joiningOpen: true,
       teamAssignment: "auto",
       chatEnabled: false,
+      captainsOnly: false,
       buzzerMode: "first",
     },
     gameTeams: [
@@ -53,6 +54,7 @@ function gameState(
         score: 0,
         allowMemberRename: true,
         nameVersion: 0,
+        captainId: null,
       },
       {
         id: "t2",
@@ -63,6 +65,7 @@ function gameState(
         score: 0,
         allowMemberRename: true,
         nameVersion: 0,
+        captainId: null,
       },
     ],
     gameUsers: {

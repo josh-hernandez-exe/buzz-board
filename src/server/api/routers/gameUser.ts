@@ -1,3 +1,4 @@
+import { setCaptain } from "@/server/roster/captains";
 import { GameFormat } from "@prisma/client";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -172,6 +173,21 @@ export const gameUserRouter = createTRPCRouter({
         nameVersion: result.value.nameVersion,
         gameId: gameUser.gameId,
       };
+    }),
+  /** The team's captain hands the role to a teammate. */
+  handCaptaincy: protectedGameUserProcedure
+    .input(z.object({ gameUserId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await setCaptain({
+        gameId: ctx.gameSession.id,
+        gameUserId: input.gameUserId,
+        actor: { kind: "player", gameUserId: ctx.gameSession.gameUser.id },
+      });
+      if (result.isErr()) throw toTRPCError(result.error);
+      if (result.value.changed) {
+        await emitUpdatedGameState({ gameId: ctx.gameSession.id });
+      }
+      return result.value;
     }),
   changeTeams: protectedGameUserProcedure
     .input(

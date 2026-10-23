@@ -17,6 +17,38 @@ export function buzzerStatus(
   state: PrivateGameState,
   gameUserId: string,
 ): BuzzerStatus {
+  const status = teamBuzzerStatus(state, gameUserId);
+  const captain = captainFor(state, gameUserId);
+  // Captains-only: teammates follow the team's state but can't press.
+  if (!captain || !status.canBuzz) return status;
+  return {
+    canBuzz: false,
+    tone: "waiting",
+    message: `Buzzer open: only your captain, ${captain}, can buzz.`,
+  };
+}
+
+/**
+ * In a captains-only team game, the name of the teammate who buzzes and
+ * answers for this player's team; null when this player may do it.
+ */
+export function captainFor(
+  state: PrivateGameState,
+  gameUserId: string,
+): string | null {
+  if (state.game.format !== GameFormat.team || !state.game.captainsOnly) {
+    return null;
+  }
+  const teamId = state.gameUsers[gameUserId]?.gameTeamId;
+  const team = state.gameTeams.find((t) => t.id === teamId);
+  if (!team?.captainId || team.captainId === gameUserId) return null;
+  return state.gameUsers[team.captainId]?.name ?? "your captain";
+}
+
+function teamBuzzerStatus(
+  state: PrivateGameState,
+  gameUserId: string,
+): BuzzerStatus {
   const { game, buzzWinner } = state;
   const self = state.gameUsers[gameUserId];
   const teamId = self?.gameTeamId ?? null;

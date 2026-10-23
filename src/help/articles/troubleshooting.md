@@ -5,6 +5,7 @@ The message under your buzzer explains why:
 - **Buzzer closed. Wait for the host to open it.** The host hasn't opened the buzzer for this question yet.
 - **Your team already had its turn this round.** Another chance was given to everyone else. Wait for the next question.
 - **Owls buzzed in first.** (with the name of whoever was faster) Another player or team got there first.
+- **Buzzer open: only your captain, Ana, can buzz.** In this game only each team's captain buzzes. See [team captains](/help/teams-and-names#what-are-team-captains).
 - **Pick a team to play.** Choose a team on the **Team** tab.
 - **Waiting for your host to put you on a team.** In this game the host assigns teams.
 - **This game has finished.** Thanks for playing!

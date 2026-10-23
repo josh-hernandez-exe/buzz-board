@@ -11,6 +11,7 @@ import { err, ok, type Result } from "neverthrow";
 
 import { db } from "@/server/db";
 import { answerProgress } from "@/server/db/common";
+import { mayActForTeam } from "@/server/roster/captains";
 import {
   withGameLock,
   type GameTransactionError,
@@ -142,6 +143,7 @@ export type AnswerError =
   | { kind: "answersClosed" }
   | { kind: "emptyAnswer" }
   | { kind: "notOnTeam" }
+  | { kind: "captainOnly"; captain: string }
   | { kind: "answerConflict"; revision: number; text: string; savedBy: string };
 
 async function running(gameId: string) {
@@ -199,9 +201,24 @@ export async function submitTeamAnswer({
       if (!key || key !== shownKey) return err({ kind: "answersClosed" });
       const player = await tx.gameUser.findFirst({
         where: { id: gameUserId, gameId, removedAt: null },
-        select: { gameTeamId: true, name: true },
+        select: {
+          gameTeamId: true,
+          name: true,
+          gameTeam: {
+            select: { captainId: true, captain: { select: { name: true } } },
+          },
+          game: { select: { format: true, captainsOnly: true } },
+        },
       });
-      if (!player?.gameTeamId) return err({ kind: "notOnTeam" });
+      if (!player?.gameTeamId || !player.gameTeam) {
+        return err({ kind: "notOnTeam" });
+      }
+      if (!mayActForTeam(player.game, player.gameTeam, gameUserId)) {
+        return err({
+          kind: "captainOnly",
+          captain: player.gameTeam.captain?.name ?? "your captain",
+        });
+      }
       const where = {
         gameId_questionKey_gameTeamId: {
           gameId,
@@ -258,6 +275,11 @@ export type MyTeamAnswer = {
   open: boolean;
   /** False for a player not on a team: they can't answer. */
   onTeam: boolean;
+  /**
+   * Captains-only game where someone else answers for the team: their
+   * name. Null when this player may save the answer.
+   */
+  answeredByCaptain: string | null;
   answer: {
     text: string;
     revision: number;
@@ -276,14 +298,25 @@ export async function myTeamAnswer(
   const quiz = await running(gameId);
   const player = await db.gameUser.findFirst({
     where: { id: gameUserId, gameId, removedAt: null },
-    select: { gameTeamId: true },
+    select: {
+      gameTeamId: true,
+      gameTeam: {
+        select: { captainId: true, captain: { select: { name: true } } },
+      },
+      game: { select: { format: true, captainsOnly: true } },
+    },
   });
   const key = quiz ? questionKey(quiz.bank, quiz.state) : null;
+  const answeredByCaptain =
+    player?.gameTeam && !mayActForTeam(player.game, player.gameTeam, gameUserId)
+      ? (player.gameTeam.captain?.name ?? "your captain")
+      : null;
   if (!quiz || !key || !player?.gameTeamId) {
     return {
       questionKey: key,
       open: false,
       onTeam: !!player?.gameTeamId,
+      answeredByCaptain,
       answer: null,
       verdict: null,
     };
@@ -307,6 +340,7 @@ export async function myTeamAnswer(
     questionKey: key,
     open: quiz.state.phase === "open",
     onTeam: true,
+    answeredByCaptain,
     answer: row
       ? {
           text: row.text,

@@ -40,7 +40,9 @@ export function PlayerHeader({
   return (
     <header className="bg-surface border-border flex w-full flex-col gap-2 rounded-xl border p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="font-display text-xl font-extrabold break-words">{game.name}</h1>
+        <h1 className="font-display text-xl font-extrabold break-words">
+          {game.name}
+        </h1>
         <span className="font-mono text-sm tracking-widest">{game.code}</span>
       </div>
       <p data-testid="player-identity">
@@ -59,6 +61,21 @@ export function PlayerHeader({
         )}
         .
       </p>
+      {game.format === GameFormat.team && game.captainsOnly && team && (
+        <p data-testid="player-captain" className="text-sm">
+          {team.captainId === gameUserId ? (
+            <>
+              <strong>★ You&apos;re the team captain:</strong> you buzz and
+              answer for {team.name}.
+            </>
+          ) : (
+            <>
+              ★ <strong>{captainName(data, team.captainId)}</strong> is your
+              team captain and buzzes and answers for the team.
+            </>
+          )}
+        </p>
+      )}
       {game.status === GameStatus.finished && (
         <p role="status" className="bg-muted rounded-md px-3 py-2">
           This game has finished. Final scores are on the scoreboard.
@@ -122,4 +139,11 @@ export function PlayerHeader({
       </details>
     </header>
   );
+}
+
+function captainName(
+  state: { gameUsers: Record<string, { name: string } | undefined> },
+  captainId: string | null,
+) {
+  return (captainId && state.gameUsers[captainId]?.name) ?? "Nobody yet";
 }

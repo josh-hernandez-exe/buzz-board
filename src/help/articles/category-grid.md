@@ -13,6 +13,12 @@ Choose **Category Grid** under **Game** when you create a game, and tick **Start
 
 **Import or export** shows the grid as text in the question bank format, so you can keep a backup or reuse it in another game.
 
+**Question library** lists every question in the game's question bank, with where each one is used (for example *Grid: Winter Science 100* or *Quiz #3*). Search it, filter to **Unused**, add a **New question** or **Duplicate** one.
+- Editing a question changes it everywhere it's used.
+- Removing a tile, row, category or quiz position keeps anything you wrote in the library as an unused question; only blank ones are dropped.
+- A question in use can't be deleted: remove its uses first.
+- With a tile selected, **Use for this tile** puts a library question on it (a question can be on the grid only once).
+
 ## Can clues have pictures, sound or video?
 
 Yes, up to four per clue and four per answer, added by link:
