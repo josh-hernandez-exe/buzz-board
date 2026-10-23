@@ -5,6 +5,12 @@ import { signInAsNewHost } from "./support";
 test("dashboard redirects anonymous users to sign in", async ({ page }) => {
   await page.goto("/dashboard");
 
+  // The e2e server runs with DEV_LOGIN=1, so sign-in starts at the dev page,
+  // which links on to the real Discord/Google sign-in.
+  await expect(page).toHaveURL(/\/dev-login\?callbackUrl=%2Fdashboard/);
+  await page
+    .getByRole("link", { name: "Use real sign-in (Discord or Google)" })
+    .click();
   await expect(page).toHaveURL(/\/api\/auth\/signin\?callbackUrl=/);
 });
 

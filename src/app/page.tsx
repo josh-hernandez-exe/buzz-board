@@ -1,3 +1,4 @@
+import { signInPath } from "@/server/auth/devLoginGate";
 import { AppHeader } from "@/app/_components/server/AppHeader";
 import {
   LinkButton,
@@ -38,11 +39,7 @@ export default async function Home() {
             description="Sign in to create games and run them from your desk."
           >
             <LinkButton
-              href={
-                session
-                  ? "/dashboard"
-                  : "/api/auth/signin?callbackUrl=/dashboard"
-              }
+              href={session ? "/dashboard" : signInPath("/dashboard")}
               size="lg"
               variant="secondary"
               className="w-full"

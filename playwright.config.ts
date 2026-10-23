@@ -36,6 +36,8 @@ export default defineConfig({
       NEXT_PUBLIC_QRCODE_BASE_URL: baseURL,
       NEXTAUTH_URL: baseURL,
       AUTH_TRUST_HOST: "true",
+      // Development-only sign-in (served only by `next dev`).
+      DEV_LOGIN: "1",
       NEXT_TELEMETRY_DISABLED: "1",
     },
   },

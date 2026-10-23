@@ -53,6 +53,34 @@ Redirects:
   - Avoid wildcard since you can have a persistant code space.
 
 
+#### Test logins during development
+
+You don't need Discord or Google to try hosting locally. Put this in **`.env.development.local`** (git-ignored, and read only by `bun dev`):
+
+```bash
+DEV_LOGIN=1
+```
+
+Then **Host a game** (or any sign-in link) opens `/dev-login`, where you sign in as a ready-made account with one click:
+
+| Account | Use it for |
+| --- | --- |
+| Dev Host | Creating and running games |
+| Dev Co-host | Invite it as a co-host from a game's Room tab |
+| Dev Moderator | Invite it as a moderator |
+| Dev Host 2 | A second host with games of its own |
+
+Accounts are created on first use, with emails at `dev-login.buzz-board.invalid`. Use a separate browser profile or private window per account to be several people at once. Players never need accounts. The page also links to the real Discord/Google sign-in.
+
+**It can't reach production.** Each of these is enough on its own:
+- **Not in builds.** The page and route are `page.dev.tsx` / `route.dev.ts`, which only `next dev` serves (`next.config.js`). Production builds don't contain them.
+- **The build checks itself.** `bun run build` (also used by CI and Vercel) runs `scripts/build/assert-no-dev-login.mjs`, which fails the build if a dev-login route or any of its code is in the output.
+- **Refuses to run.** `next build` and `next start` stop with an error if `DEV_LOGIN` is set. That's why it belongs in `.env.development.local`, not `.env` or `.env.local`.
+- **Switched off in code.** It's off whenever `NODE_ENV` is `production` or on Vercel, even with `DEV_LOGIN=1`.
+- **Local and same-site only.** It only answers `localhost` and only accepts this site's own sign-in form.
+
+Details: [devLoginGate.ts](./src/server/auth/devLoginGate.ts). Automated tests sign hosts in by writing a session straight to the test database (`tests/e2e/support.ts`), so they need neither.
+
 ### Getting Started
 1. Clone the repository.
 2. Install dependencies with `bun install`

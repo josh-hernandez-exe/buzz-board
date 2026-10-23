@@ -1,5 +1,6 @@
 import { SiteHeader, type NavLink } from "@/app/_components/ui/page";
 import { auth } from "@/server/auth";
+import { signInPath } from "@/server/auth/devLoginGate";
 
 /** The site header with links for whoever is looking: host or guest. */
 export async function AppHeader({ extra = [] }: { extra?: NavLink[] }) {
@@ -15,7 +16,7 @@ export async function AppHeader({ extra = [] }: { extra?: NavLink[] }) {
     : [
         ...extra,
         { href: "/join", label: "Join" },
-        { href: "/api/auth/signin?callbackUrl=/dashboard", label: "Host" },
+        { href: signInPath("/dashboard"), label: "Host" },
         { href: "/help", label: "Help" },
       ];
   return (

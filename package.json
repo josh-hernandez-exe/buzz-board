@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "next build",
+    "build": "next build && node scripts/build/assert-no-dev-login.mjs",
     "check": "eslint . && tsc --noEmit",
     "db:baseline": "bunx prisma migrate resolve --applied 0_init",
     "db:format": "prisma format",
@@ -28,7 +28,7 @@
     "ops:cleanup": "bun run scripts/ops/cleanup.ts",
     "ops:verify-restore": "bun run scripts/ops/verify-restore.ts",
     "postinstall": "bun db:generate",
-    "preview": "next build && next start",
+    "preview": "bun run build && next start",
     "prod:db:migrate": "bun --env-file=.env.production run db:migrate:deploy",
     "start": "next start",
     "test": "vitest run --project unit --project component",

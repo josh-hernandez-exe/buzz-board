@@ -1,3 +1,4 @@
+import { signInPath } from "@/server/auth/devLoginGate";
 import Link from "next/link";
 import { type Metadata } from "next";
 
@@ -72,7 +73,7 @@ export default async function InvitePage({
                 <>
                   <p>Sign in with the account you&apos;ll use to help.</p>
                   <Link
-                    href={`/api/auth/signin?callbackUrl=${encodeURIComponent(`/invite/${token}`)}`}
+                    href={signInPath(`/invite/${token}`)}
                     className={buttonVariants({ size: "lg" })}
                   >
                     Sign in to accept

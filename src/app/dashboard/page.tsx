@@ -1,3 +1,4 @@
+import { signInPath } from "@/server/auth/devLoginGate";
 import { redirect } from "next/navigation";
 
 import { CreateGame } from "@/app/_components/client/GameCreate";
@@ -16,7 +17,7 @@ import {
 export default async function DashboardPage() {
   const session = await auth();
   if (!session) {
-    redirect("/api/auth/signin?callbackUrl=/dashboard");
+    redirect(signInPath("/dashboard"));
   }
   const games = await api.user.game.getAll();
 
