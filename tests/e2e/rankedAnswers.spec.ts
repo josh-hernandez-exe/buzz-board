@@ -1,6 +1,6 @@
 /**
  * Ranked Answers in the browser: a host loads sample boards, starts, and
- * runs a classic face-off board. Players and the audience display see each
+ * runs a Classic feud face-off board (head-to-head, 3 teams). Players and the audience display see each
  * answer only when it's revealed, and points land on the scoreboard.
  */
 import { expect, test, type Page } from "@playwright/test";
@@ -23,6 +23,7 @@ test("a host runs a Ranked Answers board; screens reveal answers only when found
   const host = await signInAsNewHost(hostContext, baseURL!, "Host Kim");
   const game = await createGameForHost(host.id, {
     name: `Feud ${Date.now()}`,
+    teams: 3,
   });
   const teams = await db.gameTeam.findMany({
     where: { gameId: game.id },
@@ -43,6 +44,11 @@ test("a host runs a Ranked Answers board; screens reveal answers only when found
   await desk.getByRole("tab", { name: "Ranked Answers" }).click();
   await desk.getByRole("button", { name: "Load sample boards" }).click();
   await expect(desk.getByTestId("board-editor")).toHaveCount(5);
+  // The first board's face-off is Team 1 against Team 2; only the
+  // opponent steals, so Team 3 waits for its turn.
+  await desk
+    .getByRole("radio", { name: /^Classic feud, head-to-head/ })
+    .check();
   await desk.getByRole("button", { name: "Save boards" }).click();
   await expect(desk.getByRole("button", { name: "Saved" })).toBeVisible();
   await desk.getByRole("button", { name: "Start Ranked Answers" }).click();

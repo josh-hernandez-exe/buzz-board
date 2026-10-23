@@ -17,15 +17,14 @@ Keep your answers private: they're only shown to owners and co-hosts until revea
 
 ## Which rules should I choose?
 
-Pick a starting point. Each is just a set of rules, so you can change any of them afterwards.
+Pick a starting point. Each is just a set of rules, so you can change any of them afterwards. Every style is made for groups, so there's no two-team-only format: the TV show's rules live on as **Classic feud**, for 3 to 8 teams.
 
 | Starting point | Teams | How it works |
 | --- | --- | --- |
 | **Open answering** | 2 to 50 | Trivia style, with no turns: any team can call out an answer at any time. You reveal each answer and tap every team that got it; each scores it. Suggested for 3 or more teams. |
-| **Classic feud** | 2 | The TV format. One player from each team faces off. The winner chooses to play or pass. The playing team keeps answering until it finds every answer or gets 3 strikes; then the other team gets one guess to steal. Whoever wins takes all the points found on that board (the bank). |
-| **Take turns, no face-off** | 2 | Like Classic, but the teams take turns playing whole boards, with no face-off. |
-| **Face-off ladder** | 3 to 8 | Like Classic, but two teams face off each board, taking turns so everyone gets a go. When the playing team strikes out, every other team gives one steal guess at once. The best steal takes the bank; other correct steals score their own answer. |
-| **Head-to-head pairs** | 3 to 8 | Classic matches between rotating pairs: only the face-off opponent can steal, the others watch. |
+| **Classic feud** | 3 to 8 | The TV format, for a crowd. One player from each of two teams faces off; the pair changes every board so every team gets its turns. The winner chooses to play or pass. The playing team keeps answering until it finds every answer or gets 3 strikes; then **every other team** gives one steal guess at once. The best steal takes all the points found on that board (the bank); other correct steals score their own answer. |
+| **Classic feud, head-to-head** | 3 to 8 | Like Classic feud, but only the face-off opponent can steal: each board is a two-team match while the others watch. |
+| **Take turns, no face-off** | 3 to 8 | Like Classic feud, but the teams take turns playing whole boards in rotation, with no face-off. |
 | **Round robin** | 2 to 12 | Teams answer one at a time, and the starting team changes each board. Each answer scores for the team that found it. |
 | **Pass-along** | 2 to 12 | A team keeps answering until it misses; then the next team takes over. Each answer scores for the team that found it. |
 | **Buzz race** | 2 to 50 | Every answer is a race: teams buzz, and the first answers. A right answer scores for that team. A wrong one sits the team out until the next answer is found. Works best with queued buzzing. |

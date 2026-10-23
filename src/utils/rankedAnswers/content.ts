@@ -4,9 +4,13 @@
  */
 import { z } from "zod";
 
+/**
+ * Every style is for several teams at once: Buzz Board is for groups, so
+ * there's no two-team-only style. The classic TV format lives on as
+ * "Classic feud" (`faceOffLadder`): rotating face-offs for 3–8 teams.
+ */
 export const PLAY_STYLES = [
   "open",
-  "classic",
   "faceOffLadder",
   "roundRobin",
   "passAlong",
@@ -18,7 +22,6 @@ export type PlayStyle = (typeof PLAY_STYLES)[number];
 /** Team counts each style supports. */
 export const STYLE_TEAM_RANGE: Record<PlayStyle, [number, number]> = {
   open: [2, 50],
-  classic: [2, 2],
   faceOffLadder: [3, 8],
   roundRobin: [2, 12],
   passAlong: [2, 12],
@@ -28,8 +31,7 @@ export const STYLE_TEAM_RANGE: Record<PlayStyle, [number, number]> = {
 
 export const STYLE_LABEL: Record<PlayStyle, string> = {
   open: "Open answering (2–50 teams)",
-  classic: "Classic (2 teams)",
-  faceOffLadder: "Face-off ladder (3–8 teams)",
+  faceOffLadder: "Classic feud (3–8 teams)",
   roundRobin: "Round robin (2–12 teams)",
   passAlong: "Pass-along (2–12 teams)",
   buzzRace: "Buzz race (2–50 teams)",
@@ -38,10 +40,8 @@ export const STYLE_LABEL: Record<PlayStyle, string> = {
 
 export const STYLE_DESCRIPTION: Record<PlayStyle, string> = {
   open: "No turns: any team can answer at any time. The host reveals each answer and credits every team that got it.",
-  classic:
-    "Face-off, then the winning team plays or passes. The playing team answers until it clears the board or reaches the strike limit; then the other team gets one steal. The winner takes the bank.",
   faceOffLadder:
-    "Two teams face off each board (pairs rotate). The playing team answers until it clears the board or strikes out; then every other team gives one steal answer. The highest steal takes the bank.",
+    "The TV format for a crowd: two teams face off each board (pairs rotate so every team gets its turns). The winner plays or passes; the playing team answers until it clears the board or strikes out; then every other team gives one steal answer. The highest steal takes the bank.",
   roundRobin:
     "Teams answer one at a time in a rotating order. Each answer found scores for the team that found it.",
   passAlong:
@@ -53,8 +53,7 @@ export const STYLE_DESCRIPTION: Record<PlayStyle, string> = {
 };
 
 /** The style suggested for a number of teams. */
-export function suggestedStyle(teamCount: number): PlayStyle {
-  if (teamCount <= 2) return "classic";
+export function suggestedStyle(_teamCount: number): PlayStyle {
   return "open";
 }
 
@@ -93,7 +92,12 @@ export const boardSchema = z.object({
 });
 
 export const rulesSchema = z.object({
-  playStyle: z.enum(PLAY_STYLES),
+  // Drafts and games saved before the two-team "classic" style was retired
+  // load as the classic feud ladder: the engine plays them the same way.
+  playStyle: z.preprocess(
+    (v) => (v === "classic" ? "faceOffLadder" : v),
+    z.enum(PLAY_STYLES),
+  ),
   pointValuesByRank: z.array(points).min(1).max(LIMITS.maxAnswers),
   multiplier: z.number().int().min(1).max(LIMITS.maxMultiplier),
   strikes: z.number().int().min(1).max(5),
@@ -139,17 +143,14 @@ export type ResolvedRules = Required<Omit<Rules, "targetScore">> & {
 };
 
 /** Styles where two teams face off and one plays the board. */
-export const isFaceOffStyle = (style: PlayStyle) =>
-  style === "classic" || style === "faceOffLadder";
+export const isFaceOffStyle = (style: PlayStyle) => style === "faceOffLadder";
 
 /** Rules with every option filled in: the style's default where unset. */
 export function resolveRules(rules: Rules): ResolvedRules {
   return {
     ...rules,
     allowPass: rules.allowPass ?? true,
-    stealBy:
-      rules.stealBy ??
-      (rules.playStyle === "faceOffLadder" ? "everyone" : "opponent"),
+    stealBy: rules.stealBy ?? "everyone",
     stealWinner: rules.stealWinner ?? "bestRow",
     stealReward: rules.stealReward ?? "bankPlusRow",
     scoring: rules.scoring ?? "bank",
@@ -199,7 +200,6 @@ export type PresetId =
   | "open"
   | "classic"
   | "noFaceOff"
-  | "ladder"
   | "headToHead"
   | "roundRobin"
   | "passAlong"
@@ -231,34 +231,34 @@ export const PRESETS: Preset[] = [
   {
     id: "classic",
     label: "Classic feud",
-    teams: [2, 2],
+    teams: [3, 8],
     summary:
-      "The TV format: face-off, play or pass, three strikes, one steal for the bank.",
-    rules: { playStyle: "classic", faceOffMethod: "buzzer" },
+      "The TV format, for 3 or more teams: two teams face off each board (pairs rotate), play or pass, three strikes, then every other team steals for the bank.",
+    rules: {
+      playStyle: "faceOffLadder",
+      faceOffMethod: "buzzer",
+      stealBy: "everyone",
+    },
+  },
+  {
+    id: "headToHead",
+    label: "Classic feud, head-to-head",
+    teams: [3, 8],
+    summary:
+      "As Classic feud, but only the face-off opponent can steal: each board is a two-team match.",
+    rules: { playStyle: "faceOffLadder", stealBy: "opponent" },
   },
   {
     id: "noFaceOff",
     label: "Take turns, no face-off",
-    teams: [2, 2],
-    summary:
-      "Teams take turns playing whole boards: three strikes, then the other team steals.",
-    rules: { playStyle: "classic", faceOffMethod: "none" },
-  },
-  {
-    id: "ladder",
-    label: "Face-off ladder",
     teams: [3, 8],
     summary:
-      "Two teams face off each board, pairs rotating. After three strikes every other team steals at once.",
-    rules: { playStyle: "faceOffLadder", stealBy: "everyone" },
-  },
-  {
-    id: "headToHead",
-    label: "Head-to-head pairs",
-    teams: [3, 8],
-    summary:
-      "Classic matches between rotating pairs: only the face-off opponent can steal.",
-    rules: { playStyle: "faceOffLadder", stealBy: "opponent" },
+      "Teams take turns playing whole boards in rotation: three strikes, then every other team steals.",
+    rules: {
+      playStyle: "faceOffLadder",
+      faceOffMethod: "none",
+      stealBy: "everyone",
+    },
   },
   {
     id: "roundRobin",
@@ -308,8 +308,7 @@ export function presetRules(id: PresetId, teamCount: number): Rules {
 }
 
 /** The preset suggested for a number of teams. */
-export function suggestedPreset(teamCount: number): PresetId {
-  if (teamCount <= 2) return "classic";
+export function suggestedPreset(_teamCount: number): PresetId {
   return "open";
 }
 

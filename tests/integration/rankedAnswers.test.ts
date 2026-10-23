@@ -28,11 +28,20 @@ function ranked(mode: PublicGameModeView | null) {
   return mode;
 }
 
-async function readyGame(teams = 2) {
+/**
+ * A game set up for Classic feud. Three teams by default: the first board's
+ * face-off is between teams 1 and 2, and only the face-off opponent steals,
+ * so each board plays like the TV format while team 3 waits its turn.
+ */
+async function readyGame(
+  teams = 3,
+  stealBy: "opponent" | "everyone" = "opponent",
+) {
   const created = await createGame({ teams });
   const ra = created.admin.rankedAnswers;
   const content = sampleContent(teams);
-  if (teams > 2) content.rules.playStyle = "faceOffLadder";
+  content.rules.playStyle = "faceOffLadder";
+  content.rules.stealBy = stealBy;
   const { draftRevision } = await ra.saveDraft({
     draft: content,
     expectedRevision: 0,
@@ -69,16 +78,35 @@ describe("setup", () => {
   });
 
   it("refuses a play style that doesn't fit the number of teams", async () => {
-    const created = await createGame({ teams: 3 });
-    const content = sampleContent(3);
-    content.rules.playStyle = "classic";
+    const created = await createGame({ teams: 2 });
+    const content = sampleContent(2);
+    content.rules.playStyle = "faceOffLadder";
     await created.admin.rankedAnswers.saveDraft({
       draft: content,
       expectedRevision: 0,
     });
     await expect(created.admin.rankedAnswers.start()).rejects.toMatchObject({
-      message: expect.stringContaining("needs 2 teams") as unknown,
+      message: expect.stringContaining("needs 3 to 8 teams") as unknown,
     });
+  });
+
+  it("loads a draft saved with the retired two-team style as Classic feud", async () => {
+    const created = await createGame({ teams: 3 });
+    const content = sampleContent(3);
+    await db.gameMode.create({
+      data: {
+        gameId: created.game.id,
+        kind: "rankedAnswers",
+        status: "draft",
+        draft: {
+          ...content,
+          rules: { ...content.rules, playStyle: "classic" },
+        },
+      },
+    });
+    const view = await created.admin.rankedAnswers.hostView();
+    expect(view.draft.rules.playStyle).toBe("faceOffLadder");
+    expect(view.draft.boards).toHaveLength(content.boards.length);
   });
 
   it("is for owners and co-hosts: moderators and players can't see answers", async () => {
@@ -102,7 +130,7 @@ describe("setup", () => {
 
 describe("play", () => {
   it("runs a classic board: points land on the scoreboard, hidden answers never leave the server", async () => {
-    const { game, ra, gameTeams } = await readyGame(2);
+    const { game, ra, gameTeams } = await readyGame(3);
     const [a, b] = [gameTeams[0]!.id, gameTeams[1]!.id];
     const guest = await joinAsGuest(game.code);
     await ra.start();
@@ -164,7 +192,7 @@ describe("play", () => {
   });
 
   it("practice boards score nothing; a double-points board doubles", async () => {
-    const { game, ra, gameTeams } = await readyGame(2);
+    const { game, ra, gameTeams } = await readyGame(3);
     const [a] = [gameTeams[0]!.id];
     await ra.start();
     await act(ra, { type: "startBoard", boardId: "practice" });
@@ -186,7 +214,7 @@ describe("play", () => {
   });
 
   it("applies each action once: a retry is a no-op and a stale screen is refused", async () => {
-    const { game, ra, gameTeams } = await readyGame(2);
+    const { game, ra, gameTeams } = await readyGame(3);
     const a = gameTeams[0]!.id;
     await ra.start();
     await act(ra, { type: "startBoard", boardId: "tree" });
@@ -249,7 +277,7 @@ describe("play", () => {
   });
 
   it("face-off ladder: every other team steals at once, best steal takes the bank", async () => {
-    const { game, ra, gameTeams } = await readyGame(4);
+    const { game, ra, gameTeams } = await readyGame(4, "everyone");
     const [t1, t2, t3, t4] = gameTeams.map((t) => t.id) as [
       string,
       string,
@@ -278,7 +306,7 @@ describe("play", () => {
   });
 
   it("use basic controls: the board leaves the screens, scores stay", async () => {
-    const { game, ra, gameTeams } = await readyGame(2);
+    const { game, ra, gameTeams } = await readyGame(3);
     await ra.start();
     await act(ra, { type: "startBoard", boardId: "tree" });
     await act(ra, {

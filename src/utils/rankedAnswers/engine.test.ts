@@ -68,24 +68,23 @@ const six = ["T1", "T2", "T3", "T4", "T5", "T6"];
 
 describe("content", () => {
   it("the synthetic pack is valid content and passes preflight for each style", () => {
-    expect(preflight(contentFor("classic"), 2).blocking).toEqual([]);
     expect(preflight(contentFor("faceOffLadder"), 6).blocking).toEqual([]);
     expect(preflight(contentFor("allPlay"), 30).blocking).toEqual([]);
   });
 
   it("blocks a style that doesn't fit the number of teams", () => {
-    expect(preflight(contentFor("classic"), 4).blocking[0]).toMatch(
-      /needs 2 teams; this game has 4/,
+    expect(preflight(contentFor("faceOffLadder"), 2).blocking[0]).toMatch(
+      /needs 3 to 8 teams; this game has 2/,
     );
   });
 });
 
-describe("classic matches the model", () => {
+describe("classic feud (head-to-head) matches the model", () => {
   it("face-off, play, three strikes, then a successful steal", () => {
-    const content = contentFor("classic");
+    const content = contentFor("faceOffLadder", { stealBy: "opponent" });
     const { state, totals } = run(
       content,
-      ["A", "B"],
+      ["A", "B", "C"],
       [
         { type: "startBoard", boardId: "board-picnic" },
         {
@@ -119,7 +118,8 @@ describe("classic matches the model", () => {
         steals: { B: { kind: "accept", answerId: "sandwiches" } },
       },
     );
-    expect(totals).toEqual(expected.points);
+    // Team C sat out this board's face-off; only the opponent steals.
+    expect(totals).toEqual({ ...expected.points, C: 0 });
     expect(state.board).toMatchObject({
       phase: "closed",
       bank: 50,
@@ -128,10 +128,10 @@ describe("classic matches the model", () => {
   });
 
   it("the top row wins a buzzer face-off at once; passing hands play over", () => {
-    const content = contentFor("classic");
+    const content = contentFor("faceOffLadder", { stealBy: "opponent" });
     const { state } = run(
       content,
-      ["A", "B"],
+      ["A", "B", "C"],
       [
         { type: "startBoard", boardId: "board-picnic" },
         { type: "faceOff", answers: [{ team: "B", answerId: "blanket" }] },
@@ -146,10 +146,13 @@ describe("classic matches the model", () => {
   });
 
   it("a secret face-off on the same row is replayed, never decided by speed", () => {
-    const content = contentFor("classic", { faceOffMethod: "secret" });
+    const content = contentFor("faceOffLadder", {
+      stealBy: "opponent",
+      faceOffMethod: "secret",
+    });
     const { state } = run(
       content,
-      ["A", "B"],
+      ["A", "B", "C"],
       [
         { type: "startBoard", boardId: "board-picnic" },
         {
@@ -358,10 +361,10 @@ describe("points and boards", () => {
   });
 
   it("closing a face-off board early gives the bank to the playing team", () => {
-    const content = contentFor("classic");
+    const content = contentFor("faceOffLadder", { stealBy: "opponent" });
     const { totals } = run(
       content,
-      ["A", "B"],
+      ["A", "B", "C"],
       [
         { type: "startBoard", boardId: "board-picnic" },
         { type: "faceOff", answers: [{ team: "A", answerId: "blanket" }] },
@@ -370,7 +373,7 @@ describe("points and boards", () => {
         { type: "closeBoard" },
       ],
     );
-    expect(totals).toEqual({ A: 50, B: 0 });
+    expect(totals).toEqual({ A: 50, B: 0, C: 0 });
   });
 });
 

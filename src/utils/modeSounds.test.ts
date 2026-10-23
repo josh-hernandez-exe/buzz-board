@@ -11,11 +11,11 @@ import { sampleContent } from "@/utils/rankedAnswers/sample";
 
 describe("mode sound cues", () => {
   const content = {
-    ...sampleContent(2),
-    rules: { ...presetRules("classic", 2), faceOffMethod: "none" as const },
+    ...sampleContent(3),
+    rules: { ...presetRules("noFaceOff", 3) },
   };
   const views = (actions: Action[]) => {
-    let state = initialState(["A", "B"]);
+    let state = initialState(["A", "B", "C"]);
     const out = [projectPublic(content, state, "running")];
     for (const a of actions) {
       state = apply(content, state, a)._unsafeUnwrap().state;

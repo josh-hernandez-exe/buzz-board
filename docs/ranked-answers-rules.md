@@ -11,8 +11,8 @@ This decides the shape of a board. Every other option hangs off it.
 | Style | Teams | Flow | Built |
 | --- | --- | --- | --- |
 | **Open answering** | 2–50 | No turns: any team answers any time; the host reveals a row and credits every team that got it | Yes (new; suggested for 3+ teams) |
-| **Classic** | 2 | Face-off → play or pass → the playing team answers until it clears the board or strikes out → steal | Yes |
-| **Face-off ladder** | 3–8 | Classic, with a rotating pair facing off each board | Yes |
+| **Classic feud** (`faceOffLadder`) | 3–8 | The TV format for groups: a rotating pair faces off each board → play or pass → the playing team answers until it clears the board or strikes out → steal | Yes |
+| Classic, two teams only | 2 | The TV show exactly | **Retired** (owner decision, 2026-10-23): Buzz Board is for several teams at once, so no format is two-team-only. Drafts or games saved with it load as Classic feud, which the engine plays identically for two teams |
 | **Round robin** | 2–12 | One answer per team per turn, rotating; starting team rotates per board | Yes |
 | **Pass-along** | 2–12 | A team keeps answering until it misses, then the next team takes over | Yes (new) |
 | **Buzz race** | 2–50 | Every answer is a buzzer race: first to buzz answers; a hit scores, a miss locks the team out | Yes (new) |
@@ -34,7 +34,7 @@ This decides the shape of a board. Every other option hangs off it.
 | --- | --- | --- |
 | **Points while playing** (`scoring`) | `bank` (rows build a bank paid to the board's winner), `direct` (each row scores for whoever found it, face-off rows included) | Direct is gentler: a team that strikes out keeps what it found |
 | **Strikes** | 1–5 | 3 is the TV rule |
-| **Steal by** (`stealBy`) | `opponent`, `everyone`, `none` | Default: opponent for Classic, everyone for the ladder. `none` ends the board at the last strike; the playing team keeps the bank |
+| **Steal by** (`stealBy`) | `opponent`, `everyone`, `none` | Default: everyone, so the whole room plays every board (the "head-to-head" preset uses opponent). `none` ends the board at the last strike; the playing team keeps the bank |
 | **Steal reward** (`stealReward`) | `bankPlusRow` (TV), `rowOnly` (the playing team keeps the bank) | Hidden with direct scoring, where there's no bank to win |
 | **Several correct steals** (`stealWinner`) | `bestRow` (highest row takes the bank; other correct steals score their own row), `allCorrect` (every correct stealer takes the bank) | Only shown when everyone steals |
 
@@ -95,7 +95,7 @@ A heavier run of about 27,000 games of up to 500 steps also passes. The review f
 
 Fixed rotations are pinned by explicit tests:
 - **Round robin:** order within a board; the first team moves on each main board, and practice or spare boards don't move it.
-- **Face-off ladder:** every team faces off equally often for 3 to 8 teams.
+- **Classic feud:** every team faces off equally often for 3 to 8 teams.
 - **No face-off:** every team plays the same number of boards.
 
 ## Compatibility

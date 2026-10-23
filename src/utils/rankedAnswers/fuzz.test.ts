@@ -158,8 +158,7 @@ function randomAction(
   }
 }
 
-const isFaceOff = (c: Content) =>
-  c.rules.playStyle === "classic" || c.rules.playStyle === "faceOffLadder";
+const isFaceOff = (c: Content) => c.rules.playStyle === "faceOffLadder";
 
 function checkInvariants(
   content: Content,
@@ -424,7 +423,7 @@ describe("turn order", () => {
   it("face-off ladder: across boards every team faces off equally often", () => {
     for (const n of [3, 4, 5, 6, 7, 8]) {
       const teams = Array.from({ length: n }, (_, i) => `T${i}`);
-      const c = makeContent({ ...presetRules("ladder", n) });
+      const c = makeContent({ ...presetRules("classic", n) });
       const counts: Record<string, number> = {};
       let state = initialState(teams);
       // n boards: each team should face off exactly twice.
@@ -448,12 +447,9 @@ describe("turn order", () => {
   });
 
   it("no face-off: every team plays the same number of boards", () => {
-    for (const n of [2, 3, 5]) {
+    for (const n of [3, 5, 8]) {
       const teams = Array.from({ length: n }, (_, i) => `T${i}`);
-      const base = makeContent({
-        ...presetRules(n === 2 ? "noFaceOff" : "ladder", n),
-        faceOffMethod: "none",
-      });
+      const base = makeContent({ ...presetRules("noFaceOff", n) });
       const ids = Array.from({ length: n * 2 }, (_, i) => `x${i}`);
       const c = contentSchema.parse({
         ...base,
@@ -477,10 +473,10 @@ describe("turn order", () => {
 
   it("a repeated face-off answer that's already on the board doesn't win", () => {
     const c = makeContent({
-      ...presetRules("classic", 2),
+      ...presetRules("classic", 3),
       faceOffMethod: "secret",
     });
-    let state = initialState(["A", "B"]);
+    let state = initialState(["A", "B", "C"]);
     state = apply(c, state, {
       type: "startBoard",
       boardId: "m1",
@@ -507,10 +503,10 @@ describe("turn order", () => {
 
   it("buzzer face-off: the top answer still hidden wins at once", () => {
     const c = makeContent({
-      ...presetRules("classic", 2),
+      ...presetRules("classic", 3),
       faceOffMethod: "secret",
     });
-    let state = initialState(["A", "B"]);
+    let state = initialState(["A", "B", "C"]);
     state = apply(c, state, {
       type: "startBoard",
       boardId: "m1",
@@ -522,7 +518,7 @@ describe("turn order", () => {
         { team: "B", answerId: "m1-1" },
       ],
     })._unsafeUnwrap().state;
-    const buzzer = makeContent({ ...presetRules("classic", 2) });
+    const buzzer = makeContent({ ...presetRules("classic", 3) });
     state = apply(buzzer, state, {
       type: "faceOff",
       answers: [{ team: "B", answerId: "m1-2" }],
@@ -532,8 +528,8 @@ describe("turn order", () => {
   });
 
   it("refuses the same team twice in a face-off", () => {
-    const c = makeContent(presetRules("classic", 2));
-    let state = initialState(["A", "B"]);
+    const c = makeContent(presetRules("classic", 3));
+    let state = initialState(["A", "B", "C"]);
     state = apply(c, state, {
       type: "startBoard",
       boardId: "m1",

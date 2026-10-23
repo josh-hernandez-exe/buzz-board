@@ -1,5 +1,8 @@
 # PR13: Ranked Answers event rules, naming and rehearsal (proposal for owner review)
 
+> [!note] Owner decision (2026-10-23)
+> Only formats for several teams are offered: the **Classic (2 teams)** style below is retired. The TV format is kept, for 3–8 teams, as **Classic feud** (the face-off ladder below, with every other team stealing by default). The reference model and its worked examples are kept unchanged as the reviewed proposal.
+
 > [!important] Status: proposed, not approved
 > This is the PR13 deliverable from the [delivery plan](./buzz-board-game-kit-delivery-plan.md): the package the owner reviews to pass the **Phase 2 exit**. Nothing here is approved. Every rule below is the plan's proposed default, written so it can be checked rather than invented. Game Kit and the Ranked Answers mode (PR14 onward) wait for the decisions in the next section.
 

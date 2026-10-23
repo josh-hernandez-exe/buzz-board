@@ -98,9 +98,15 @@ describe("rule options", () => {
       missPenalty: 0,
       targetScore: null,
     });
-    expect(resolveRules({ ...old, playStyle: "classic" }).stealBy).toBe(
-      "opponent",
-    );
+    // Saved before the two-team style was retired: loads as the classic
+    // feud ladder, whose steal default (every other team) is the same as
+    // the old one with two teams.
+    const legacy = contentSchema.parse({
+      rules: { ...old, playStyle: "classic" },
+      boards: [],
+    });
+    expect(legacy.rules.playStyle).toBe("faceOffLadder");
+    expect(resolveRules(legacy.rules).stealBy).toBe("everyone");
   });
 
   it("every preset is valid and passes preflight at its smallest team count", () => {

@@ -1,6 +1,6 @@
 # Ranked Answers mode
 
-The family-feud style game mode, built so it can run a first event now. The rules started as the proposal in [pr13-ranked-answers-event-spec.md](./pr13-ranked-answers-event-spec.md) (configurable points and four play styles). They are now fully configurable: six play styles, nine presets and options for face-offs, passing, banking, steals, shared answers, race lockouts, miss penalties and a target score, chosen when the game is created ([the rule space](./ranked-answers-rules.md)). How to use it is in the [Ranked Answers Help article](../src/help/articles/ranked-answers.md).
+The family-feud style game mode, built so it can run a first event now. The rules started as the proposal in [pr13-ranked-answers-event-spec.md](./pr13-ranked-answers-event-spec.md) (configurable points and four play styles). They are now fully configurable: six play styles (all for several teams; the two-team-only Classic was retired in favour of **Classic feud** for 3–8 teams), nine presets and options for face-offs, passing, banking, steals, shared answers, race lockouts, miss penalties and a target score, chosen when the game is created ([the rule space](./ranked-answers-rules.md)). How to use it is in the [Ranked Answers Help article](../src/help/articles/ranked-answers.md).
 
 | Item          | Value                                                                                                                         |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -35,14 +35,14 @@ The family-feud style game mode, built so it can run a first event now. The rule
 - [rankedAnswers.test.ts](../tests/integration/rankedAnswers.test.ts) (9 tests, real PostgreSQL and Redis):
   - draft conflicts; preflight refusal; a style that doesn't fit the team count;
   - moderators and players refused the host view;
-  - a full classic board with exact scores, and no hidden answer text in player or public state at any point;
+  - a full Classic feud board with exact scores, and no hidden answer text in player or public state at any point;
   - practice and 2× boards;
   - concurrent retries and a stale screen (applied once);
   - undo returning points while keeping the row shown;
   - face-off ladder simultaneous steals;
   - ending the mode.
 - [rankedAnswers.spec.ts](../tests/e2e/rankedAnswers.spec.ts) (browser):
-  - the host loads sample boards, saves, starts and runs a classic face-off, play, strikes and a steal;
+  - the host loads sample boards, saves, starts and runs a Classic feud face-off, play, strikes and a steal;
   - the player page and the audience display show each answer only once revealed;
   - the bank and status line update live, and the score lands on the scoreboard.
 - Screens were checked by eye: audience display, a 360px player phone, the host controls and the editor.
