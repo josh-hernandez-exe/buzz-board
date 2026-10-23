@@ -16,6 +16,20 @@ For the first event: a holiday, family-feud style game for several families on a
 | 1 week | Short second rehearsal with the final content; send families the join link and a one-line "how to join" | Families know they need only a phone and the link |
 | Day before | **Duplicate** the rehearsed game into a fresh game for the event, and check it opens on the right tab with the content | Fresh game ready, join code noted |
 
+## Sign-in checks so far
+
+Run locally (2026-10-23) with the real Discord and Google app settings from `.env.local` on `http://localhost:3000`:
+
+| Check | Result |
+| --- | --- |
+| Both providers configured; callback URLs `http://localhost:3000/api/auth/callback/{discord,google}` | Pass |
+| **Google**: the app's sign-in reaches Google's "Sign in to continue to Buzz-Board" page (client ID and callback URL accepted) | Pass |
+| **Discord**: the app exists ("buzz-board") and sign-in reaches Discord's login page | Pass. Discord only checks the callback URL after login, so one real sign-in is still needed |
+| Cancelling at the provider returns to the sign-in page; a forged callback is refused | Pass |
+| A full sign-in with a real account, landing on the dashboard | **Not done**: needs a person with an account |
+
+Automated tests create signed-in hosts directly in the database, so they never exercise the providers. Repeat this check on the real domain after deploying (first row of the table above).
+
 ## Load results so far
 
 All runs were local: a production build, PostgreSQL and Redis in Docker, and 100 bots plus 4 staff and display clients, all on one 4-vCPU, 16 GB machine.
