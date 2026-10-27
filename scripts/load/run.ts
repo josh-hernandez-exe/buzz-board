@@ -13,7 +13,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { cpus, totalmem } from "node:os";
 import { parseArgs } from "node:util";
 
@@ -38,6 +38,12 @@ import {
   WORKLOAD,
   type Profile,
 } from "./profiles";
+import { processTree, ResourceSampler } from "./resources";
+import {
+  applyRosterUpdate,
+  type LiveRoster,
+  type PrivateGameStateUpdate,
+} from "../../src/utils/liveRoster";
 import {
   parseSyntheticTag,
   seededRandom,
@@ -62,6 +68,17 @@ const { values: args } = parseArgs({
     "operator-approval": { type: "string" },
     /** "queue": every buzz lines up; the host judges wrong then right. */
     "buzzer-mode": { type: "string", default: "first" },
+    /** Server instances to start (ports target, target+1, ...); bots are spread across them. */
+    instances: { type: "string", default: "1" },
+    /** Pin the started server(s) to these CPUs (taskset list, e.g. "0" or "0-1"). */
+    "server-cpus": { type: "string" },
+    /**
+     * Seconds between a bot's chat messages (default: the profile's 30).
+     * 0 turns bot chat posting off, to measure buzzing and live state alone.
+     */
+    "chat-every": { type: "string" },
+    /** Write a V8 CPU profile of each started server into this folder. */
+    "server-profile": { type: "string" },
   },
   allowPositionals: true,
 });
@@ -84,6 +101,16 @@ if (!["first", "queue"].includes(args["buzzer-mode"])) {
   process.exit(2);
 }
 const estimate = estimateWorkload(profile);
+// Bun's fetch allows only 256 requests at once by default, and every bot
+// holds two streams open: without a higher limit the generator, not the
+// server, becomes the bottleneck (requests queue inside the runner).
+const fetchLimit = Number(process.env.BUN_CONFIG_MAX_HTTP_REQUESTS ?? 256);
+if (fetchLimit < estimate.peakStreams + estimate.peakClients + 100) {
+  console.error(
+    `BUN_CONFIG_MAX_HTTP_REQUESTS is ${fetchLimit}, too low for ${estimate.peakStreams} streams: requests would queue in the runner. Use \`bun run load\`, which sets it.`,
+  );
+  process.exit(2);
+}
 const ceilings: Ceilings = ceilingsFor(estimate);
 const targetCheck = checkTarget({
   target: args.target,
@@ -98,6 +125,7 @@ const targetCheck = checkTarget({
 
 const plan = {
   profile: profile.name,
+  chatEverySeconds: args["chat-every"] ?? String(WORKLOAD.messageEverySeconds),
   buzzerMode: queueMode ? "queue" : "first",
   holdScale,
   seed,
@@ -121,6 +149,18 @@ if (!targetCheck.value.local) {
   process.exit(2);
 }
 const origin = targetCheck.value.origin;
+const instanceCount = Math.max(1, Math.min(4, Number(args.instances) || 1));
+/** One origin per server instance; bot i uses origins[i % n]. */
+const origins = Array.from({ length: instanceCount }, (_, i) => {
+  const u = new URL(origin);
+  u.port = String(Number(u.port || "80") + i);
+  return u.origin;
+});
+const originFor = (index: number) => origins[index % origins.length]!;
+const chatEverySeconds =
+  args["chat-every"] === undefined
+    ? WORKLOAD.messageEverySeconds
+    : Math.max(0, Number(args["chat-every"]));
 
 // ---------------------------------------------------------------- setup
 
@@ -153,40 +193,78 @@ function abortRun(reason: string) {
 }
 process.on("SIGINT", () => abortRun("interrupted"));
 
-function startServer(): ChildProcess {
-  const port = new URL(origin).port || "80";
-  return spawn("bunx", ["next", "start", "--port", port], {
+function startServer(instanceOrigin: string): ChildProcess {
+  const port = new URL(instanceOrigin).port || "80";
+  const command = ["bunx", "next", "start", "--port", port];
+  const pinned = args["server-cpus"]
+    ? ["taskset", "-c", args["server-cpus"], ...command]
+    : command;
+  // Bun loads .env.development.local into this runner; the development-only
+  // sign-in must never reach a production server (it refuses to start).
+  const { DEV_LOGIN: _devLogin, ...inherited } = process.env;
+  return spawn(pinned[0]!, pinned.slice(1), {
+    // Its own process group, so the whole tree (bunx and next-server) can
+    // be stopped together: a surviving next-server keeps the port, and the
+    // next run would silently measure that old server instead of its own.
+    detached: true,
     env: {
-      ...process.env,
+      ...inherited,
+      ...(args["server-profile"]
+        ? {
+            NODE_OPTIONS: `--cpu-prof --cpu-prof-dir=${args["server-profile"]}`,
+          }
+        : {}),
       NODE_ENV: "production",
       DATABASE_URL: databaseUrl,
       AUTH_SECRET: process.env.AUTH_SECRET ?? "load-only-secret",
       AUTH_TRUST_HOST: "true",
-      NEXTAUTH_URL: origin,
+      NEXTAUTH_URL: instanceOrigin,
       AUTH_DISCORD_CLIENT_ID: process.env.AUTH_DISCORD_CLIENT_ID ?? "unused",
       AUTH_DISCORD_CLIENT_SECRET:
         process.env.AUTH_DISCORD_CLIENT_SECRET ?? "unused",
       AUTH_GOOGLE_CLIENT_ID: process.env.AUTH_GOOGLE_CLIENT_ID ?? "unused",
       AUTH_GOOGLE_CLIENT_SECRET:
         process.env.AUTH_GOOGLE_CLIENT_SECRET ?? "unused",
-      NEXT_PUBLIC_QRCODE_BASE_URL: origin,
+      NEXT_PUBLIC_QRCODE_BASE_URL: instanceOrigin,
       NEXT_TELEMETRY_DISABLED: "1",
     },
     stdio: "ignore",
   });
 }
 
-async function waitForServer() {
+async function answering(instanceOrigin: string) {
+  try {
+    await fetch(`${instanceOrigin}/join`, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(2_000),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Stops a started server's whole process group. */
+function stopServer(server: ChildProcess) {
+  if (!server.pid) return;
+  try {
+    process.kill(-server.pid, "SIGTERM");
+  } catch {
+    // already gone
+  }
+}
+
+async function waitForServer(instanceOrigin: string) {
   for (let i = 0; i < 120; i++) {
     try {
-      const res = await fetch(`${origin}/join`, { redirect: "manual" });
+      const res = await fetch(`${instanceOrigin}/join`, { redirect: "manual" });
       if (res.status < 500) return;
     } catch {
       // not listening yet
     }
     await sleep(500);
   }
-  throw new Error(`No server at ${origin}`);
+  throw new Error(`No server at ${instanceOrigin}`);
 }
 
 async function seedUser(name: string) {
@@ -281,6 +359,17 @@ const metrics = {
     message: string;
   }[],
   samples: [] as Record<string, number | null>[],
+  /** The same latencies, steady state only (the hold, not ramps). */
+  hold: {
+    joins: [] as number[],
+    sendAck: [] as number[],
+    buzzAck: [] as number[],
+    delivery: [] as number[],
+    probe: [] as number[],
+  },
+  probe: { all: [] as number[], failures: 0, lagMax: 0 },
+  /** Player-list updates the bots received, by kind (see liveRoster.ts). */
+  rosterUpdates: { full: 0, delta: 0, same: 0 },
 };
 function unexpected(where: string, error: unknown) {
   const e =
@@ -342,10 +431,7 @@ type Pulse = {
   channels: { key: string; revision: number }[];
   muted: unknown;
 };
-type GameStateSnapshot = {
-  game: { isBuzzerListening: boolean };
-  gameUsers: Record<string, { gameTeamId: string | null }>;
-};
+type GameStateSnapshot = PrivateGameStateUpdate;
 
 type BuzzOutcome =
   | "won"
@@ -362,6 +448,7 @@ class Bot {
   gameUserId = "";
   teamId: string | null = null;
   revisions = new Map<string, number>();
+  roster: LiveRoster | null = null;
   channels: string[] = [];
   seen = new Set<string>();
   inFlight = new Set<string>();
@@ -382,7 +469,7 @@ class Bot {
 
   async start() {
     const joiner = new TrpcHttp(
-      origin,
+      originFor(this.index),
       { forwardedFor: `10.77.${this.index >> 8}.${this.index & 255}` },
       counters,
     );
@@ -395,16 +482,19 @@ class Bot {
       nickname: `Bot ${this.index}`,
     });
     metrics.joins.push(now() - t0);
+    if (inHold()) metrics.hold.joins.push(now() - t0);
     this.gameUserId = joined.gameUser.id;
     this.teamId = joined.gameUser.gameTeamId;
     this.http = new TrpcHttp(
-      origin,
+      originFor(this.index),
       { gameId: this.gameId, gameUserToken: joined.token },
       counters,
     );
     this.active = true;
     this.openStreams();
-    this.schedule(random() * WORKLOAD.messageEverySeconds * 1000);
+    if (chatEverySeconds > 0) {
+      this.schedule(random() * chatEverySeconds * 1000);
+    }
     // One privacy probe per bot: another team's channel must be refused.
     void this.probePrivacy();
   }
@@ -415,9 +505,16 @@ class Bot {
       this.http,
       "gameGeneral.gameState",
       {},
-      (state) => {
-        this.teamId = state.gameUsers[this.gameUserId]?.gameTeamId ?? null;
-        const open = state.game.isBuzzerListening;
+      (update) => {
+        // As the page does: the player list comes whole, then as changes.
+        metrics.rosterUpdates[update.roster.kind]++;
+        // Bots only need players, not team member lists.
+        this.roster = applyRosterUpdate(this.roster, update, { teams: false });
+        if (this.roster) {
+          this.teamId =
+            this.roster.state.gameUsers[this.gameUserId]?.gameTeamId ?? null;
+        }
+        const open = update.game.isBuzzerListening;
         if (open && !this.listening) void this.buzz();
         this.listening = open;
         this.onState?.();
@@ -487,6 +584,7 @@ class Bot {
           ) {
             record.delivered++;
             metrics.delivery.push(at - record.at);
+            if (record.inHold) metrics.hold.delivery.push(at - record.at);
           }
         }
       } while (this.dirty.has(key) && this.active);
@@ -504,7 +602,7 @@ class Bot {
       if (!this.active || stop.signal.aborted) return;
       void this.send();
       const jitter = (random() - 0.5) * 0.2;
-      this.schedule(WORKLOAD.messageEverySeconds * 1000 * (1 + jitter));
+      this.schedule(chatEverySeconds * 1000 * (1 + jitter));
     }, delayMs);
   }
 
@@ -539,6 +637,7 @@ class Bot {
         requestId,
       });
       metrics.sendAck.push(now() - t0);
+      if (inHold()) metrics.hold.sendAck.push(now() - t0);
       metrics.sends.accepted++;
       acceptedRequestIds.add(requestId);
       sent.set(tag, {
@@ -573,6 +672,7 @@ class Bot {
         replayed: boolean;
       }>("gameUser.buzzIn", { requestId: randomBytes(12).toString("hex") });
       metrics.buzzAck.push(now() - t0);
+      if (inHold()) metrics.hold.buzzAck.push(now() - t0);
       if (result.replayed) {
         metrics.buzzes.teammateHeld++;
         return "teammateHeld";
@@ -582,6 +682,7 @@ class Bot {
       return "won";
     } catch (e) {
       metrics.buzzAck.push(now() - t0);
+      if (inHold()) metrics.hold.buzzAck.push(now() - t0);
       const message = e instanceof Error ? e.message : "";
       if (/not listening/i.test(message)) {
         metrics.buzzes.notListening++;
@@ -637,12 +738,20 @@ const inHold = () => {
 // ---------------------------------------------------------------- run
 
 async function main() {
-  let server: ChildProcess | undefined;
+  const servers: ChildProcess[] = [];
   if (args["start-server"]) {
-    server = startServer();
-    process.on("exit", () => server?.kill());
+    for (const o of origins) {
+      if (await answering(o)) {
+        console.error(
+          `Something is already listening at ${o}: stop it first (an old load server would be measured instead of this build).`,
+        );
+        process.exit(2);
+      }
+    }
+    for (const o of origins) servers.push(startServer(o));
+    process.on("exit", () => servers.forEach(stopServer));
   }
-  await waitForServer();
+  for (const o of origins) await waitForServer(o);
   const seeded = await seedGame();
   const { game } = seeded;
   const teamIds = seeded.game.gameTeams.map((t) => t.id);
@@ -993,8 +1102,48 @@ async function main() {
     }
   })();
 
+  // Latency probe in its own process (see probe.ts).
+  const probe = spawn("bun", ["scripts/load/probe.ts", origins[0]!, game.id], {
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  process.on("exit", () => probe.kill());
+  let probeBuffer = "";
+  probe.stdout?.on("data", (chunk: Buffer) => {
+    probeBuffer += chunk.toString();
+    let nl;
+    while ((nl = probeBuffer.indexOf("\n")) >= 0) {
+      const line = probeBuffer.slice(0, nl);
+      probeBuffer = probeBuffer.slice(nl + 1);
+      try {
+        const p = JSON.parse(line) as { ms: number; lag: number; ok: boolean };
+        // Counted like any request, so per-request costs include it.
+        counters.requests++;
+        if (!p.ok) metrics.probe.failures++;
+        metrics.probe.all.push(p.ms);
+        if (inHold()) metrics.hold.probe.push(p.ms);
+        metrics.probe.lagMax = Math.max(metrics.probe.lagMax, p.lag);
+      } catch {
+        // partial line
+      }
+    }
+  });
+
   // Sampling and ceilings every 5 seconds.
-  const serverPid = server?.pid;
+  const resources = new ResourceSampler(
+    servers.map((s) => s.pid).filter((p): p is number => !!p),
+  );
+  const pgCounters = async () => {
+    const [row] = await db.$queryRaw<
+      { xacts: bigint; rows: bigint }[]
+    >`SELECT xact_commit + xact_rollback AS xacts,
+             tup_returned + tup_fetched + tup_inserted + tup_updated + tup_deleted AS rows
+      FROM pg_stat_database WHERE datname = current_database()`;
+    return { xacts: Number(row?.xacts ?? 0), rows: Number(row?.rows ?? 0) };
+  };
+  let lastPg = await pgCounters();
+  let lastSampleRequests = counters.requests;
+  let lastSampleEvents = counters.streamEvents;
+  let lastSampleBytes = counters.bytes;
   const sampler = (async () => {
     while (!stop.signal.aborted && elapsed() < total) {
       await sleep(5_000);
@@ -1003,6 +1152,8 @@ async function main() {
       >`SELECT count(*) AS connections,
                count(*) FILTER (WHERE wait_event_type = 'Lock') AS lock_waits
         FROM pg_stat_activity WHERE datname = current_database()`;
+      const pgNow = await pgCounters();
+      const res = resources.sample();
       const usage = {
         seconds: elapsed(),
         requests: counters.requests,
@@ -1018,9 +1169,20 @@ async function main() {
         requests: counters.requests,
         pgConnections: Number(pg?.connections ?? 0),
         pgLockWaits: Number(pg?.lock_waits ?? 0),
-        ...processStats(serverPid),
+        hold: inHold() ? 1 : 0,
+        ...res,
+        dRequests: counters.requests - lastSampleRequests,
+        dStreamEvents: counters.streamEvents - lastSampleEvents,
+        dBytes: counters.bytes - lastSampleBytes,
+        dPgXacts: pgNow.xacts - lastPg.xacts,
+        dPgRows: pgNow.rows - lastPg.rows,
+        serverRssMb: serverRss(servers),
         runnerRssMb: Math.round(process.memoryUsage().rss / 1_048_576),
       });
+      lastPg = pgNow;
+      lastSampleRequests = counters.requests;
+      lastSampleEvents = counters.streamEvents;
+      lastSampleBytes = counters.bytes;
       const over = exceededCeiling(usage, ceilings);
       if (over) abortRun(`ceiling: ${over}`);
       process.stdout.write(
@@ -1030,6 +1192,8 @@ async function main() {
   })();
 
   await Promise.all([scheduler, coordinator, sampler]);
+  resources.stop();
+  probe.kill();
   for (const bot of bots) bot.stopBot();
   // Let in-flight fetches land before checking deliveries.
   await sleep(2_000);
@@ -1062,7 +1226,24 @@ async function main() {
     0,
   );
   const holdDeliveries = holdMessages.reduce((s, m) => s + m.delivered, 0);
-  const multiWinWindows = [...windowWins.values()].filter((n) => n > 1).length;
+  // Wins as the runner saw them: labelled with the window open when the buzz
+  // was sent. When acknowledgements take longer than a window, a buzz can be
+  // accepted in the next window and be counted twice here, so this is a
+  // latency diagnostic, not the correctness check.
+  const lateAttributedWindows = [...windowWins.values()].filter(
+    (n) => n > 1,
+  ).length;
+  // The correctness check: stored claims, at most one per server window.
+  const claimsPerWindow = queueMode
+    ? []
+    : await db.buzzClaim.groupBy({
+        by: ["window"],
+        where: { gameId: game.id },
+        _count: { _all: true },
+      });
+  const multiWinWindows = claimsPerWindow.filter(
+    (w) => w._count._all > 1,
+  ).length;
 
   const invariants = {
     acceptedMessagesStored: stored === acceptedRequestIds.size,
@@ -1072,6 +1253,7 @@ async function main() {
     oneWinnerPerWindow: queueMode
       ? queueStats.ruleViolations === 0
       : multiWinWindows === 0,
+    // Every win a bot was told about is a stored claim, and vice versa.
     winsMatchClaims: metrics.buzzes.won === claims,
     scoresReconcile: scoreMismatches.length === 0,
     noPrivateLeaks: metrics.privacyProbes.leaked === 0,
@@ -1089,7 +1271,16 @@ async function main() {
     channelFetchMs: summarize(metrics.fetch),
     coordinatorAckMs: summarize(metrics.coordinatorAck),
     reconnectToStateMs: summarize(metrics.reconnectToState),
+    probeMs: summarize(metrics.probe.all),
   };
+  const holdLatency = {
+    joinMs: summarize(metrics.hold.joins),
+    chatSendAckMs: summarize(metrics.hold.sendAck),
+    buzzAckMs: summarize(metrics.hold.buzzAck),
+    chatVisibleDeliveryMs: summarize(metrics.hold.delivery),
+    probeMs: summarize(metrics.hold.probe),
+  };
+  const resourceSummary = summarizeResources(metrics.samples);
   const totalRequests = counters.requests;
   const unexpectedRate =
     metrics.unexpectedErrors.length / Math.max(1, totalRequests);
@@ -1122,7 +1313,7 @@ async function main() {
       cpus: cpus().length,
       cpuModel: cpus()[0]?.model,
       memoryGb: Math.round(totalmem() / 1_073_741_824),
-      topology: "1 next start instance, local PostgreSQL + Redis",
+      topology: `${instanceCount} next start instance(s)${args["server-cpus"] ? ` pinned to CPUs ${args["server-cpus"]}` : ""}, local PostgreSQL + Redis`,
       generator: "single bun process (runner), same machine as the server",
     },
     counts: {
@@ -1143,6 +1334,8 @@ async function main() {
         ...(queueMode ? { queue: queueStats } : {}),
       },
       pulses: metrics.pulses,
+      lateAttributedWindows,
+      rosterUpdates: metrics.rosterUpdates,
       streamReopens: metrics.streamReopens,
       fetches: metrics.fetches,
       fetchesCoalesced: metrics.fetchesCoalesced,
@@ -1156,6 +1349,14 @@ async function main() {
       probesRun: [...probes],
     },
     latency: summaries,
+    holdLatency,
+    resources: resourceSummary,
+    /** Requests, bytes and stream events per API path (whole run). */
+    paths: counters.paths,
+    probe: {
+      failures: metrics.probe.failures,
+      timerLagMaxMs: metrics.probe.lagMax,
+    },
     targets,
     invariants,
     scoreMismatches,
@@ -1177,6 +1378,8 @@ async function main() {
         stopReason,
         counts: report.counts,
         latency: summaries,
+        holdLatency,
+        resources: resourceSummary,
         targets,
         invariants,
       },
@@ -1202,37 +1405,99 @@ async function main() {
     });
   }
   await db.$disconnect();
-  server?.kill();
+  servers.forEach(stopServer);
   const ok = Object.values(invariants).every(Boolean) && !stopReason;
   process.exit(ok ? 0 : 1);
 }
 
-function processStats(pid: number | undefined): Record<string, number | null> {
-  if (!pid) return { serverCpuPercent: null, serverRssMb: null };
-  try {
-    const rows = execFileSync("ps", ["-eo", "pid=,ppid=,pcpu=,rss="])
-      .toString()
-      .trim()
-      .split("\n")
-      .map((line) => line.trim().split(/\s+/).map(Number));
-    const tree = new Set([pid]);
-    for (let changed = true; changed; ) {
-      changed = false;
-      for (const [p, pp] of rows) {
-        if (!tree.has(p!) && tree.has(pp!)) {
-          tree.add(p!);
-          changed = true;
-        }
+function serverRss(servers: ChildProcess[]): number | null {
+  let kb = 0;
+  for (const server of servers) {
+    if (!server.pid) continue;
+    for (const pid of processTree(server.pid)) {
+      try {
+        const m = /VmRSS:\s+(\d+)/.exec(
+          readFileSync(`/proc/${pid}/status`, "utf8"),
+        );
+        kb += Number(m?.[1] ?? 0);
+      } catch {
+        // exited
       }
     }
-    const mine = rows.filter(([p]) => tree.has(p!));
-    return {
-      serverCpuPercent: Math.round(mine.reduce((s, r) => s + r[2]!, 0)),
-      serverRssMb: Math.round(mine.reduce((s, r) => s + r[3]!, 0) / 1024),
-    };
-  } catch {
-    return { serverCpuPercent: null, serverRssMb: null };
   }
+  return servers.length > 0 ? Math.round(kb / 1024) : null;
+}
+
+/**
+ * Steady-state (hold) averages of the resource samples, and the cost per
+ * unit of work. If per-request or per-delivery costs stay flat as users
+ * grow, the application scales linearly and any slowdown is the machine; if
+ * they grow, the application does more work per user as the game grows.
+ */
+function summarizeResources(samples: Record<string, number | null>[]) {
+  const hold = samples.filter((s) => s.hold === 1);
+  const rows = hold.length > 0 ? hold : samples;
+  const num = (s: Record<string, number | null>, key: string) => {
+    const v = s[key];
+    return typeof v === "number" ? v : null;
+  };
+  const avg = (key: string) => {
+    const vals = rows
+      .map((s) => num(s, key))
+      .filter((v): v is number => v !== null);
+    return vals.length
+      ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100
+      : null;
+  };
+  const max = (key: string) =>
+    Math.max(0, ...rows.map((s) => num(s, key) ?? 0));
+  const sum = (key: string) => rows.reduce((a, s) => a + (num(s, key) ?? 0), 0);
+  const seconds = Math.max(1, rows.length * 5);
+  const serverCpuMs = (avg("serverCores") ?? 0) * seconds * 1000;
+  const pgCpuMs = (avg("postgresCores") ?? 0) * seconds * 1000;
+  const runnerCpuMs = (avg("runnerCores") ?? 0) * seconds * 1000;
+  const requests = Math.max(1, sum("dRequests"));
+  const events = Math.max(1, sum("dStreamEvents"));
+  const r3 = (n: number) => Math.round(n * 1000) / 1000;
+  return {
+    samplesInHold: hold.length,
+    average: {
+      hostBusyPercent: avg("hostBusyPercent"),
+      hostStealPercent: avg("hostStealPercent"),
+      runQueue: avg("runQueue"),
+      serverCores: avg("serverCores"),
+      serverMainThreadCores: avg("serverMainThreadCores"),
+      runnerCores: avg("runnerCores"),
+      postgresCores: avg("postgresCores"),
+      redisCores: avg("redisCores"),
+      requestsPerSecond: Math.round((sum("dRequests") / seconds) * 10) / 10,
+      streamEventsPerSecond:
+        Math.round((sum("dStreamEvents") / seconds) * 10) / 10,
+      receivedKbPerSecond: Math.round(sum("dBytes") / seconds / 1024),
+      pgTransactionsPerSecond:
+        Math.round((sum("dPgXacts") / seconds) * 10) / 10,
+    },
+    peak: {
+      hostBusyPercent: max("hostBusyPercent"),
+      runQueue: max("runQueue"),
+      serverMainThreadCores: max("serverMainThreadCores"),
+      runnerLoopLagMaxMs: max("runnerLoopLagMaxMs"),
+      runnerLoopLagP99Ms: max("runnerLoopLagP99Ms"),
+      serverRssMb: max("serverRssMb"),
+      runnerRssMb: max("runnerRssMb"),
+      pgConnections: max("pgConnections"),
+      pgLockWaits: max("pgLockWaits"),
+    },
+    perUnit: {
+      serverCpuMsPerRequest: r3(serverCpuMs / requests),
+      serverCpuMsPerStreamEvent: r3(serverCpuMs / events),
+      postgresCpuMsPerRequest: r3(pgCpuMs / requests),
+      pgTransactionsPerRequest: r3(sum("dPgXacts") / requests),
+      pgRowsPerRequest: r3(sum("dPgRows") / requests),
+      runnerCpuMsPerStreamEvent: r3(runnerCpuMs / events),
+      receivedBytesPerStreamEvent: Math.round(sum("dBytes") / events),
+    },
+  };
 }
 
 main().catch(async (error) => {

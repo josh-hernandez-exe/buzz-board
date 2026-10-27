@@ -8,6 +8,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { GameChangeBus } from "@/server/live/gameChangeBus";
 import { GameFeed } from "@/server/live/gameFeed";
 import { liveFeeds } from "@/server/utils/events";
+import {
+  applyRosterUpdate,
+  type LiveRoster,
+  type PrivateGameStateUpdate,
+} from "@/utils/liveRoster";
 
 import {
   createGame,
@@ -139,6 +144,106 @@ describe("public game-state stream", () => {
       s.controller.abort();
       await s.finished;
     }
+  });
+});
+
+describe("joining viewers", () => {
+  it("a new viewer gets the latest snapshot without a reload for everyone", async () => {
+    const bus = new GameChangeBus(process.env.KV_URL!);
+    let loads = 0;
+    const feed = new GameFeed(
+      "cached",
+      () => bus,
+      async () => ok(++loads),
+    );
+    const gameId = `cached-${Date.now()}`;
+    const a = new AbortController();
+    const first = collect(feed.subscribe(gameId, a.signal));
+    // The first read, then one more once the bus confirms its subscription.
+    await eventually(
+      () => first.values.length,
+      (n) => n === 2,
+    );
+    expect(loads).toBe(2);
+
+    // Ten more viewers: each gets the latest snapshot; nobody is sent
+    // anything new and nothing is read again.
+    const more = Array.from({ length: 10 }, () =>
+      collect(feed.subscribe(gameId, a.signal)),
+    );
+    await eventually(() => more.every((m) => m.values.length === 1), Boolean);
+    expect(loads).toBe(2);
+    expect(more.map((m) => m.values)).toEqual(more.map(() => [2]));
+    expect(first.values).toEqual([1, 2]);
+
+    // A change: one read, delivered to all eleven.
+    await bus.notify(gameId);
+    await eventually(
+      () => [first, ...more].every((m) => m.values.at(-1) === 3),
+      Boolean,
+    );
+    expect(loads).toBe(3);
+    a.abort();
+    await Promise.all([first, ...more].map((m) => m.finished));
+    await bus.close();
+  });
+});
+
+describe("player list on the player stream", () => {
+  it("is sent whole once, then only as changes, and always matches the game", async () => {
+    const { game, admin } = await createGame({ teams: 2 });
+    const ana = await joinAsGuest(game.code, "Ana");
+    const controller = new AbortController();
+    const stream = collect(
+      (await requestCaller({
+        gameId: game.id,
+        gameUserToken: ana.token,
+        signal: controller.signal,
+      }).gameGeneral.gameState()) as AsyncIterable<PrivateGameStateUpdate>,
+    );
+    await eventually(
+      () => stream.values.length,
+      (n) => n >= 1,
+    );
+    expect(stream.values[0]!.roster.kind).toBe("full");
+
+    // The buzzer opening doesn't change the roster: it isn't resent.
+    let seen = stream.values.length;
+    await admin.gameAdmin.startBuzzer();
+    await eventually(
+      () => stream.values.at(-1)?.game.isBuzzerListening,
+      Boolean,
+    );
+    expect(stream.values.slice(seen).map((u) => u.roster.kind)).not.toContain(
+      "full",
+    );
+    expect(stream.values.at(-1)!.roster.kind).toBe("same");
+
+    // A join changes it: only the new player is sent.
+    seen = stream.values.length;
+    await admin.gameAdmin.pauseBuzzer();
+    await joinAsGuest(game.code, "Ben");
+    await eventually(
+      () => stream.values.slice(seen).some((u) => u.roster.kind === "delta"),
+      Boolean,
+    );
+    const delta = stream.values
+      .slice(seen)
+      .find((u) => u.roster.kind === "delta")!.roster;
+    expect(Object.values((delta as { upsert: object }).upsert)).toEqual([
+      expect.objectContaining({ name: "Ben" }),
+    ]);
+
+    // Applied in order, the updates give exactly the current state.
+    let live: LiveRoster | null = null;
+    for (const update of stream.values) live = applyRosterUpdate(live, update);
+    const current = await ana.player.gameGeneral.currentGameState();
+    expect(live!.state.gameUsers).toEqual(current.gameUsers);
+    expect(
+      live!.state.gameTeams.map((t) => [t.id, [...t.gameUsers].sort()]),
+    ).toEqual(current.gameTeams.map((t) => [t.id, [...t.gameUsers].sort()]));
+    controller.abort();
+    await stream.finished;
   });
 });
 

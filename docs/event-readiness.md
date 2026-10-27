@@ -32,6 +32,13 @@ Automated tests create signed-in hosts directly in the database, so they never e
 
 ## Load results so far
 
+The 10 / 100 / 1,000-user comparison, and how to tell app scaling problems from machine limits, is in [load scaling](./load-scaling.md). In short:
+- Up to ~100 players the app scales linearly on 4 vCPUs.
+- Give the real server at least 2 vCPUs.
+- Three O(n²) live-update paths were fixed. Chat refetches remain the one hotspot at ~1,000 players.
+
+The table below is the earlier PR12 history.
+
 All runs were local: a production build, PostgreSQL and Redis in Docker, and 100 bots plus 4 staff and display clients, all on one 4-vCPU, 16 GB machine.
 
 | Run | Buzzing | Invariants | Buzz ack p95 | Chat send p95 | Chat delivery p95 | Speed targets |

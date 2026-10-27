@@ -44,6 +44,27 @@ export const PROFILES = {
     stages: [{ bots: 100, rampSeconds: 300, holdSeconds: 3_600 }],
     rampDownSeconds: 300,
   },
+  // Scaling comparison: the same per-user workload and shape at 10, 100 and
+  // 1,000 users, so per-user costs can be compared (docs/load-scaling.md).
+  "scale-10": {
+    name: "scale-10",
+    description: "Scaling comparison: 10 bots, 1-minute ramp, 3-minute hold.",
+    stages: [{ bots: 10, rampSeconds: 60, holdSeconds: 180 }],
+    rampDownSeconds: 30,
+  },
+  "scale-100": {
+    name: "scale-100",
+    description: "Scaling comparison: 100 bots, 1-minute ramp, 3-minute hold.",
+    stages: [{ bots: 100, rampSeconds: 60, holdSeconds: 180 }],
+    rampDownSeconds: 30,
+  },
+  "scale-1000": {
+    name: "scale-1000",
+    description:
+      "Scaling comparison: 1,000 bots, 3-minute ramp, 3-minute hold. Local research only.",
+    stages: [{ bots: 1_000, rampSeconds: 180, holdSeconds: 180 }],
+    rampDownSeconds: 30,
+  },
   "capacity-1000-local": {
     name: "capacity-1000-local",
     description:

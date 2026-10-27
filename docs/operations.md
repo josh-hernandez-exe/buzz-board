@@ -32,6 +32,22 @@ If cleanup is late, players still never see expired text: reads hide it after 7 
 | `mixed-100`           | 100 bots + 4                | 2 min ramp, 10 min hold, 2 min ramp-down | After material shared-core changes   |
 | `soak-100`            | 100 bots + 4                | 5 min ramp, 60 min hold, 5 min ramp-down | Before an event or release           |
 | `capacity-1000-local` | 100 → 250 → 500 → 1,000 + 4 | Stepped, 29 minutes                      | Optional research, **not** a promise |
+| `scale-10` / `scale-100` / `scale-1000` | 10 / 100 / 1,000 + 4 | Same workload and short shape at each size | Scaling comparison ([load scaling](./load-scaling.md)) |
+
+Options:
+- `--instances N`: start N server processes.
+- `--server-cpus 0`: pin the server to given CPUs.
+- `--chat-every S`: seconds between a bot's messages; 0 turns chat off.
+- `--server-profile DIR`: write a V8 CPU profile of the server.
+
+Each report records:
+- resource use per part (server, its main thread, PostgreSQL, Redis, the runner) and machine-wide;
+- an independent latency probe;
+- steady-state latencies;
+- costs per request and per update;
+- traffic per API path.
+
+Compare reports with `bun scripts/load/compare.ts <reports>`.
 
 Workload, from the delivery plan: 6 teams. Each bot sends one 128-byte message about every 30 seconds (seeded jitter), 80% to its team and 20% to everyone. Every 10 seconds the coordinator resets and opens the buzzer for 3 seconds; every bot tries to buzz, and the winner's team gets 1 point. During the hold, probes run once each:
 

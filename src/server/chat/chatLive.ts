@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { randomBytes } from "node:crypto";
 
 import { GameFormat, GameStatus } from "@prisma/client";
 import { err, ok, type Result } from "neverthrow";
@@ -26,7 +26,11 @@ export type ChatSummary = {
   finished: boolean;
   /** Revision of each channel that exists yet. */
   revisions: Record<string, number>;
-  /** Changes whenever a name, team, removal or staff role changes. */
+  /**
+   * Changes whenever something shown in existing message headers changes: a
+   * player's name or team, a removal, a team name or a staff role. A player
+   * joining doesn't change it (they haven't written anything yet).
+   */
   rosterRevision: string;
   /** Current (not removed) players and their team. */
   players: Map<string, string | null>;
@@ -53,6 +57,55 @@ export type ChatPulseError = { kind: "removed" } | { kind: "roleRemoved" };
 export type ChatViewer =
   | { kind: "player"; gameUserId: string }
   | { kind: "staff"; userId: string };
+
+/**
+ * Revisions of what message headers show, per game. Viewers re-fetch their
+ * channels when it changes, so it must not change on joins: with a hash of
+ * every player, each join made every viewer re-fetch every channel, so
+ * joining cost grew with the square of the players (docs/load-scaling.md).
+ *
+ * Kept in this process's memory: a stream always talks to one process, and
+ * a reconnecting viewer re-fetches everything anyway.
+ */
+export class HeaderRevisions {
+  private readonly nonce = randomBytes(4).toString("base64url");
+  /** Only increases, so a forgotten game never reuses a revision. */
+  private counter = 0;
+  private readonly games = new Map<
+    string,
+    {
+      teams: string;
+      staff: string;
+      players: Map<string, string>;
+      revision: number;
+    }
+  >();
+
+  revisionFor(
+    gameId: string,
+    current: { teams: string; staff: string; players: Map<string, string> },
+  ): string {
+    const prev = this.games.get(gameId);
+    let revision = prev?.revision ?? ++this.counter;
+    if (prev) {
+      const changed =
+        prev.teams !== current.teams ||
+        prev.staff !== current.staff ||
+        [...prev.players].some(
+          ([id, shown]) => current.players.get(id) !== shown,
+        );
+      if (changed) revision = ++this.counter;
+    }
+    this.games.delete(gameId);
+    this.games.set(gameId, { ...current, revision });
+    if (this.games.size > 500) {
+      this.games.delete(this.games.keys().next().value!);
+    }
+    return `${this.nonce}-${revision}`;
+  }
+}
+
+const headerRevisions = new HeaderRevisions();
 
 export async function loadChatSummary(
   gameId: string,
@@ -93,16 +146,15 @@ export async function loadChatSummary(
     if (role) staff.set(admin.userId, role);
   }
 
-  const rosterRevision = createHash("sha256")
-    .update(
-      JSON.stringify([
-        game.gameTeams.map((t) => [t.id, t.name]),
-        game.gameUsers.map((u) => [u.id, u.name, u.gameTeamId]),
-        [...staff.entries()].sort(([a], [b]) => a.localeCompare(b)),
-      ]),
-    )
-    .digest("base64url")
-    .slice(0, 16);
+  const rosterRevision = headerRevisions.revisionFor(gameId, {
+    teams: JSON.stringify(game.gameTeams.map((t) => [t.id, t.name])),
+    staff: JSON.stringify(
+      [...staff.entries()].sort(([a], [b]) => a.localeCompare(b)),
+    ),
+    players: new Map(
+      game.gameUsers.map((u) => [u.id, `${u.name}\u0000${u.gameTeamId}`]),
+    ),
+  });
 
   return ok({
     isTeamGame: game.format === GameFormat.team,

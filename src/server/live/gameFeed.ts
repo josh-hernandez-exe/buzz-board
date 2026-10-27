@@ -16,6 +16,8 @@ type GameEntry<T> = {
   unlisten: () => void;
   reading: boolean;
   dirty: boolean;
+  /** The newest snapshot read, given to new subscribers without a reload. */
+  latest?: T;
 };
 
 export type GameFeedOptions = {
@@ -81,7 +83,17 @@ export class GameFeed<T> {
     signal?.addEventListener("abort", onAbort);
 
     try {
-      void this.refresh(gameId, entry);
+      // A new subscriber gets the newest snapshot. Reloading instead would
+      // re-send it to every existing subscriber: with many viewers joining,
+      // that made each join cost a delivery to everyone. A read in progress
+      // will reach this subscriber too; any later change triggers a reload.
+      if (entry.reading) {
+        // The read in progress delivers to every sink, this one included.
+      } else if (entry.latest !== undefined) {
+        sink.pending = { value: entry.latest };
+      } else {
+        void this.refresh(gameId, entry);
+      }
       for (;;) {
         if (signal?.aborted) return;
         if (!sink.pending) {
@@ -161,6 +173,7 @@ export class GameFeed<T> {
             );
           },
         );
+        if (result.isOk()) entry.latest = result.value;
         for (const sink of entry.sinks) {
           if (result.isOk()) {
             sink.pending = { value: result.value };

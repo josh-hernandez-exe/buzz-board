@@ -23,7 +23,7 @@
     "k6:build": "bun run scripts/k6/build.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "load": "bun run scripts/load/run.ts",
+    "load": "BUN_CONFIG_MAX_HTTP_REQUESTS=65000 bun run scripts/load/run.ts",
     "ops:backup-rehearsal": "bun run scripts/ops/backup-rehearsal.ts",
     "ops:cleanup": "bun run scripts/ops/cleanup.ts",
     "ops:verify-restore": "bun run scripts/ops/verify-restore.ts",

@@ -245,6 +245,31 @@ describe("chat live signal", () => {
     await player.stop();
   });
 
+  it("keeps the roster revision when a player joins, so nobody re-fetches", async () => {
+    const room = await chatRoom();
+    const player = await watch(room.asGuest(room.two));
+    const before = player.latest().rosterRevision;
+    await joinAsGuest(room.game.code, "Newcomer");
+    await room.one.player.chat.send({
+      channelKey: "game",
+      body: "hello",
+      requestId: rid(),
+    });
+    // The message arrives (a later pulse), but the headers didn't change.
+    const pulses = player.pulses.length;
+    await eventually(
+      () => player.pulses.length,
+      (n) => n > pulses,
+    );
+    expect(player.latest().rosterRevision).toBe(before);
+
+    await room.admin.gameAdmin.roster.removePlayer({
+      gameUserId: room.one.gameUser.id,
+    });
+    await eventually(player.latest, (p) => p.rosterRevision !== before);
+    await player.stop();
+  });
+
   it("goes read-only for players when the game finishes", async () => {
     const room = await chatRoom();
     const player = await watch(room.asGuest(room.one));

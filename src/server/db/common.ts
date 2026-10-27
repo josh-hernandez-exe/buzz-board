@@ -148,6 +148,9 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
           captainId: true,
           gameUsers: {
             where: { removedAt: null },
+            // By player number: the live stream's team lists are rebuilt
+            // in this order on the page (src/utils/liveRoster.ts).
+            orderBy: [{ index: "asc" }, { id: "asc" }],
             select: {
               id: true,
             },

@@ -14,13 +14,22 @@ export class TrpcError extends Error {
   }
 }
 
+export type PathCounters = { requests: number; bytes: number; events: number };
+
 export type Counters = {
   requests: number;
   bytes: number;
   streamsOpen: number;
   streamsOpened: number;
   streamEvents: number;
+  /** The same, per API path, to see which calls carry the traffic. */
+  paths?: Record<string, PathCounters>;
 };
+
+function pathCounters(counters: Counters, path: string): PathCounters {
+  counters.paths ??= {};
+  return (counters.paths[path] ??= { requests: 0, bytes: 0, events: 0 });
+}
 
 export type Identity = {
   gameId?: string;
@@ -59,9 +68,10 @@ export class TrpcHttp {
     return h;
   }
 
-  private async parse<T>(res: Response): Promise<T> {
+  private async parse<T>(res: Response, path: string): Promise<T> {
     const text = await res.text();
     this.counters.bytes += text.length;
+    pathCounters(this.counters, path).bytes += text.length;
     let body: {
       result?: { data: Parameters<typeof superjson.deserialize>[0] };
       error?: ErrorShape;
@@ -88,6 +98,7 @@ export class TrpcHttp {
 
   async query<T>(path: string, input?: unknown): Promise<T> {
     this.counters.requests++;
+    pathCounters(this.counters, path).requests++;
     const qs =
       input === undefined
         ? ""
@@ -96,11 +107,12 @@ export class TrpcHttp {
       headers: this.headers(),
       redirect: "manual",
     });
-    return this.parse<T>(res);
+    return this.parse<T>(res, path);
   }
 
   async mutation<T>(path: string, input?: unknown): Promise<T> {
     this.counters.requests++;
+    pathCounters(this.counters, path).requests++;
     const res = await fetch(`${this.origin}/api/trpc/${path}`, {
       method: "POST",
       headers: this.headers({ "content-type": "application/json" }),
@@ -110,7 +122,7 @@ export class TrpcHttp {
           : JSON.stringify(superjson.serialize(input)),
       redirect: "manual",
     });
-    return this.parse<T>(res);
+    return this.parse<T>(res, path);
   }
 
   /**
@@ -125,6 +137,8 @@ export class TrpcHttp {
   ): Promise<void> {
     const qs = `?input=${encodeURIComponent(JSON.stringify(superjson.serialize(input ?? {})))}`;
     this.counters.requests++;
+    const per = pathCounters(this.counters, path);
+    per.requests++;
     const res = await fetch(`${this.origin}/api/trpc/${path}${qs}`, {
       headers: this.headers({ accept: "text/event-stream" }),
       signal,
@@ -147,6 +161,7 @@ export class TrpcHttp {
         const { done, value } = await reader.read();
         if (done) return;
         this.counters.bytes += value.byteLength;
+        per.bytes += value.byteLength;
         buffer += decoder.decode(value, { stream: true });
         let index;
         while ((index = buffer.indexOf("\n\n")) >= 0) {
@@ -172,6 +187,7 @@ export class TrpcHttp {
             );
           }
           this.counters.streamEvents++;
+          per.events++;
           onData(
             superjson.deserialize<T>(
               payload as Parameters<typeof superjson.deserialize>[0],

@@ -4,6 +4,8 @@ import {
 } from "@/server/api/trpc";
 
 import { getPrivateGameState } from "@/server/db/common";
+import { rosterTracker } from "@/server/live/rosterTracker";
+import { withoutRoster } from "@/utils/liveRoster";
 import { endWhenGameDeleted, liveFeeds } from "@/server/utils/events";
 import { isStillStaff } from "@/server/staff/staffService";
 import { TRPCError } from "@trpc/server";
@@ -46,6 +48,8 @@ export const gameGeneralRouter = createTRPCRouter({
     // Re-check access as state changes, so removal takes effect for streams
     // that are already open, not just new requests.
     const staffOnly = !playerId && !!userId;
+    // The roster is sent whole once, then as changes (src/utils/liveRoster.ts).
+    let sentRoster: number | null = null;
     for await (const state of endWhenGameDeleted(
       liveFeeds.privateGameState.subscribe(gameId, signal),
     )) {
@@ -69,7 +73,9 @@ export const gameGeneralRouter = createTRPCRouter({
           message: "Your role in this game was removed.",
         });
       }
-      yield state;
+      const roster = rosterTracker.updateFor(gameId, state, sentRoster);
+      sentRoster = roster.version;
+      yield withoutRoster(state, roster);
     }
   }),
   /** Superseded by `buzzWinner` in the game state; kept for older open tabs. */

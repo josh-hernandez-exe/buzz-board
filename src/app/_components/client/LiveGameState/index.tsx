@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { createContext, useContext, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { api } from "@/trpc/react";
 import type { PrivateGameState, PublicGameState } from "@/types";
+import { applyRosterUpdate, type LiveRoster } from "@/utils/liveRoster";
 
 export type LiveStatus = "idle" | "connecting" | "pending" | "error";
 
@@ -33,18 +40,33 @@ export function LiveGameStateProvider({
   initialState?: PrivateGameState;
   children: ReactNode;
 }) {
-  const subscription = api.gameGeneral.gameState.useSubscription();
+  // Updates carry the player list only when it changed (liveRoster.ts):
+  // keep the merged state here.
+  // A ref, not the rendered value: several updates can arrive before the
+  // next render, and each must apply on top of the one before.
+  const latest = useRef<LiveRoster | null>(null);
+  const [live, setLive] = useState<LiveRoster | null>(null);
+  const subscription = api.gameGeneral.gameState.useSubscription(undefined, {
+    onData: (update) => {
+      const next = applyRosterUpdate(latest.current, update);
+      latest.current = next;
+      // Changes for a roster this page doesn't have: reconnect, and the
+      // new stream starts with the full list.
+      if (next) setLive(next);
+      else subscription.reset();
+    },
+  });
   return (
     <PrivateLiveState.Provider
       value={{
-        data: subscription.data ?? initialState,
+        data: live?.state ?? initialState,
         status: subscription.status,
-        hasLiveData: subscription.data !== undefined,
+        hasLiveData: live !== null,
       }}
     >
       <LiveConnectionNotice
         status={subscription.status}
-        hasLiveData={subscription.data !== undefined}
+        hasLiveData={live !== null}
         error={subscription.error}
       />
       {children}
