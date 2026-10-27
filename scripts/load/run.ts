@@ -256,7 +256,8 @@ function stopServer(server: ChildProcess) {
 }
 
 async function waitForServer(instanceOrigin: string) {
-  for (let i = 0; i < 120; i++) {
+  // Up to 3 minutes: a cold start right after a build can take over one.
+  for (let i = 0; i < 360; i++) {
     try {
       const res = await fetch(`${instanceOrigin}/join`, { redirect: "manual" });
       if (res.status < 500) return;

@@ -35,7 +35,8 @@ Automated tests create signed-in hosts directly in the database, so they never e
 The 10 / 100 / 1,000-user comparison, and how to tell app scaling problems from machine limits, is in [load scaling](./load-scaling.md). In short:
 - Up to ~100 players the app scales linearly on 4 vCPUs.
 - Give the real server at least 2 vCPUs.
-- Three O(n²) live-update paths were fixed. Chat refetches remain the one hotspot at ~1,000 players.
+- Four O(n²) live-update paths were fixed (the last was chat refetches).
+- At 1,000 players with chat, two server processes complete the run and this 4-vCPU machine is the limit.
 
 The table below is the earlier PR12 history.
 

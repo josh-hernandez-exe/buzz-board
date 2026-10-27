@@ -1,6 +1,6 @@
 # Load scaling: 10, 100 and 1,000 users
 
-Measured 2026-10-23 on this Codespace:
+Measured 2026-10-23 (chat follow-up 2026-10-27) on this Codespace:
 - **Hardware:** 4 vCPUs (AMD EPYC 9V74), 16 GB.
 - **Server:** one production build (`next start`) on Node, with PostgreSQL and Redis in Docker.
 - **Load generator:** the load runner, a single Bun process on the same machine.
@@ -99,19 +99,33 @@ The machine is half idle (46%) and the server's main thread is at half a core. T
 
 Each fix has a test that fails without it. The same merge code runs in the browser and in the load bots, so the bots measure what pages do.
 
-**3. Remaining app hotspot: chat refetches (not fixed yet)**
+**3. Chat refetches (fixed 2026-10-27)**
 
-With chat on, 1,000 users still stops with errors. The cause is how chat updates reach viewers:
-- A message to the **everyone** channel makes every viewer re-fetch that channel's newest 50 messages (~16 KB each).
-- That's O(viewers) per message, and with 1,000 people posting it becomes O(n²). At 1,000 users, `chat.channel` alone was 26,000 requests and 426 MB in 4 minutes, half of all traffic.
-- The fix is an incremental fetch: "messages after sequence N", so a refetch returns only what's new. Even then the request count per message stays O(viewers), and coalescing it would be the next step.
-- At event sizes (tens of players) it's comfortably fine: chat delivery p95 is ~1 s at 100 users.
+Every chat message made every viewer re-fetch the channel's newest 50 messages (~16 KB). With 1,000 people posting, that was half of all traffic.
+
+Now each channel records the revision of its last change other than a new message (removal, pin, clear, settings). A viewer passes the view it holds (revision and newest message). If only new messages arrived since, it gets just those, and the page merges them in ([chatChannelMerge.ts](../src/utils/chatChannelMerge.ts)). Anything else, including a forged revision, a name change or a reconnect, still gets the full view.
+
+| | 100 users before | 100 users after | 1,000 before (1 server) | 1,000 after (1 server) | 1,000 after (2 servers) |
+| --- | --- | --- | --- | --- | --- |
+| Received KB/s (all traffic) | 1,833 | **274** | 3,924 | 2,385 | 2,221 |
+| Chat fetches answered with only new messages | – | – | – | 93% | 97% |
+| Server CPU ms / request | 9.5 | 7.5 | 12.6 | 10.4 | 11.6 |
+| Buzz ack p95 | 1,078 ms | **658 ms** | 54.8 s | 60.1 s | 36.2 s |
+| Chat delivery p95 | 1,069 ms | **690 ms** | 38.9 s | 48.5 s | 26.0 s |
+| Server main thread | 0.49 | 0.39 | 0.93 | 0.89 | 1.36 across both |
+| Whole machine busy | 46% | 42% | 68% | 72% | **95%** (run queue 9) |
+| Completed | yes | yes | no (errors) | no (errors) | **yes** |
+
+**How to read it:**
+- **100 users:** clearly faster and much lighter.
+- **1,000 users with chat, one process:** the number of fetches, not their size, saturates the server's single main thread. Every request carries fixed costs (authentication, game lookup) on that one thread.
+- **1,000 users with chat, two processes:** it completes, but the whole 4-vCPU machine is 95% busy with 9 threads waiting for a CPU. On this codespace the hardware, shared with the database and the load generator, is now the limit, not an app path that grows with the square of the players.
 
 ## Bottom line
 
 - **Up to ~100 players in one game:** the app scales linearly on this 4-vCPU machine with headroom. Bursty buzz p95s are by design (exact first-buzz).
 - **Around 1,000 players in one game:**
   - The **single Node process** (one core) is the first limit. Running two processes helps immediately.
-  - On this machine, CPU shared with the database and the generator is next.
-  - The **chat refetch fan-out** is the one remaining app-level O(n²) path.
+  - With two processes, 1,000 players with chat completes, and the **4-vCPU machine** (shared with the database and the generator) is the limit.
+  - All four O(n²) paths found are fixed.
 - **Real host:** at least 2 vCPUs. Re-run `scale-100` and a soak there (see [operations](./operations.md)).
