@@ -2,6 +2,7 @@
  * T07 (PR09): chat storage, privacy, moderation, guards and retention,
  * through the real routers against PostgreSQL and Redis.
  */
+import { mergeChannelView, sinceFor } from "@/utils/chatChannelMerge";
 import { randomUUID } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
@@ -148,6 +149,78 @@ describe("chat basics", () => {
       orderBy: { sequence: "asc" },
     });
     expect(rows.map((r) => r.sequence)).toEqual([1, 2, 3, 4, 5]);
+  });
+});
+
+describe("incremental refetch", () => {
+  it("returns only new messages when nothing else changed, and a full view otherwise", async () => {
+    const { guests, say, admin } = await chatGame();
+    const [p1, p2] = guests;
+    await say(p1!, "one");
+    await say(p1!, "two");
+    const full = await p2!.player.chat.channel({ channelKey: GAME });
+    expect(full.appendOnly).toBe(false);
+    expect(full.messages.map((m) => m.body)).toEqual(["one", "two"]);
+
+    // A new message: only it comes back.
+    await say(p1!, "three");
+    const since = sinceFor(full);
+    const appended = await p2!.player.chat.channel({ channelKey: GAME, since });
+    expect(appended.appendOnly).toBe(true);
+    expect(appended.messages.map((m) => m.body)).toEqual(["three"]);
+    const merged = mergeChannelView(full, appended, 50);
+    expect(merged.messages.map((m) => m.body)).toEqual(["one", "two", "three"]);
+
+    // Asking again with the merged view: nothing new.
+    const none = await p2!.player.chat.channel({
+      channelKey: GAME,
+      since: sinceFor(merged),
+    });
+    expect(none).toMatchObject({ appendOnly: true, messages: [] });
+
+    // A removal changes a message already held: a full view, without it.
+    await admin.chat.moderation.remove({ messageId: full.messages[0]!.id });
+    const afterRemove = await p2!.player.chat.channel({
+      channelKey: GAME,
+      since: sinceFor(merged),
+    });
+    expect(afterRemove.appendOnly).toBe(false);
+    expect(afterRemove.messages[0]!.body).toBeNull();
+
+    // So do a pin and a clear.
+    await admin.chat.moderation.pin({
+      channelKey: GAME,
+      messageId: afterRemove.messages[1]!.id,
+    });
+    const afterPin = await p2!.player.chat.channel({
+      channelKey: GAME,
+      since: sinceFor(afterRemove),
+    });
+    expect(afterPin.appendOnly).toBe(false);
+    expect(afterPin.pinned?.body).toBe("two");
+    await admin.chat.moderation.clear({ channelKey: GAME });
+    const afterClear = await p2!.player.chat.channel({
+      channelKey: GAME,
+      since: sinceFor(afterPin),
+    });
+    expect(afterClear).toMatchObject({ appendOnly: false, messages: [] });
+
+    // A view claiming a future revision isn't trusted.
+    const forged = await p2!.player.chat.channel({
+      channelKey: GAME,
+      since: { revision: 9_999, afterSequence: 0 },
+    });
+    expect(forged.appendOnly).toBe(false);
+  });
+
+  it("never extends a view across another team's channel", async () => {
+    const { guests, gameTeams } = await chatGame();
+    await expect(
+      guests[0]!.player.chat.channel({
+        channelKey: team(gameTeams[1]!.id),
+        since: { revision: 0, afterSequence: 0 },
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
 

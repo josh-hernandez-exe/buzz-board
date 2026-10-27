@@ -436,6 +436,12 @@ export async function sendMessage({
 }
 
 export type ChannelView = {
+  /**
+   * True when `messages` holds only the messages after `afterSequence`
+   * (nothing else changed since `knownRevision`); merge them into the view
+   * held. False: a complete view.
+   */
+  appendOnly: boolean;
   key: string;
   label: string;
   staffOnly: boolean;
@@ -466,6 +472,7 @@ export async function recentMessages({
   actor,
   channelKey,
   beforeSequence,
+  since,
   limit = CHAT_LIMITS.initialMessages,
   now = new Date(),
 }: {
@@ -473,6 +480,11 @@ export async function recentMessages({
   actor: ChatActor;
   channelKey: string;
   beforeSequence?: number;
+  /**
+   * The view the caller holds: its revision and newest message. If only new
+   * messages arrived since, just those are returned (`appendOnly`).
+   */
+  since?: { revision: number; afterSequence: number };
   limit?: number;
   now?: Date;
 }): Promise<Result<ChannelView, ChatError>> {
@@ -485,16 +497,24 @@ export async function recentMessages({
     channel.lastSequence - CHAT_LIMITS.recentWindow,
   );
   const take = Math.min(Math.max(1, limit), CHAT_LIMITS.recentWindow);
+  // Only new messages since the caller's view: nothing it holds changed.
+  const appendOnly =
+    since !== undefined &&
+    beforeSequence === undefined &&
+    since.revision >= channel.modifiedRevision &&
+    since.revision <= channel.revision &&
+    since.afterSequence >= windowStartsAfter;
   const rows = await db.chatMessage.findMany({
     where: {
       channelId: channel.id,
       sequence: {
-        gt: windowStartsAfter,
+        gt: appendOnly ? since.afterSequence : windowStartsAfter,
         ...(beforeSequence !== undefined ? { lt: beforeSequence } : {}),
       },
     },
     orderBy: { sequence: "desc" },
-    take,
+    // Every new message: the recent window bounds how many there can be.
+    take: appendOnly ? CHAT_LIMITS.recentWindow : take,
   });
   rows.reverse();
   const pinnedRow =
@@ -513,6 +533,7 @@ export async function recentMessages({
   );
   const pinned = pinnedRow ? views.pop()! : null;
   return ok({
+    appendOnly,
     key: channel.key,
     label: await channelLabel(gameId, channel.key),
     staffOnly: channel.staffOnly,
@@ -637,14 +658,22 @@ async function logModeration(
   });
 }
 
+/**
+ * Records a change to existing messages or the channel itself (not a new
+ * message): viewers must fetch the whole channel again, not just what's new.
+ */
 async function bumpChannel(
   tx: GameTx,
   channelId: string,
   data: Prisma.ChatChannelUpdateInput = {},
 ) {
-  return tx.chatChannel.update({
+  const updated = await tx.chatChannel.update({
     where: { id: channelId },
     data: { ...data, revision: { increment: 1 } },
+  });
+  return tx.chatChannel.update({
+    where: { id: channelId },
+    data: { modifiedRevision: updated.revision },
   });
 }
 

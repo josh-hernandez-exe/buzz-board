@@ -39,6 +39,7 @@ import {
   type Profile,
 } from "./profiles";
 import { processTree, ResourceSampler } from "./resources";
+import { mergeChannelView, sinceFor } from "../../src/utils/chatChannelMerge";
 import {
   applyRosterUpdate,
   type LiveRoster,
@@ -348,6 +349,8 @@ const metrics = {
   pulses: 0,
   streamReopens: 0,
   fetches: 0,
+  /** Fetches answered with only new messages (see chatChannelMerge.ts). */
+  fetchesAppendOnly: 0,
   fetchesCoalesced: 0,
   privacyProbes: { attempted: 0, refused: 0, leaked: 0 },
   muteProbe: { mutedSendsRefused: 0, mutedBuzzesProcessed: 0 },
@@ -433,6 +436,13 @@ type Pulse = {
 };
 type GameStateSnapshot = PrivateGameStateUpdate;
 
+type BotChannelView = {
+  appendOnly: boolean;
+  revision: number;
+  hasOlder: boolean;
+  messages: { sequence: number; body: string | null }[];
+};
+
 type BuzzOutcome =
   | "won"
   | "teammateHeld"
@@ -449,6 +459,7 @@ class Bot {
   teamId: string | null = null;
   revisions = new Map<string, number>();
   roster: LiveRoster | null = null;
+  views = new Map<string, BotChannelView>();
   channels: string[] = [];
   seen = new Set<string>();
   inFlight = new Set<string>();
@@ -537,6 +548,9 @@ class Bot {
     this.controller.abort();
     this.controller = new AbortController();
     this.listening = false;
+    // As a page does after reconnecting: whole views again.
+    this.views.clear();
+    this.revisions.clear();
     this.openStreams();
   }
 
@@ -563,9 +577,17 @@ class Bot {
       do {
         this.dirty.delete(key);
         const t0 = now();
-        const view = await this.http.query<{
-          messages: { body: string | null }[];
-        }>("chat.channel", { as: "player", channelKey: key, limit: 50 });
+        // As the page does: only the messages after the view held.
+        const held = this.views.get(key);
+        const fetched = await this.http.query<BotChannelView>("chat.channel", {
+          as: "player",
+          channelKey: key,
+          limit: 50,
+          since: sinceFor(held),
+        });
+        if (fetched.appendOnly) metrics.fetchesAppendOnly++;
+        const view = mergeChannelView(held, fetched, 50);
+        this.views.set(key, view);
         const at = now();
         metrics.fetch.push(at - t0);
         metrics.fetches++;
@@ -1338,6 +1360,7 @@ async function main() {
       rosterUpdates: metrics.rosterUpdates,
       streamReopens: metrics.streamReopens,
       fetches: metrics.fetches,
+      fetchesAppendOnly: metrics.fetchesAppendOnly,
       fetchesCoalesced: metrics.fetchesCoalesced,
       holdDeliveries: {
         expected: expectedDeliveries,

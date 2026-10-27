@@ -386,6 +386,10 @@ model ChatChannel {
   clearedThroughSequence Int      @default(0)
   /// Changes whenever anything visible in the channel changes.
   revision               Int      @default(0)
+  /// The revision of the last change other than a new message (removal,
+  /// pin, clear, settings). A viewer holding a view at least this recent
+  /// only needs the messages after its newest one.
+  modifiedRevision       Int      @default(0)
   createdAt              DateTime @default(now())
 
   game     Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)

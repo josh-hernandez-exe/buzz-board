@@ -193,6 +193,13 @@ export const chatRouter = createTRPCRouter({
         channelKey: channelKeySchema,
         beforeSequence: z.number().int().positive().optional(),
         limit: z.number().int().min(1).max(CHAT_LIMITS.recentWindow).optional(),
+        /** The view held: only newer messages come back if nothing else changed. */
+        since: z
+          .object({
+            revision: z.number().int().min(0),
+            afterSequence: z.number().int().min(0),
+          })
+          .optional(),
       }),
     )
     .query(async ({ ctx, input }) =>
@@ -202,6 +209,7 @@ export const chatRouter = createTRPCRouter({
           actor: ctx.actor,
           channelKey: input.channelKey,
           beforeSequence: input.beforeSequence,
+          since: input.since,
           limit: input.limit,
         }),
       ),
