@@ -199,3 +199,53 @@ test("question library: reuse a question on a tile, uses shown, in-use never del
 
   await hostContext.close();
 });
+
+test("two hosts edit the same setup: the second chooses keep mine or use theirs", async ({
+  browser,
+  baseURL,
+}) => {
+  const gameName = `Conflict ${Date.now()}`;
+  const hostContext = await browser.newContext();
+  await signInAsNewHost(hostContext, baseURL!, "Conflict Host");
+  const first = await hostContext.newPage();
+  first.on("dialog", (dialog) => void dialog.accept());
+  await first.goto("/dashboard");
+  await first.getByLabel("Game name").fill(gameName);
+  await first.getByRole("radio", { name: /^Category Grid/ }).check();
+  await first.getByRole("button", { name: "Create game" }).click();
+  await first.waitForURL("**/admin");
+  const second = await hostContext.newPage();
+  second.on("dialog", (dialog) => void dialog.accept());
+  await second.goto(first.url());
+
+  // Both start editing the title; the first saves.
+  await first.getByLabel("Grid title").fill("First host's title");
+  await second.getByLabel("Grid title").fill("Second host's title");
+  await first.getByRole("button", { name: "Save grid" }).click();
+  await expect(first.getByRole("button", { name: "Saved" })).toBeVisible();
+
+  // The second save is refused, with the choice instead of an error.
+  await second.getByRole("button", { name: "Save grid" }).click();
+  const conflict = second.getByTestId("draft-conflict");
+  await expect(conflict).toContainText("Another host saved this setup");
+  await expect(second.getByLabel("Grid title")).toHaveValue(
+    "Second host's title",
+  );
+  await conflict.getByRole("button", { name: "Keep mine" }).click();
+  await expect(second.getByRole("button", { name: "Saved" })).toBeVisible();
+  await expect(conflict).toHaveCount(0);
+
+  // The first host now has an unsaved edit, and takes theirs instead.
+  await first.getByLabel("Grid title").fill("First again");
+  await first.getByRole("button", { name: "Save grid" }).click();
+  await first
+    .getByTestId("draft-conflict")
+    .getByRole("button", { name: "Use theirs" })
+    .click();
+  await expect(first.getByLabel("Grid title")).toHaveValue(
+    "Second host's title",
+  );
+  await expect(first.getByRole("button", { name: "Saved" })).toBeVisible();
+
+  await hostContext.close();
+});

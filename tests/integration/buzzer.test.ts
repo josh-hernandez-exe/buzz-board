@@ -3,7 +3,7 @@
  * durable claim recorded in the same transaction that closes the window.
  */
 import { BuzzerState } from "@prisma/client";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createGame, db, joinAsGuest } from "../support/integration";
 
@@ -76,6 +76,43 @@ describe("buzzer", () => {
     const states = await buzzerStates(game.id);
     expect(states.filter((s) => s === BuzzerState.selected)).toHaveLength(1);
     expect(states.filter((s) => s === BuzzerState.available)).toHaveLength(5);
+  });
+
+  it("a whole room buzzing at once: one winner, few transactions, everyone answered", async () => {
+    // Many players on many teams (the auto team assignment spreads them).
+    const created = await createGame({ teams: 8, teamAssignment: "auto" });
+    const players = [];
+    for (let i = 0; i < 60; i++) {
+      players.push(await joinAsGuest(created.game.code, `P${i}`));
+    }
+    await created.admin.gameAdmin.startBuzzer();
+    const transactions = vi.spyOn(db, "$transaction");
+    try {
+      const results = await Promise.allSettled(
+        players.map((p) => p.player.gameUser.buzzIn()),
+      );
+      // Every buzz is answered: the winner, or "not listening" for the rest
+      // (a teammate of the winner is told their team holds the buzz).
+      const won = results.filter(
+        (r) => r.status === "fulfilled" && !r.value.replayed,
+      );
+      expect(won).toHaveLength(1);
+      for (const r of results) {
+        if (r.status === "rejected") {
+          expect(r.reason).toMatchObject({ code: "CONFLICT" });
+        }
+      }
+      // One claim at a time in this process: the losers never took a
+      // transaction (and a pooled connection) just to queue for the lock.
+      expect(transactions.mock.calls.length).toBeLessThanOrEqual(3);
+    } finally {
+      transactions.mockRestore();
+    }
+    const states = await buzzerStates(created.game.id);
+    expect(states.filter((s) => s === BuzzerState.selected)).toHaveLength(1);
+    expect(
+      await db.buzzClaim.count({ where: { gameId: created.game.id } }),
+    ).toBe(1);
   });
 
   it("re-opening rejects the selected team and keeps it locked out", async () => {

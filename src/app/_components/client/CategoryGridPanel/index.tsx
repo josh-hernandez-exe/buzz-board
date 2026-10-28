@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { CategoryGridBoard } from "@/app/_components/client/CategoryGridBoard";
 import { BankJson } from "@/app/_components/client/BankJson";
+import {
+  DraftConflict,
+  isDraftConflict,
+} from "@/app/_components/client/DraftConflict";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { OtherModeNotice } from "@/app/_components/client/RankedAnswersPanel";
@@ -139,6 +143,24 @@ function GridEditor({ view }: { view: HostView }) {
       refresh();
     },
   });
+
+  // Another host saved first: keep this version (saved over theirs) or
+  // load theirs. Both read the latest saved version directly.
+  const keepMine = async () => {
+    const latest = await utils.client.categoryGrid.hostView.query();
+    await save.mutateAsync({
+      draft,
+      expectedRevision: latest.draftRevision,
+    });
+  };
+  const useTheirs = async () => {
+    const latest = await utils.client.categoryGrid.hostView.query();
+    setDraft(latest.draft);
+    setRevision(latest.draftRevision);
+    setDirty(false);
+    save.reset();
+    void utils.categoryGrid.hostView.invalidate();
+  };
 
   const update = (next: Bank) => {
     setDraft(next);
@@ -636,7 +658,21 @@ function GridEditor({ view }: { view: HostView }) {
           </Button>
         )}
       </div>
-      <ErrorNotice error={save.error ?? start.error ?? discard.error} />
+      {isDraftConflict(save.error) && (
+        <DraftConflict
+          onKeepMine={keepMine}
+          onUseTheirs={useTheirs}
+          mine={draft}
+          fileName="category-grid.json"
+        />
+      )}
+      <ErrorNotice
+        error={
+          (isDraftConflict(save.error) ? null : save.error) ??
+          start.error ??
+          discard.error
+        }
+      />
     </div>
   );
 }

@@ -372,6 +372,8 @@ const metrics = {
     probe: [] as number[],
   },
   probe: { all: [] as number[], failures: 0, lagMax: 0 },
+  /** Every unexpected error, counted by where, code and message. */
+  errorKinds: {} as Record<string, number>,
   /** Player-list updates the bots received, by kind (see liveRoster.ts). */
   rosterUpdates: { full: 0, delta: 0, same: 0 },
 };
@@ -380,6 +382,8 @@ function unexpected(where: string, error: unknown) {
     error instanceof TrpcError
       ? { code: error.code, message: error.message }
       : { code: "NETWORK", message: String(error) };
+  const kind = `${where} | ${e.code} | ${e.message.slice(0, 120)}`;
+  metrics.errorKinds[kind] = (metrics.errorKinds[kind] ?? 0) + 1;
   metrics.unexpectedErrors.push({
     at: Math.round(now() - startedAt),
     where,
@@ -1388,6 +1392,7 @@ async function main() {
       count: metrics.unexpectedErrors.length,
       rate: unexpectedRate,
       first: metrics.unexpectedErrors.slice(0, 20),
+      byKind: metrics.errorKinds,
     },
     samples: metrics.samples,
   };

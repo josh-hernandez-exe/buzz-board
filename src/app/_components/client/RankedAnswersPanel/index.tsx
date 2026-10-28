@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import {
+  DraftConflict,
+  isDraftConflict,
+} from "@/app/_components/client/DraftConflict";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { RankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
@@ -123,6 +127,24 @@ function Editor({ view }: { view: HostView }) {
       void utils.categoryGrid.hostView.invalidate();
     },
   });
+
+  // Another host saved first: keep this version (saved over theirs) or
+  // load theirs. Both read the latest saved version directly.
+  const keepMine = async () => {
+    const latest = await utils.client.rankedAnswers.hostView.query();
+    await save.mutateAsync({
+      draft,
+      expectedRevision: latest.draftRevision,
+    });
+  };
+  const useTheirs = async () => {
+    const latest = await utils.client.rankedAnswers.hostView.query();
+    setDraft(latest.draft);
+    setRevision(latest.draftRevision);
+    setDirty(false);
+    save.reset();
+    void utils.rankedAnswers.hostView.invalidate();
+  };
 
   const update = (next: Content) => {
     setDraft(next);
@@ -280,8 +302,20 @@ function Editor({ view }: { view: HostView }) {
           </Button>
         )}
       </div>
+      {isDraftConflict(save.error) && (
+        <DraftConflict
+          onKeepMine={keepMine}
+          onUseTheirs={useTheirs}
+          mine={draft}
+          fileName="ranked-answers.json"
+        />
+      )}
       <ErrorNotice
-        error={save.error ?? start.error ?? discard.error}
+        error={
+          (isDraftConflict(save.error) ? null : save.error) ??
+          start.error ??
+          discard.error
+        }
         className="text-destructive text-sm"
       />
     </div>

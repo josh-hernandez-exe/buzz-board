@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 
 import { BankJson } from "@/app/_components/client/BankJson";
+import {
+  DraftConflict,
+  isDraftConflict,
+} from "@/app/_components/client/DraftConflict";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { QuestionEditor } from "@/app/_components/client/QuestionEditor";
@@ -123,6 +127,24 @@ function QuizEditor({ view }: { view: HostView }) {
       refresh();
     },
   });
+
+  // Another host saved first: keep this version (saved over theirs) or
+  // load theirs. Both read the latest saved version directly.
+  const keepMine = async () => {
+    const latest = await utils.client.sequentialQuiz.hostView.query();
+    await save.mutateAsync({
+      draft,
+      expectedRevision: latest.draftRevision,
+    });
+  };
+  const useTheirs = async () => {
+    const latest = await utils.client.sequentialQuiz.hostView.query();
+    setDraft(latest.draft);
+    setRevision(latest.draftRevision);
+    setDirty(false);
+    save.reset();
+    void utils.sequentialQuiz.hostView.invalidate();
+  };
 
   const update = (next: Bank) => {
     setDraft(next);
@@ -484,7 +506,21 @@ function QuizEditor({ view }: { view: HostView }) {
           </Button>
         )}
       </div>
-      <ErrorNotice error={save.error ?? start.error ?? discard.error} />
+      {isDraftConflict(save.error) && (
+        <DraftConflict
+          onKeepMine={keepMine}
+          onUseTheirs={useTheirs}
+          mine={draft}
+          fileName="sequential-quiz.json"
+        />
+      )}
+      <ErrorNotice
+        error={
+          (isDraftConflict(save.error) ? null : save.error) ??
+          start.error ??
+          discard.error
+        }
+      />
     </div>
   );
 }

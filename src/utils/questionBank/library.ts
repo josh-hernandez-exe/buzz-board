@@ -78,7 +78,62 @@ export function nextQuestionId(bank: Bank, prefix = "q"): string {
 export type LibraryError =
   | { kind: "libraryFull" }
   | { kind: "questionNotFound" }
-  | { kind: "questionInUse"; uses: QuestionUse[] };
+  | { kind: "questionInUse"; uses: QuestionUse[] }
+  | { kind: "invalidId" }
+  | { kind: "idTaken" };
+
+/** The same rule as the bank schema: letters, digits, . _ -, max 64. */
+const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+
+/**
+ * Renames a question's ID and every reference to it (grid tiles, quiz
+ * positions) in one step, so nothing is left pointing at the old ID.
+ */
+export function renameQuestion(
+  bank: Bank,
+  id: string,
+  newId: string,
+): Result<Bank, LibraryError> {
+  if (!bank.questions.some((q) => q.id === id)) {
+    return err({ kind: "questionNotFound" });
+  }
+  if (newId === id) return ok(bank);
+  if (!ID_PATTERN.test(newId)) return err({ kind: "invalidId" });
+  const taken = new Set([
+    ...bank.questions.map((q) => q.id),
+    ...gridOf(bank).columns.map((c) => c.id),
+  ]);
+  if (taken.has(newId)) return err({ kind: "idTaken" });
+  const swap = (x: string) => (x === id ? newId : x);
+  const grid = bank.modes.categoryGrid;
+  const quiz = bank.modes.pubQuiz;
+  return ok({
+    ...bank,
+    questions: bank.questions.map((q) =>
+      q.id === id ? { ...q, id: newId } : q,
+    ),
+    modes: {
+      ...bank.modes,
+      ...(grid
+        ? {
+            categoryGrid: {
+              ...grid,
+              columns: grid.columns.map((c) => ({
+                ...c,
+                cells: c.cells.map((cell) => ({
+                  ...cell,
+                  questionId: swap(cell.questionId),
+                })),
+              })),
+            },
+          }
+        : {}),
+      ...(quiz
+        ? { pubQuiz: { ...quiz, questionOrder: quiz.questionOrder.map(swap) } }
+        : {}),
+    },
+  });
+}
 
 export function addQuestion(
   bank: Bank,

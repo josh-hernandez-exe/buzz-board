@@ -13,6 +13,7 @@ import {
   duplicateQuestion,
   matchesSearch,
   questionUses,
+  renameQuestion,
 } from "@/utils/questionBank/library";
 
 const PAGE = 50;
@@ -239,9 +240,36 @@ export function QuestionLibrary({
                       </span>
                     ))
                   )}
-                  <span className="text-muted-foreground ml-auto font-mono text-xs">
+                  <button
+                    type="button"
+                    className="text-muted-foreground ml-auto font-mono text-xs underline decoration-dotted"
+                    title="Rename this question's ID (updates every use)"
+                    aria-label={`Rename ID ${q.id}`}
+                    onClick={() => {
+                      const next = window.prompt(
+                        "New ID (letters, digits, . _ -). Every grid tile and quiz position using it is updated.",
+                        q.id,
+                      );
+                      if (next === null) return;
+                      renameQuestion(bank, q.id, next.trim()).match(
+                        (renamed) => {
+                          onChange(renamed);
+                          if (open) setEditing(next.trim());
+                          setProblem(null);
+                        },
+                        (e) =>
+                          setProblem(
+                            e.kind === "idTaken"
+                              ? `"${next.trim()}" is already used by another question or category.`
+                              : e.kind === "invalidId"
+                                ? "IDs use letters, digits, . _ - (up to 64), starting with a letter or digit."
+                                : "That question no longer exists.",
+                          ),
+                      );
+                    }}
+                  >
                     {q.id}
-                  </span>
+                  </button>
                 </div>
                 {open && (
                   <QuestionEditor

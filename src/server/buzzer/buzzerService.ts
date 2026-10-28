@@ -647,16 +647,49 @@ export async function buzzIn({
   gameUserId: string;
   requestId?: string;
 }): Promise<Result<BuzzOutcome, BuzzError>> {
-  const { settled, mode } = await settledOutcome({
-    gameId,
-    gameUserId,
-    requestId,
-  });
-  if (settled) return settled;
-  if (mode === BuzzerMode.queue) {
-    return queueBuzzIn({ gameId, gameUserId, requestId });
+  // Within this process, one first-buzz claim per game at a time: the rest
+  // wait for it without holding a database connection, then are answered
+  // from what it committed (almost always "someone else was first"). When a
+  // whole room buzzes at once, otherwise every buzz held one of the few
+  // pooled connections while queueing for the game's row lock, starving
+  // every other request (docs/load-scaling.md). The database still decides
+  // the winner, across processes too.
+  for (;;) {
+    const { settled, mode } = await settledOutcome({
+      gameId,
+      gameUserId,
+      requestId,
+    });
+    if (settled) return settled;
+    if (mode === BuzzerMode.queue) {
+      return queueBuzzIn({ gameId, gameUserId, requestId });
+    }
+    const inFlight = claimsInFlight.get(gameId);
+    if (!inFlight) break;
+    await inFlight.catch(() => undefined);
   }
+  const attempt = claimFirstBuzz({ gameId, gameUserId, requestId });
+  claimsInFlight.set(gameId, attempt);
+  try {
+    return await attempt;
+  } finally {
+    if (claimsInFlight.get(gameId) === attempt) claimsInFlight.delete(gameId);
+  }
+}
 
+/** First-buzz claims being attempted in this process, by game. */
+const claimsInFlight = new Map<string, Promise<unknown>>();
+
+/** The first-buzz claim itself (see `buzzIn`). */
+async function claimFirstBuzz({
+  gameId,
+  gameUserId,
+  requestId,
+}: {
+  gameId: string;
+  gameUserId: string;
+  requestId?: string;
+}): Promise<Result<BuzzOutcome, BuzzError>> {
   const gameUser = await defaultDb.gameUser.findFirst({
     where: { id: gameUserId, gameId },
     select: {

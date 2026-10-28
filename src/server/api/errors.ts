@@ -485,7 +485,7 @@ function baseError(error: ServiceError): TRPCError {
       return new TRPCError({
         code: "CONFLICT",
         message:
-          "Someone else saved these boards while you were editing. Your changes are still here: copy them (Export), reload, and apply them again.",
+          "Another host saved this setup while you were editing. Your changes are still here: keep yours or use theirs.",
       });
     case "otherMode":
       return new TRPCError({

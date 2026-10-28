@@ -12,6 +12,7 @@ import {
   nextQuestionId,
   pruneBlankUnused,
   questionUses,
+  renameQuestion,
 } from "./library";
 
 /** The sample grid, with a quiz that reuses two of its clues. */
@@ -111,5 +112,31 @@ describe("question library", () => {
       expect(matchesSearch(q, s)).toBe(true);
     }
     expect(matchesSearch(q, "easter")).toBe(false);
+  });
+
+  it("renames an ID everywhere it's used, refusing bad or taken IDs", () => {
+    const bank = shared();
+    const renamed = renameQuestion(bank, "cat1-1", "snowflake")._unsafeUnwrap();
+    expect(renamed.questions.some((q) => q.id === "cat1-1")).toBe(false);
+    expect(questionUses(renamed).get("snowflake")?.map(describeUse)).toEqual([
+      "Grid: Winter Science 100",
+      "Quiz #1",
+    ]);
+    expect(questionUses(renamed).get("cat1-1")).toBeUndefined();
+    expect(bankSchema.safeParse(renamed).success).toBe(true);
+    expect(renameQuestion(bank, "cat1-1", "cat1-2")._unsafeUnwrapErr()).toEqual(
+      {
+        kind: "idTaken",
+      },
+    );
+    expect(renameQuestion(bank, "cat1-1", "cat1")._unsafeUnwrapErr()).toEqual({
+      kind: "idTaken",
+    });
+    expect(
+      renameQuestion(bank, "cat1-1", "has space")._unsafeUnwrapErr(),
+    ).toEqual({
+      kind: "invalidId",
+    });
+    expect(renameQuestion(bank, "nope", "x").isErr()).toBe(true);
   });
 });
