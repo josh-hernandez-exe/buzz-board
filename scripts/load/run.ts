@@ -13,7 +13,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { cpus, totalmem } from "node:os";
 import { parseArgs } from "node:util";
 
@@ -78,6 +78,8 @@ const { values: args } = parseArgs({
      * 0 turns bot chat posting off, to measure buzzing and live state alone.
      */
     "chat-every": { type: "string" },
+    /** Append each started server's output to this file. */
+    "server-log": { type: "string" },
     /** Write a V8 CPU profile of each started server into this folder. */
     "server-profile": { type: "string" },
   },
@@ -229,7 +231,13 @@ function startServer(instanceOrigin: string): ChildProcess {
       NEXT_PUBLIC_QRCODE_BASE_URL: instanceOrigin,
       NEXT_TELEMETRY_DISABLED: "1",
     },
-    stdio: "ignore",
+    stdio: args["server-log"]
+      ? [
+          "ignore",
+          openSync(args["server-log"], "a"),
+          openSync(args["server-log"], "a"),
+        ]
+      : "ignore",
   });
 }
 
@@ -429,6 +437,15 @@ const sent = new Map<
   { at: number; recipients: Set<number>; delivered: number; inHold: boolean }
 >();
 const acceptedRequestIds = new Set<string>();
+/**
+ * Sends whose outcome the bot never learned (the connection dropped, or the
+ * server failed mid-request): the message may or may not have been saved,
+ * exactly as for a phone losing signal. A retry with the same request ID
+ * would return the saved message rather than post it twice.
+ */
+const ambiguousRequestIds = new Set<string>();
+/** Sends still waiting for a reply; the invariants wait for them first. */
+const pendingSends = new Set<Promise<unknown>>();
 const windowWins = new Map<number, number>();
 const queueStats = { rounds: 0, entries: 0, correct: 0, ruleViolations: 0 };
 let currentWindow = 0;
@@ -657,12 +674,17 @@ class Bot {
     );
     const t0 = now();
     try {
-      await this.http.mutation("chat.send", {
+      const request = this.http.mutation("chat.send", {
         as: "player",
         channelKey,
         body,
         requestId,
       });
+      pendingSends.add(request);
+      void request
+        .catch(() => undefined)
+        .finally(() => pendingSends.delete(request));
+      await request;
       metrics.sendAck.push(now() - t0);
       if (inHold()) metrics.hold.sendAck.push(now() - t0);
       metrics.sends.accepted++;
@@ -680,9 +702,15 @@ class Bot {
       } else if (e instanceof TrpcError && e.code === "FORBIDDEN") {
         metrics.sends.muted++;
         return "muted";
-      } else if (this.active) {
-        metrics.sends.unexpected++;
-        unexpected("chat.send", e);
+      } else {
+        // Not a refusal the server explained: the outcome is unknown.
+        if (!(e instanceof TrpcError) || e.code === "INTERNAL_SERVER_ERROR") {
+          ambiguousRequestIds.add(requestId);
+        }
+        if (this.active) {
+          metrics.sends.unexpected++;
+          unexpected("chat.send", e);
+        }
       }
       return "other";
     }
@@ -1228,12 +1256,36 @@ async function main() {
 
   // ------------------------------------------------------------ invariants
 
+  // Under heavy load a send can take many seconds: let every one settle
+  // before counting, or the database and the runner's sets are compared at
+  // different moments (up to two minutes).
+  const settleBy = now() + 120_000;
+  while (pendingSends.size > 0 && now() < settleBy) {
+    await Promise.race([Promise.allSettled([...pendingSends]), sleep(1_000)]);
+  }
+  const unsettledSends = pendingSends.size;
+
   const stored = await db.chatMessage.count({
     where: { gameId: game.id, requestId: { in: [...acceptedRequestIds] } },
   });
-  const allSynthetic = await db.chatMessage.count({
-    where: { gameId: game.id },
-  });
+  const storedIds = (
+    await db.chatMessage.findMany({
+      where: { gameId: game.id },
+      select: { requestId: true },
+    })
+  ).map((m) => m.requestId);
+  // Stored but never acknowledged, each one a send whose reply was lost.
+  const storedUnacknowledged = storedIds.filter(
+    (id) => !acceptedRequestIds.has(id),
+  );
+  const unexplainedIds = storedUnacknowledged.filter(
+    (id) => !ambiguousRequestIds.has(id),
+  );
+  const unexplained = unexplainedIds.length;
+  const storedSet = new Set(storedIds);
+  const acceptedNotStored = [...acceptedRequestIds].filter(
+    (id) => !storedSet.has(id),
+  );
   const claims = queueMode
     ? await db.buzzQueueEntry.count({ where: { gameId: game.id } })
     : await db.buzzClaim.count({ where: { gameId: game.id } });
@@ -1274,7 +1326,9 @@ async function main() {
 
   const invariants = {
     acceptedMessagesStored: stored === acceptedRequestIds.size,
-    noUnexpectedMessages: allSynthetic === acceptedRequestIds.size,
+    // Every stored message was either acknowledged or sent by a bot that
+    // never learned the outcome; nothing appeared from nowhere.
+    noUnexpectedMessages: unexplained === 0,
     // First-buzz: one winner per window. Queue: the line kept its rules
     // (one answering, unique places, one place per team) every round.
     oneWinnerPerWindow: queueMode
@@ -1366,6 +1420,11 @@ async function main() {
       streamReopens: metrics.streamReopens,
       fetches: metrics.fetches,
       fetchesAppendOnly: metrics.fetchesAppendOnly,
+      sendsWithUnknownOutcome: ambiguousRequestIds.size,
+      sendsUnsettledAtEnd: unsettledSends,
+      acceptedNotStored: acceptedNotStored.slice(0, 20),
+      storedUnexplained: unexplainedIds.slice(0, 20),
+      storedAfterLostReply: storedUnacknowledged.length,
       fetchesCoalesced: metrics.fetchesCoalesced,
       holdDeliveries: {
         expected: expectedDeliveries,
