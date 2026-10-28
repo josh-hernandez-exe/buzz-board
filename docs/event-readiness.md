@@ -36,7 +36,8 @@ The 10 / 100 / 1,000-user comparison, and how to tell app scaling problems from 
 - Up to ~100 players the app scales linearly on 4 vCPUs.
 - Give the real server at least 2 vCPUs.
 - Four O(n²) live-update paths were fixed (the last was chat refetches).
-- At 1,000 players with chat, two server processes complete the run and this 4-vCPU machine is the limit.
+- At 1,000 players with chat, two server processes complete the run and this 4-vCPU machine is the limit. The slow acknowledgements there are CPU starvation, not an app design problem; a whole room buzzing at once no longer ties up database connections.
+- At 100 players: buzz ack p95 380 ms, chat delivery p95 655 ms.
 
 The table below is the earlier PR12 history.
 

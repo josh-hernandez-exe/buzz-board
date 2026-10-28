@@ -39,6 +39,8 @@ New runner options:
 
 ## Results (after the fixes below)
 
+These are the first full measurements, after the live-update fixes in section 2. The final numbers, after every fix, are in [section 4](#cpu-or-architecture).
+
 | Metric | 10 users | 100 users | 100 users, server pinned to 1 CPU | 1,000 users | 1,000, no chat | 1,000, no chat, 2 servers |
 | --- | --- | --- | --- | --- | --- | --- |
 | Buzz ack p50 / p95 | 12 / 40 ms | 322 / 1,078 ms | 801 / 2,026 ms | 24.8 / 54.8 s | 2.1 / 5.4 s | 1.5 / 2.7 s |
@@ -121,11 +123,64 @@ Now each channel records the revision of its last change other than a new messag
 - **1,000 users with chat, one process:** the number of fetches, not their size, saturates the server's single main thread. Every request carries fixed costs (authentication, game lookup) on that one thread.
 - **1,000 users with chat, two processes:** it completes, but the whole 4-vCPU machine is 95% busy with 9 threads waiting for a CPU. On this codespace the hardware, shared with the database and the load generator, is now the limit, not an app path that grows with the square of the players.
 
+**4. Profiling at 1,000 users, and one architecture fix (2026-10-28)**
+
+A V8 CPU profile of the single server at 1,000 users (`--server-profile`) shows its main thread **93% busy** and no single app hotspot:
+
+| Share of main-thread time | What |
+| --- | --- |
+| ~18% | Garbage collection |
+| ~15% | Prisma (query building, result mapping, engine calls) |
+| ~14.5% | AsyncLocalStorage / async hooks (per-request context in Next.js and tRPC) |
+| rest | Next.js routing and rendering internals, web streams, JSON, tRPC, app code spread thinly |
+
+That's the shape of a process that is simply out of CPU: fixed per-request framework costs, multiplied by request volume.
+
+Looking for waits rather than CPU turned up one real architecture problem, now fixed:
+
+| Problem | Fix | Effect |
+| --- | --- | --- |
+| When a whole room buzzed at once, **every buzz opened a transaction and held one of the ~9 pooled database connections** while queueing for the game lock. Everything else in every game (chat, scoring, joins) then waited for a connection. | First-buzz claims for a game are coalesced in each server process: one claim runs, the others wait **without a connection** and are then answered from what was saved ([buzzerService.ts](../src/server/buzzer/buzzerService.ts)). Queued buzzing still records every buzz. | 60 simultaneous buzzes: 60 transactions → at most 3, still exactly one winner (test in [buzzer.test.ts](../tests/integration/buzzer.test.ts)) |
+| An overloaded chat send that couldn't get a connection in time was reported as an **internal error** | It now answers "Chat is very busy right now. Try again in a moment." (nothing was saved, so a retry with the same request ID is safe) | Test in [chat.test.ts](../tests/integration/chat.test.ts) |
+
+A bigger connection pool is **not** the answer: `connection_limit=30` made 1,000-user latency and errors worse, because more connections just meant more transactions queueing on the same game lock and more PostgreSQL contention on the same 4 vCPUs.
+
+The runner was also corrected so overload can't look like data loss: a send whose outcome is unknown (timed out, connection dropped) is tracked separately, and in-flight sends are allowed to settle before the invariants are checked. Earlier "accepted but not stored" failures at 1,000 users were this runner timing artifact; the server log showed no restarts and only rolled-back transactions.
+
+**Final numbers (after all fixes, chat every 30 s)**
+
+| | 10 users | 100 users | 100 users, server pinned to 2 CPUs | 1,000 users, 1 process | 1,000 users, 2 processes |
+| --- | --- | --- | --- | --- | --- |
+| Buzz ack p50 / p95 | 10 / 30 ms | 202 / 380 ms | 229 / 1,057 ms | 36 / 52 s | 21 / 38 s |
+| Chat send ack p50 / p95 | 14 / 20 ms | 15 / 315 ms | 37 / 433 ms | 16 / 40 s | 12 / 24 s |
+| Chat delivery p50 / p95 | 151 / 177 ms | 334 / 655 ms | 453 / 1,002 ms | 22 / 45 s | 18 / 32 s |
+| Probe in own process p50 / p95 | 7 / 10 ms | 8 / 95 ms | 11 / 134 ms | 4.4 / 8.4 s | 4.6 / 6.2 s |
+| Server main thread (cores) avg / peak | 0.03 / 0.05 | 0.39 / 0.61 | 0.45 / 0.79 | **0.91 / 0.95** | 1.34 / 1.5 across both |
+| Whole machine busy avg / peak | 9 / 12% | 36 / 56% | 39 / 64% | 68 / 74% | **94 / 98%** |
+| Server CPU ms / request | 11.0 | 7.4 | 7.2 | 10.2 | 10.9 |
+| Completed | yes | yes | yes | stopped at the 5% error ceiling | yes |
+| Data invariants | all hold | all hold | all hold | all hold¹ | all hold |
+
+¹ The only failed check was the moderation probe ("a muted player can't buzz"), which couldn't finish its own steps under that overload; no muted buzz was accepted.
+
+### CPU or architecture?
+
+The long acknowledgement and delivery times at 1,000 users are **mostly a CPU limit**, not an architecture one:
+- One Node.js process tops out at ~0.9–0.95 of a core (its main thread) while the machine still has idle CPU. That's a per-process ceiling, addressed by running more processes; the Redis bus already supports that.
+- With two processes, the whole 4-vCPU machine is 94–98% busy with ~10 threads waiting for a CPU, shared with PostgreSQL and the load generator. Latency halves with the second process, then the hardware is the limit.
+- Server CPU per request stays flat (7–11 ms) from 10 to 1,000 users, so no remaining code path grows with the square of the players.
+- Pinning to fewer CPUs makes it slower without making each request more expensive, which is what CPU starvation looks like.
+
+What *is* architectural, by design:
+- **One game is one lock.** Writes in a game are serialised so first-buzz and scoring stay exact. A single room of 1,000 has a throughput ceiling no hardware removes; separate games don't share it.
+- **The connection pool plus a 5 s wait** turns overload into polite "busy" refusals instead of unbounded queues. Nothing is half-saved.
+
 ## Bottom line
 
 - **Up to ~100 players in one game:** the app scales linearly on this 4-vCPU machine with headroom. Bursty buzz p95s are by design (exact first-buzz).
 - **Around 1,000 players in one game:**
   - The **single Node process** (one core) is the first limit. Running two processes helps immediately.
   - With two processes, 1,000 players with chat completes, and the **4-vCPU machine** (shared with the database and the generator) is the limit.
-  - All four O(n²) paths found are fixed.
+  - All four O(n²) paths found are fixed, and simultaneous buzzes no longer tie up database connections.
+  - The slow times there are CPU, not design: see [CPU or architecture?](#cpu-or-architecture).
 - **Real host:** at least 2 vCPUs. Re-run `scale-100` and a soak there (see [operations](./operations.md)).

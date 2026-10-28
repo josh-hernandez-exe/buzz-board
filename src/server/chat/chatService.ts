@@ -12,6 +12,7 @@ import { err, ok, type Result } from "neverthrow";
 import { db } from "@/server/db";
 import {
   lockChatGate,
+  isBusyError,
   withGameLock,
   type GameTransactionError,
   type GameTx,
@@ -431,6 +432,9 @@ export async function sendMessage({
       const raced = await replay();
       if (raced) return raced;
     }
+    // Overloaded: nothing was saved. Say so, so the sender can retry with
+    // the same request ID, rather than reporting an internal error.
+    if (isBusyError(error)) return err({ kind: "chatBusy" });
     throw error;
   }
 }

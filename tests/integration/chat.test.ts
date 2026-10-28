@@ -2,10 +2,11 @@
  * T07 (PR09): chat storage, privacy, moderation, guards and retention,
  * through the real routers against PostgreSQL and Redis.
  */
+import { Prisma } from "@prisma/client";
 import { mergeChannelView, sinceFor } from "@/utils/chatChannelMerge";
 import { randomUUID } from "node:crypto";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { cleanupChat } from "@/server/chat/chatService";
 
@@ -221,6 +222,33 @@ describe("incremental refetch", () => {
         since: { revision: 0, afterSequence: 0 },
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("overload", () => {
+  it("answers 'busy' when the database is overloaded, and saves nothing", async () => {
+    const { guests, say, game } = await chatGame();
+    const spy = vi
+      .spyOn(db, "$transaction")
+      .mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError(
+          "Transaction API error: Unable to start a transaction in the given time.",
+          { code: "P2028", clientVersion: Prisma.prismaVersion.client },
+        ),
+      );
+    try {
+      await expect(say(guests[0]!, "hello")).rejects.toMatchObject({
+        code: "TOO_MANY_REQUESTS",
+        message: "Chat is very busy right now. Try again in a moment.",
+      });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(await db.chatMessage.count({ where: { gameId: game.id } })).toBe(0);
+    // Retrying works once the database has room.
+    await expect(say(guests[0]!, "hello")).resolves.toMatchObject({
+      replayed: false,
+    });
   });
 });
 

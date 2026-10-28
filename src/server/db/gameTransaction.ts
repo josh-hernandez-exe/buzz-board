@@ -37,6 +37,19 @@ function isTransactionStartTimeout(error: unknown): boolean {
   );
 }
 
+/**
+ * A transaction that failed only because the database was too busy (no
+ * pooled connection in time, a lock wait, a deadlock or a serialization
+ * conflict). Nothing was saved, and the request can safely be retried.
+ */
+export function isBusyError(error: unknown): boolean {
+  const code = postgresCode(error);
+  return (
+    (!!code && RETRYABLE_POSTGRES_CODES.has(code)) ||
+    isTransactionStartTimeout(error)
+  );
+}
+
 class GameNotFound extends Error {}
 
 /**
@@ -100,12 +113,11 @@ export async function withGameLock<T>(
     if (error instanceof GameNotFound) {
       return err({ kind: "gameNotFound", gameId });
     }
-    const code = postgresCode(error);
-    if (
-      (code && RETRYABLE_POSTGRES_CODES.has(code)) ||
-      isTransactionStartTimeout(error)
-    ) {
-      logger.warn(`Game ${gameId} transaction busy`, code ?? "start timeout");
+    if (isBusyError(error)) {
+      logger.warn(
+        `Game ${gameId} transaction busy`,
+        postgresCode(error) ?? "start timeout",
+      );
       return err({ kind: "busy", gameId, cause: error });
     }
     throw error;
