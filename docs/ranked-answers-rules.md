@@ -11,8 +11,8 @@ This decides the shape of a board. Every other option hangs off it.
 | Style | Teams | Flow | Built |
 | --- | --- | --- | --- |
 | **Open answering** | 2–50 | No turns: any team answers any time; the host reveals a row and credits every team that got it | Yes (new; suggested for 3+ teams) |
-| **Classic feud** (`faceOffLadder`) | 3–8 | The TV format for groups: a rotating pair faces off each board → play or pass → the playing team answers until it clears the board or strikes out → steal | Yes |
-| Classic, two teams only | 2 | The TV show exactly | **Retired** (owner decision, 2026-10-23): Buzz Board is for several teams at once, so no format is two-team-only. Drafts or games saved with it load as Classic feud, which the engine plays identically for two teams |
+| **Classic feud** (`faceOffLadder`) | 2–8 | The TV format: with two teams, the show exactly; with more, a rotating pair faces off each board → play or pass → the playing team answers until it clears the board or strikes out → steal | Yes |
+| Classic, two teams only | 2 | The TV show exactly | **Merged into Classic feud** (owner decision, 2026-10-28: two-team events are supported, though most events have more teams). Classic feud plays it identically with two teams; drafts or games saved with the old style load as Classic feud |
 | **Round robin** | 2–12 | One answer per team per turn, rotating; starting team rotates per board | Yes |
 | **Pass-along** | 2–12 | A team keeps answering until it misses, then the next team takes over | Yes (new) |
 | **Buzz race** | 2–50 | Every answer is a buzzer race: first to buzz answers; a hit scores, a miss locks the team out | Yes (new) |
@@ -26,7 +26,7 @@ This decides the shape of a board. Every other option hangs off it.
 | --- | --- | --- |
 | **Face-off** | `buzzer` (first to buzz answers; the top row wins at once, otherwise both answer and the higher row wins), `secret` (both answer, higher row wins), `none` (the playing team rotates board by board) | With the buzzer, the host desk pre-selects whoever holds the buzz |
 | **Face-off winner** (`allowPass`) | play or pass, always play | Passing is the TV rule; some hosts drop it to keep things moving |
-| Pairing (3+ teams) | rotating pairs | Fixed by the engine: pairs rotate so every team faces off equally (preflight warns when boards don't divide evenly) |
+| Pairing (3 or more teams) | rotating pairs | Fixed by the engine: pairs rotate so every team faces off equally (preflight warns when boards don't divide evenly) |
 
 ## 3. Where points go while a team plays (face-off styles)
 
@@ -95,7 +95,7 @@ A heavier run of about 27,000 games of up to 500 steps also passes. The review f
 
 Fixed rotations are pinned by explicit tests:
 - **Round robin:** order within a board; the first team moves on each main board, and practice or spare boards don't move it.
-- **Classic feud:** every team faces off equally often for 3 to 8 teams.
+- **Classic feud:** every team faces off equally often, for 2 to 8 teams (with two, they face off every board).
 - **No face-off:** every team plays the same number of boards.
 
 ## Compatibility

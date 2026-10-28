@@ -78,16 +78,30 @@ describe("setup", () => {
   });
 
   it("refuses a play style that doesn't fit the number of teams", async () => {
-    const created = await createGame({ teams: 2 });
-    const content = sampleContent(2);
+    const created = await createGame({ teams: 1 });
+    const content = sampleContent(1);
     content.rules.playStyle = "faceOffLadder";
     await created.admin.rankedAnswers.saveDraft({
       draft: content,
       expectedRevision: 0,
     });
     await expect(created.admin.rankedAnswers.start()).rejects.toMatchObject({
-      message: expect.stringContaining("needs 3 to 8 teams") as unknown,
+      message: expect.stringContaining("needs 2 to 8 teams") as unknown,
     });
+  });
+
+  it("starts Classic feud with two teams", async () => {
+    const created = await createGame({ teams: 2 });
+    const content = sampleContent(2);
+    content.rules = presetRules("classic", 2);
+    await created.admin.rankedAnswers.saveDraft({
+      draft: content,
+      expectedRevision: 0,
+    });
+    await created.admin.rankedAnswers.start();
+    const view = await created.admin.rankedAnswers.hostView();
+    expect(view.status).toBe("running");
+    expect(view.preflight.blocking).toEqual([]);
   });
 
   it("loads a draft saved with the retired two-team style as Classic feud", async () => {

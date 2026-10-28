@@ -157,8 +157,15 @@ async function session(seed: number) {
   }
 }
 
+// More seeds for a soak: FUZZ_SEEDS=400 bunx vitest run --project integration tests/integration/buzzerQueueFuzz.test.ts
+const SEEDS = Number(process.env.FUZZ_SEEDS ?? 25);
+
 describe("randomised queue sessions keep the queue's rules", () => {
-  it("over many seeds", { timeout: 300_000 }, async () => {
-    for (let seed = 1; seed <= 25; seed++) await session(seed);
-  });
+  it(
+    "over many seeds",
+    { timeout: Math.max(300_000, SEEDS * 5_000) },
+    async () => {
+      for (let seed = 1; seed <= SEEDS; seed++) await session(seed);
+    },
+  );
 });

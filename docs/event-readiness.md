@@ -26,7 +26,9 @@ Run locally (2026-10-23) with the real Discord and Google app settings from `.en
 | **Google**: the app's sign-in reaches Google's "Sign in to continue to Buzz-Board" page (client ID and callback URL accepted) | Pass |
 | **Discord**: the app exists ("buzz-board") and sign-in reaches Discord's login page | Pass. Discord only checks the callback URL after login, so one real sign-in is still needed |
 | Cancelling at the provider returns to the sign-in page; a forged callback is refused | Pass |
-| A full sign-in with a real account, landing on the dashboard | **Not done**: needs a person with an account |
+| **Secrets** (2026-10-28): Discord issues an app token for the client ID and secret; Google's token endpoint accepts the client and refuses only the dummy code (`invalid_grant`, not `invalid_client`) | Pass: both secrets are valid |
+| **Other ports** (2026-10-28): Google refuses `http://localhost:5555/...` ("Access blocked"); only port 3000 is registered | Expected. Run sign-in on port 3000, or register the extra port (see the README) |
+| A full sign-in with a real account, landing on the dashboard | Google: done by the owner. Discord: **not done**, needs a person with an account |
 
 Automated tests create signed-in hosts directly in the database, so they never exercise the providers. Repeat this check on the real domain after deploying (first row of the table above).
 

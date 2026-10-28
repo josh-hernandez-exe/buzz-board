@@ -372,6 +372,8 @@ describe("randomised games keep every invariant", () => {
       preset.teams[0],
       Math.min(preset.teams[1], preset.teams[0] + 1),
       Math.min(preset.teams[1], 7),
+      // The usual event size.
+      Math.min(preset.teams[1], 8),
     ];
     it(
       `${preset.label} (${[...new Set(counts)].join(", ")} teams)`,

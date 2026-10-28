@@ -15,7 +15,13 @@ import {
 } from "../../../tests/fixtures/ranked-answers/referenceModel";
 
 import { contentSchema, preflight, type Content, type Rules } from "./content";
-import { apply, initialState, type Action, type EngineState } from "./engine";
+import {
+  apply,
+  faceOffPair,
+  initialState,
+  type Action,
+  type EngineState,
+} from "./engine";
 
 const modelRules = pack.rules as ModelRules;
 const modelBoards = pack.boards as ModelBoard[];
@@ -73,9 +79,114 @@ describe("content", () => {
   });
 
   it("blocks a style that doesn't fit the number of teams", () => {
-    expect(preflight(contentFor("faceOffLadder"), 2).blocking[0]).toMatch(
-      /needs 3 to 8 teams; this game has 2/,
+    expect(preflight(contentFor("faceOffLadder"), 9).blocking[0]).toMatch(
+      /needs 2 to 8 teams; this game has 9/,
     );
+  });
+
+  it("Classic feud fits two teams and up to eight", () => {
+    for (const n of [2, 3, 8]) {
+      const teams = Array.from({ length: n }, (_v, i) => `T${i + 1}`);
+      const boards = contentFor("faceOffLadder").boards.filter(
+        (b) => b.role === "main",
+      );
+      // Enough boards for every team to face off equally often.
+      const fair = contentFor("faceOffLadder");
+      fair.boards = Array.from({ length: n }, (_v, i) => ({
+        ...boards[i % boards.length]!,
+        id: `main-${i}`,
+      }));
+      expect(preflight(fair, teams.length).blocking).toEqual([]);
+    }
+  });
+});
+
+describe("two-team Classic feud is the TV show, as in the model", () => {
+  const picnic = (actions: Action[]) =>
+    run(
+      contentFor("faceOffLadder"),
+      ["A", "B"],
+      [
+        { type: "startBoard", boardId: "board-picnic" },
+        {
+          type: "faceOff",
+          answers: [
+            { team: "A", answerId: "sandwiches" },
+            { team: "B", answerId: "water" },
+          ],
+        },
+        { type: "playOrPass", play: true },
+        ...actions,
+      ],
+    );
+
+  it("three strikes, then the other team steals the bank", () => {
+    const { state, totals } = picnic([
+      { type: "answer", answerId: "fruit" },
+      { type: "answer", answerId: null },
+      { type: "answer", answerId: null },
+      { type: "answer", answerId: null },
+      { type: "steal", answers: { B: "blanket" } },
+    ]);
+    const expected = playFaceOffBoard(
+      { ...modelRules, playStyle: "classic" },
+      model("board-picnic"),
+      ["A", "B"],
+      {
+        faceOffRows: ["sandwiches", "water"],
+        control: "A",
+        controlAnswers: [
+          { kind: "accept", answerId: "fruit" },
+          { kind: "miss" },
+          { kind: "miss" },
+          { kind: "miss" },
+        ],
+        steals: { B: { kind: "accept", answerId: "blanket" } },
+      },
+    );
+    expect(totals).toEqual(expected.points);
+    expect(state.board).toMatchObject({
+      phase: "closed",
+      faceOffTeams: ["A", "B"],
+      bankWinners: expected.bankWinners,
+    });
+  });
+
+  it("clearing the board keeps the bank, with no steal", () => {
+    const rest = [
+      "blanket",
+      "fruit",
+      "sunscreen",
+      "napkins",
+      "games",
+      "umbrella",
+    ];
+    const { state, totals } = picnic(
+      rest.map((answerId) => ({ type: "answer" as const, answerId })),
+    );
+    const expected = playFaceOffBoard(
+      { ...modelRules, playStyle: "classic" },
+      model("board-picnic"),
+      ["A", "B"],
+      {
+        faceOffRows: ["sandwiches", "water"],
+        control: "A",
+        controlAnswers: rest.map((answerId) => ({
+          kind: "accept" as const,
+          answerId,
+        })),
+        steals: {},
+      },
+    );
+    expect(totals).toEqual(expected.points);
+    expect(totals.B).toBe(0);
+    expect(state.board).toMatchObject({ phase: "closed", bankWinners: ["A"] });
+  });
+
+  it("the same two teams face off on every board", () => {
+    for (let n = 0; n < 5; n++) {
+      expect(faceOffPair(["A", "B"], n)).toEqual(["A", "B"]);
+    }
   });
 });
 

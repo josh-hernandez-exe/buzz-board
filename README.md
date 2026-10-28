@@ -52,6 +52,8 @@ Redirects:
   - NOTE: you need http and https
   - Avoid wildcard since you can have a persistant code space.
 
+Running on another port (for example `bun dev --port 5555` with `NEXTAUTH_URL=http://localhost:5555`)? Register that port's callback URL too, or Google answers "Access blocked: This app's request is invalid". Discord only checks the callback after you log in.
+
 
 #### Test logins during development
 

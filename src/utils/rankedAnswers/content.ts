@@ -5,9 +5,9 @@
 import { z } from "zod";
 
 /**
- * Every style is for several teams at once: Buzz Board is for groups, so
- * there's no two-team-only style. The classic TV format lives on as
- * "Classic feud" (`faceOffLadder`): rotating face-offs for 3–8 teams.
+ * Every style works from two teams up. "Classic feud" (`faceOffLadder`)
+ * is the TV format: with two teams it's the show exactly, and with more
+ * the face-off pair rotates so every team gets its turns.
  */
 export const PLAY_STYLES = [
   "open",
@@ -22,7 +22,7 @@ export type PlayStyle = (typeof PLAY_STYLES)[number];
 /** Team counts each style supports. */
 export const STYLE_TEAM_RANGE: Record<PlayStyle, [number, number]> = {
   open: [2, 50],
-  faceOffLadder: [3, 8],
+  faceOffLadder: [2, 8],
   roundRobin: [2, 12],
   passAlong: [2, 12],
   buzzRace: [2, 50],
@@ -31,7 +31,7 @@ export const STYLE_TEAM_RANGE: Record<PlayStyle, [number, number]> = {
 
 export const STYLE_LABEL: Record<PlayStyle, string> = {
   open: "Open answering (2–50 teams)",
-  faceOffLadder: "Classic feud (3–8 teams)",
+  faceOffLadder: "Classic feud (2–8 teams)",
   roundRobin: "Round robin (2–12 teams)",
   passAlong: "Pass-along (2–12 teams)",
   buzzRace: "Buzz race (2–50 teams)",
@@ -41,7 +41,7 @@ export const STYLE_LABEL: Record<PlayStyle, string> = {
 export const STYLE_DESCRIPTION: Record<PlayStyle, string> = {
   open: "No turns: any team can answer at any time. The host reveals each answer and credits every team that got it.",
   faceOffLadder:
-    "The TV format for a crowd: two teams face off each board (pairs rotate so every team gets its turns). The winner plays or passes; the playing team answers until it clears the board or strikes out; then every other team gives one steal answer. The highest steal takes the bank.",
+    "The TV format: two teams face off each board (with more than two teams, the pairs rotate so every team gets its turns). The winner plays or passes; the playing team answers until it clears the board or strikes out; then every other team gives one steal answer. The highest steal takes the bank.",
   roundRobin:
     "Teams answer one at a time in a rotating order. Each answer found scores for the team that found it.",
   passAlong:
@@ -92,8 +92,9 @@ export const boardSchema = z.object({
 });
 
 export const rulesSchema = z.object({
-  // Drafts and games saved before the two-team "classic" style was retired
-  // load as the classic feud ladder: the engine plays them the same way.
+  // The old two-team "classic" style is now Classic feud, which the engine
+  // plays identically for two teams. Drafts and games saved with it load
+  // as that.
   playStyle: z.preprocess(
     (v) => (v === "classic" ? "faceOffLadder" : v),
     z.enum(PLAY_STYLES),
@@ -231,9 +232,9 @@ export const PRESETS: Preset[] = [
   {
     id: "classic",
     label: "Classic feud",
-    teams: [3, 8],
+    teams: [2, 8],
     summary:
-      "The TV format, for 3 or more teams: two teams face off each board (pairs rotate), play or pass, three strikes, then every other team steals for the bank.",
+      "The TV format. Two teams face off each board, play or pass, three strikes, then the other teams steal for the bank. With two teams it's the show exactly; with more, the pairs rotate.",
     rules: {
       playStyle: "faceOffLadder",
       faceOffMethod: "buzzer",
@@ -243,15 +244,15 @@ export const PRESETS: Preset[] = [
   {
     id: "headToHead",
     label: "Classic feud, head-to-head",
-    teams: [3, 8],
+    teams: [2, 8],
     summary:
-      "As Classic feud, but only the face-off opponent can steal: each board is a two-team match.",
+      "As Classic feud, but only the face-off opponent can steal: each board is a two-team match. (Same as Classic feud with two teams.)",
     rules: { playStyle: "faceOffLadder", stealBy: "opponent" },
   },
   {
     id: "noFaceOff",
     label: "Take turns, no face-off",
-    teams: [3, 8],
+    teams: [2, 8],
     summary:
       "Teams take turns playing whole boards in rotation: three strikes, then every other team steals.",
     rules: {
