@@ -479,7 +479,7 @@ function baseError(error: ServiceError): TRPCError {
     case "invalidContent":
       return new TRPCError({
         code: "BAD_REQUEST",
-        message: `The boards couldn't be saved: ${error.issues.join("; ")}`,
+        message: `The setup couldn't be saved: ${error.issues.join("; ")}`,
       });
     case "draftConflict":
       return new TRPCError({

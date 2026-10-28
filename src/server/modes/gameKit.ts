@@ -35,7 +35,7 @@ import {
   type ScoreCommandError,
 } from "@/server/scores/scoreService";
 import type { GridError } from "@/utils/categoryGrid/engine";
-import type { ModeKind } from "@/utils/modes";
+import { MAX_DRAFT_BYTES, type ModeKind } from "@/utils/modes";
 import type { EngineError } from "@/utils/rankedAnswers/engine";
 import type { QuizError } from "@/utils/sequentialQuiz/engine";
 
@@ -202,6 +202,16 @@ export async function saveModeDraft<C, S, A extends { type: string }, E>(
   const parsed = module.parseDraft(draft);
   if (parsed.isErr()) {
     return err({ kind: "invalidContent", issues: parsed.error.slice(0, 10) });
+  }
+  const bytes = Buffer.byteLength(JSON.stringify(parsed.value), "utf8");
+  if (bytes > MAX_DRAFT_BYTES) {
+    const kb = (n: number) => `${Math.ceil(n / 1024).toLocaleString("en")} KB`;
+    return err({
+      kind: "invalidContent",
+      issues: [
+        `it's ${kb(bytes)} and the most is ${kb(MAX_DRAFT_BYTES)}. Shorten long text or remove questions you don't use`,
+      ],
+    });
   }
   return flatten(
     await withGameLock(gameId, async (tx) => {

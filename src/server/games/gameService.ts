@@ -451,17 +451,6 @@ export async function resumePreview({
   };
 }
 
-/** Shared guard: participants and scores cannot change after finish. */
-export async function assertGameNotFinished(
-  tx: GameTx,
-  gameId: string,
-): Promise<Result<Game, GameServiceError>> {
-  const game = await tx.game.findUniqueOrThrow({ where: { id: gameId } });
-  return game.status === GameStatus.finished
-    ? err({ kind: "gameFinished" })
-    : ok(game);
-}
-
 function flatten<T>(
   result: Result<Result<T, GameServiceError>, GameTransactionError>,
 ): Result<T, GameServiceError> {

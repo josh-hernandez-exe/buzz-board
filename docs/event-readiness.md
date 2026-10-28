@@ -58,6 +58,22 @@ All runs were local: a production build, PostgreSQL and Redis in Docker, and 100
 
 **Speed:** the targets (p95 under 500 ms for buzzes and sends, chat under 1 s) are still missed on this machine, where the bots share the CPU with the server. Queued buzzing is no slower than first-buzz. A family event is far below 100 people, but run the soak on hardware like the real host before relying on these numbers.
 
+## Editor responsiveness
+
+Measured 2026-10-28 with [editorResponsiveness.spec.ts](../tests/spike/editorResponsiveness.spec.ts) on a production build (Chromium, 4-vCPU codespace). The bank is the plan's reference: 200 questions, 906 KB, an 8 × 10 grid and four images per clue. Times are from the browser's Event Timing API: each key press or click until the next paint.
+
+| Interaction | p95 | p95, CPU slowed 4× | Target |
+| --- | --- | --- | --- |
+| Select a tile | 40 ms | 88 ms | under 200 ms |
+| Type in a clue | 32 ms | 64 ms | under 100 ms |
+| Type with the question library open | 40 ms | 80 ms | under 100 ms |
+| Type with import/export open | 48 ms | 80 ms | under 100 ms |
+
+- The editor is usable about 1 s after loading. No media is requested until a question is selected, and then only that question's.
+- Per key press, the app's own JavaScript (including React) takes 3–5 ms, or 11–17 ms with the CPU slowed. The rest is the browser painting a large page, so rewriting the editor wouldn't help much. (Memoising the grid tiles was tried and made no measurable difference, so it wasn't kept.)
+- Saved setups are capped at 1 MiB (the plan's limit) for every mode. A bigger one is refused with its size and a hint; nothing is lost.
+- Not yet done: a real iPad or Android tablet check (emulation isn't proof).
+
 ## Dress rehearsal script (about 60 minutes)
 
 **People:** you as owner on a laptop, a co-host on a second computer, a moderator, and at least six players on their own phones in three or more teams. Use a mix of iPhone and Android, Wi-Fi and mobile data. Join them all to a video call.

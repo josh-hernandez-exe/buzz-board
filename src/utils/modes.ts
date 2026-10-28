@@ -96,3 +96,10 @@ export function publicGameModeView(
   }
   return null;
 }
+
+/**
+ * The largest saved setup (boards, question bank…), as compact UTF-8 JSON.
+ * Every host refresh sends the whole draft, so this keeps editing and
+ * loading quick.
+ */
+export const MAX_DRAFT_BYTES = 1024 * 1024;

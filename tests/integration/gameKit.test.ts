@@ -19,7 +19,7 @@ import {
   undoInModeSession,
   type ModeModule,
 } from "@/server/modes/gameKit";
-import type { ModeKind } from "@/utils/modes";
+import { MAX_DRAFT_BYTES, type ModeKind } from "@/utils/modes";
 
 import { createGame, currentScores, db } from "../support/integration";
 
@@ -181,5 +181,38 @@ describe("Game Kit runner with a synthetic mode", () => {
         })
       )._unsafeUnwrapErr().kind,
     ).toBe("modeNotRunning");
+  });
+
+  it("refuses a draft over 1 MiB and keeps the saved one", async () => {
+    const { game } = await createGame({ teams: 3 });
+    const gameId = game.id;
+    const room = (i: number, size: number) => ({
+      id: `${i}-${"é".repeat(size)}`,
+      points: 1,
+    });
+    // Just under the limit counting UTF-8 bytes ("é" is 2 bytes).
+    const fits = { rooms: [room(0, 200_000), room(1, 300_000)] };
+    expect(Buffer.byteLength(JSON.stringify(fits))).toBeLessThan(
+      MAX_DRAFT_BYTES,
+    );
+    expect(
+      (
+        await saveModeDraft(maze, { gameId, draft: fits, expectedRevision: 0 })
+      ).isOk(),
+    ).toBe(true);
+
+    const tooBig = { rooms: [room(0, 200_000), room(1, 330_000)] };
+    expect(JSON.stringify(tooBig).length).toBeLessThan(MAX_DRAFT_BYTES);
+    const refused = await saveModeDraft(maze, {
+      gameId,
+      draft: tooBig,
+      expectedRevision: 1,
+    });
+    expect(refused._unsafeUnwrapErr()).toMatchObject({
+      kind: "invalidContent",
+      issues: [expect.stringContaining("the most is 1,024 KB")],
+    });
+    const saved = await db.gameMode.findUniqueOrThrow({ where: { gameId } });
+    expect(saved.draftRevision).toBe(1);
   });
 });

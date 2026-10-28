@@ -29,6 +29,7 @@ model Account {
   refresh_token_expires_in Int?
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -37,6 +38,8 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model User {
@@ -162,11 +165,16 @@ model GameUser {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User?     @relation(fields: [userId], references: [id])
-  game     Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameTeam GameTeam? @relation("TeamMembers", fields: [gameTeamId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id])
+  game      Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameTeam  GameTeam? @relation("TeamMembers", fields: [gameTeamId], references: [id], onDelete: Cascade)
   /// The team this player captains, if any.
   captainOf GameTeam? @relation("TeamCaptain")
+
+  /// Rosters, team member lists and "my games" read players by these.
+  @@index([gameId])
+  @@index([gameTeamId])
+  @@index([userId])
 }
 
 enum BuzzerMode {
@@ -237,6 +245,7 @@ model GameAdmin {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, gameId])
+  @@index([gameId])
 }
 
 model ScoreboardState {
@@ -251,6 +260,10 @@ model ScoreboardState {
   scoreboard       Scoreboard  @relation("AllScoreboardStates", fields: [scoreboardId], references: [id], onDelete: Cascade)
   activeScoreboard Scoreboard?
   game             Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  /// Only for cascades when a game is deleted; lookups use the ID.
+  @@index([gameId])
+  @@index([scoreboardId])
 }
 
 model Scoreboard {
@@ -397,6 +410,7 @@ model ChatChannel {
   messages ChatMessage[]
 
   @@unique([gameId, key])
+  @@index([gameTeamId])
 }
 
 /// A chat message. Removal and expiry clear the body; there is no restore.
@@ -527,4 +541,3 @@ model TeamAnswer {
 
   @@unique([gameId, questionKey, gameTeamId])
 }
-
