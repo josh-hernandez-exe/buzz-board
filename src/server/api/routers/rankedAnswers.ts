@@ -13,7 +13,7 @@ import {
   type ModeError,
 } from "@/server/modes/rankedAnswersService";
 import { emitUpdatedGameState } from "@/server/utils/events";
-import { type Result } from "neverthrow";
+import type { Result } from "neverthrow";
 
 const id = z.string().min(1).max(64);
 const answerId = id.nullable();

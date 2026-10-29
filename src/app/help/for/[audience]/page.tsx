@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { type Metadata } from "next";
+import type { Metadata } from "next";
 
 import { loadHelpIndex } from "@/help/content";
 import { HELP_AUDIENCES, type HelpAudience } from "@/help/manifest";
@@ -53,10 +53,7 @@ export default async function HelpForAudience({
       {articles.map((article) => (
         <section key={article.id} aria-labelledby={`a-${article.id}`}>
           <h2 id={`a-${article.id}`} className="text-xl font-bold">
-            <Link
-              href={`/help/${article.id}`}
-              className="text-link underline"
-            >
+            <Link href={`/help/${article.id}`} className="text-link underline">
               {article.title}
             </Link>
           </h2>

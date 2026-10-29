@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { type Metadata } from "next";
+import type { Metadata } from "next";
 
 import { FactPanels } from "@/app/_components/server/FactPanels";
 import { HelpMarkdown } from "@/app/_components/server/HelpMarkdown";

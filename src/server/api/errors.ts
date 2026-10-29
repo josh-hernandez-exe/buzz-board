@@ -1,23 +1,23 @@
 import { TRPCError } from "@trpc/server";
 
-import {
-  type BuzzError,
-  type BuzzerControlError,
+import type {
+  BuzzError,
+  BuzzerControlError,
 } from "@/server/buzzer/buzzerService";
-import { type GameTransactionError } from "@/server/db/gameTransaction";
-import { type GameServiceError } from "@/server/games/gameService";
-import { type ScoreCommandError } from "@/server/scores/scoreService";
-import { type StaffError } from "@/server/staff/staffService";
-import { type RosterError } from "@/server/roster/rosterService";
-import { type IdentityError } from "@/server/identity/identityService";
-import { type ChatError } from "@/server/chat/chatService";
-import { type GameKitError } from "@/server/modes/gameKit";
-import { type AnswerError } from "@/server/modes/sequentialQuizService";
-import { type CaptainError } from "@/server/roster/captains";
-import { type QuizError } from "@/utils/sequentialQuiz/engine";
+import type { GameTransactionError } from "@/server/db/gameTransaction";
+import type { GameServiceError } from "@/server/games/gameService";
+import type { ScoreCommandError } from "@/server/scores/scoreService";
+import type { StaffError } from "@/server/staff/staffService";
+import type { RosterError } from "@/server/roster/rosterService";
+import type { IdentityError } from "@/server/identity/identityService";
+import type { ChatError } from "@/server/chat/chatService";
+import type { GameKitError } from "@/server/modes/gameKit";
+import type { AnswerError } from "@/server/modes/sequentialQuizService";
+import type { CaptainError } from "@/server/roster/captains";
+import type { QuizError } from "@/utils/sequentialQuiz/engine";
 import { isModeKind, MODE_LABEL } from "@/utils/modes";
-import { type EngineError } from "@/utils/rankedAnswers/engine";
-import { type GridError } from "@/utils/categoryGrid/engine";
+import type { EngineError } from "@/utils/rankedAnswers/engine";
+import type { GridError } from "@/utils/categoryGrid/engine";
 import { nameErrorMessage } from "@/utils/displayName";
 import { SCORE_LIMITS } from "@/server/scores/scoreMath";
 import { helpHref } from "@/help/manifest";

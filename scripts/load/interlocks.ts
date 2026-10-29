@@ -5,7 +5,7 @@
  */
 import { err, ok, type Result } from "neverthrow";
 
-import { type WorkloadEstimate } from "./profiles";
+import type { WorkloadEstimate } from "./profiles";
 
 export type TargetOptions = {
   target: string;

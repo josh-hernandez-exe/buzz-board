@@ -2,7 +2,7 @@ import { err, type Result } from "neverthrow";
 
 import { logger } from "@/logger";
 
-import { type GameChangeBus } from "./gameChangeBus";
+import type { GameChangeBus } from "./gameChangeBus";
 
 type Sink<T> = {
   /** Only the newest snapshot is kept: state messages are full snapshots. */

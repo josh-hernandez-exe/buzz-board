@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { type Result } from "neverthrow";
+import type { Result } from "neverthrow";
 import { z } from "zod";
 
 import { toTRPCError } from "@/server/api/errors";

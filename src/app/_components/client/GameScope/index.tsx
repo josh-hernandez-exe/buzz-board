@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { useGameTokenData } from "@/app/_hooks/gameTokenData";
 import { LiveGameStateProvider } from "@/app/_components/client/LiveGameState";

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { type Metadata } from "next";
+import type { Metadata } from "next";
 
 import { HelpSearch } from "@/app/_components/client/HelpSearch";
 import { loadHelpIndex } from "@/help/content";

@@ -1,4 +1,4 @@
-import { type HelpFactPanel } from "@/help/manifest";
+import type { HelpFactPanel } from "@/help/manifest";
 import {
   CAPABILITIES,
   INVITE_LIFETIME_HOURS,

@@ -55,7 +55,7 @@ import {
   releaseTeamsFromQueue,
 } from "@/server/buzzer/buzzerService";
 import { withGameLock } from "@/server/db/gameTransaction";
-import { type Result } from "neverthrow";
+import type { Result } from "neverthrow";
 
 import type { GameSettings } from "@/types";
 

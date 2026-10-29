@@ -9,7 +9,7 @@
  */
 import { err, ok, type Result } from "neverthrow";
 
-import { type Bank } from "@/utils/categoryGrid/content";
+import type { Bank } from "@/utils/categoryGrid/content";
 
 export type Verdict = "correct" | "incorrect" | "missing";
 

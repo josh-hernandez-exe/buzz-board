@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { err, ok, type Result } from "neverthrow";
 
-import { type StaffRoleName } from "@/utils/capabilities";
+import type { StaffRoleName } from "@/utils/capabilities";
 import { CHAT_LIMITS } from "@/utils/chatLimits";
 
 export { CHAT_LIMITS } from "@/utils/chatLimits";

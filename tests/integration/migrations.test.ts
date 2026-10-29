@@ -3,7 +3,7 @@
  * uses its own scratch database on the disposable test server.
  */
 import { afterEach, describe, expect, it } from "vitest";
-import { type PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 
 import {
   LEGACY,

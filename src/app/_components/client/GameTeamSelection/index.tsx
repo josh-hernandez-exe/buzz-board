@@ -1,6 +1,6 @@
 "use client";
 
-import { type GameTeam } from "@prisma/client";
+import type { GameTeam } from "@prisma/client";
 
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";

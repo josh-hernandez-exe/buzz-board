@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
-import { type GameFormat, type User } from "@prisma/client";
-import { type Session } from "next-auth";
+import type { GameFormat, User } from "@prisma/client";
+import type { Session } from "next-auth";
 import { vi } from "vitest";
 
 // Outside a Next request scope there are no cookies, so tests authenticate with

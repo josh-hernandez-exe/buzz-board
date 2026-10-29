@@ -1,4 +1,4 @@
-import { type PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 
 /**
  * A populated game in the exact shape written by the pre-PR02 application

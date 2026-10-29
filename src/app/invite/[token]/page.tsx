@@ -1,6 +1,6 @@
 import { signInPath } from "@/server/auth/devLoginGate";
 import Link from "next/link";
-import { type Metadata } from "next";
+import type { Metadata } from "next";
 
 import { AcceptInvite } from "@/app/_components/client/AcceptInvite";
 import { auth } from "@/server/auth";

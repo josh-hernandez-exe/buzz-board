@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { type GameTeam } from "@prisma/client";
+import type { GameTeam } from "@prisma/client";
 
 import { api } from "@/trpc/react";
 

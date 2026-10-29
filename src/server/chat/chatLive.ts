@@ -6,7 +6,7 @@ import { err, ok, type Result } from "neverthrow";
 import { db } from "@/server/db";
 import { GameNotFoundError } from "@/server/db/common";
 import { staffRoleFor } from "@/server/staff/staffService";
-import { type StaffRoleName } from "@/utils/capabilities";
+import type { StaffRoleName } from "@/utils/capabilities";
 import {
   actorKey,
   channelKeysForActor,
@@ -55,8 +55,7 @@ export type ChatPulseError = { kind: "removed" } | { kind: "roleRemoved" };
 
 /** Who a live stream is following, fixed when it opens. */
 export type ChatViewer =
-  | { kind: "player"; gameUserId: string }
-  | { kind: "staff"; userId: string };
+  { kind: "player"; gameUserId: string } | { kind: "staff"; userId: string };
 
 /**
  * Revisions of what message headers show, per game. Viewers re-fetch their

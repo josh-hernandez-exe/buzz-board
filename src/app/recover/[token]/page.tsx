@@ -1,4 +1,4 @@
-import { type Metadata } from "next";
+import type { Metadata } from "next";
 
 import { RecoverPlayer } from "@/app/_components/client/RecoverPlayer";
 import { previewRecovery } from "@/server/identity/identityService";

@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { PageShell, SiteHeader } from "@/app/_components/ui/page";
 

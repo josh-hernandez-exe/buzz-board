@@ -7,7 +7,7 @@ import { getBuzzQueue, getBuzzWinner } from "@/server/buzzer/buzzerService";
 import { publicGameModeView } from "@/utils/modes";
 import { bankSchema } from "@/utils/categoryGrid/content";
 import { questionKey, type QuizState } from "@/utils/sequentialQuiz/engine";
-import { type AnswerProgress } from "@/utils/sequentialQuiz/projection";
+import type { AnswerProgress } from "@/utils/sequentialQuiz/projection";
 import { err, ok } from "neverthrow";
 
 import type { PublicGameState, PrivateGameState, GameSettings } from "@/types";

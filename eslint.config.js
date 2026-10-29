@@ -34,6 +34,9 @@ export default tseslint.config(
         "warn",
         { prefer: "type-imports", fixStyle: "inline-type-imports" },
       ],
+      // `import { type X } from "m"` still loads "m"; in a client file that
+      // pulls server modules into the browser bundle. Use `import type`.
+      "@typescript-eslint/no-import-type-side-effects": "error",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {

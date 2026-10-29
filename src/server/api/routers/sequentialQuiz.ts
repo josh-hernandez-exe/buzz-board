@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { type Result } from "neverthrow";
+import type { Result } from "neverthrow";
 import { z } from "zod";
 
 import { toTRPCError } from "@/server/api/errors";
@@ -8,7 +8,7 @@ import {
   protectedGameUserProcedure,
   staffProcedure,
 } from "@/server/api/trpc";
-import { type GameKitError } from "@/server/modes/gameKit";
+import type { GameKitError } from "@/server/modes/gameKit";
 import {
   actInQuiz,
   discardQuizDraft,
