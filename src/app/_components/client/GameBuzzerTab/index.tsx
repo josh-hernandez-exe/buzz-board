@@ -1,6 +1,9 @@
 "use client";
 
-import { buzzerStatus } from "@/app/_components/client/PlayerStatus/buzzerStatus";
+import {
+  buzzerStatus,
+  noBuzzerTurn,
+} from "@/app/_components/client/PlayerStatus/buzzerStatus";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { Button } from "@/app/_components/ui/button";
 import { api } from "@/trpc/react";
@@ -28,6 +31,22 @@ export function GameBuzzerTab({ gameUserId }: { gameUserId: string }) {
   const buzzIn = api.gameUser.buzzIn.useMutation();
 
   if (!live.data) return null;
+  const turn = noBuzzerTurn(live.data, gameUserId);
+  if (turn) {
+    return (
+      <p
+        role="status"
+        data-testid="turn-card"
+        className={`font-display rounded-2xl p-6 text-center text-2xl ${
+          turn.mine
+            ? "bg-success text-success-foreground ring-success/40 ring-8"
+            : "bg-muted text-muted-foreground border-border border-2"
+        }`}
+      >
+        {turn.message}
+      </p>
+    );
+  }
   const status = buzzerStatus(live.data, gameUserId);
   const liveHealthy = live.status === "pending";
   const disabled = buzzIn.isPending || (liveHealthy && !status.canBuzz);

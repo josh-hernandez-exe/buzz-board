@@ -61,7 +61,7 @@ export const DEFAULT_POINTS = [30, 25, 20, 15, 10, 8, 5, 2];
 
 export const LIMITS = {
   minAnswers: 4,
-  maxAnswers: 8,
+  maxAnswers: 10,
   maxBoards: 30,
   maxPromptLength: 200,
   maxAnswerLength: 80,
@@ -125,6 +125,8 @@ export const rulesSchema = z.object({
   sharedAnswers: z.enum(["full", "split", "uniqueOnly"]).optional(),
   /** Buzz race: after a wrong answer, a team waits for the next row to be found, sits out after `strikes` misses, or isn't locked out. */
   raceLockout: z.enum(["untilNextFind", "afterStrikes", "none"]).optional(),
+  /** Round robin: close the board when a whole cycle of turns finds nothing new. */
+  endOnEmptyCycle: z.boolean().optional(),
   /** Points taken off a team for a miss when it alone was answering (0 = none). */
   missPenalty: z.number().int().min(0).max(LIMITS.maxPoints).optional(),
   /** Shown to everyone: the first team to reach it wins. Informational; the host still finishes. */
@@ -158,6 +160,7 @@ export function resolveRules(rules: Rules): ResolvedRules {
     sharedAnswers: rules.sharedAnswers ?? "full",
     raceLockout: rules.raceLockout ?? "untilNextFind",
     missPenalty: rules.missPenalty ?? 0,
+    endOnEmptyCycle: rules.endOnEmptyCycle ?? false,
     targetScore: rules.targetScore ?? null,
   };
 }
@@ -177,6 +180,7 @@ export function optionsFor(rules: Rules) {
     stealWinner: faceOff && r.stealBy === "everyone",
     stealReward: faceOff && r.stealBy !== "none" && r.scoring === "bank",
     turnCycles: style === "roundRobin" || style === "passAlong",
+    endOnEmptyCycle: style === "roundRobin",
     allPlayRounds: style === "allPlay",
     sharedAnswers: style === "allPlay" || style === "open",
     raceLockout: style === "buzzRace",

@@ -3,6 +3,7 @@
 import { GameFormat } from "@prisma/client";
 
 import { GameUserAvatar } from "@/app/_components/client/GameUserAvatar";
+import { noBuzzerTurn } from "@/app/_components/client/PlayerStatus/buzzerStatus";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { Panel, StatusPill, type Tone } from "@/app/_components/ui/page";
 import { api } from "@/trpc/react";
@@ -33,6 +34,8 @@ export function GameWhoBuzzedIn({
   });
   const { data: state } = useLiveGameState();
   if (!state) return null;
+  // A turn-based board shows whose turn it is instead (GameBuzzerTab).
+  if (initialSelfUserId && noBuzzerTurn(state, initialSelfUserId)) return null;
 
   const selfTeamId = gameSelfInfo.data?.gameTeamId;
   const selfId = gameSelfInfo.data?.id ?? initialSelfUserId;

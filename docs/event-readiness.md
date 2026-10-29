@@ -76,6 +76,39 @@ Measured 2026-10-28 with [editorResponsiveness.spec.ts](../tests/spike/editorRes
 - Saved setups are capped at 1 MiB (the plan's limit) for every mode. A bigger one is refused with its size and a hint; nothing is lost.
 - Not yet done: a real iPad or Android tablet check (emulation isn't proof).
 
+## Running the search-prediction trivia format
+
+The event plan's format (teams take turns, one answer each, 11 − rank points, no buzzer, strikes or steals) is **Ranked Answers → Round robin**. Checked 2026-10-29 against the plan's rehearsal script, in [rankedEventScript.test.ts](../tests/integration/rankedEventScript.test.ts) (API and scoreboard) and [rankedEventScript.spec.ts](../tests/e2e/rankedEventScript.spec.ts) (host desk, player phone and display in a browser).
+
+**Setup (Ranked Answers tab, before starting):**
+
+| Setting | Value |
+| --- | --- |
+| Starting point | Round robin |
+| Answers per team per board | 3 |
+| A full round of turns with no new answer | Closes the board |
+| Points by rank | `10, 9, 8, 7, 6, 5, 4, 3, 2, 1` (11 − rank; boards hold up to 10 answers) |
+| Practice board | Board type **practice**: plays normally, scores nothing, doesn't move the starting team |
+| Points lost for a miss | 0 |
+
+Team order is the order on the Players tab (Team A, B, C, D). Board 1 starts with A, board 2 with B, and so on.
+
+**Each board on the host desk:**
+1. **Show this board.** Players and the display see the prompt and numbered blank rows. The host sees every answer (in italics until found) and the aliases.
+2. The desk says whose turn it is, for example "Team A's turn (1 of 12)". The team's phone says "Your team's turn! Say your answer."; the others say whose turn it is. There's no Buzz button on these boards.
+3. Judge the spoken answer:
+   - **Right:** press its button (for example **#1 TikTok**, or the key `1`). The row appears for everyone with the team's name and points, the scoreboard updates at once, and play moves to the next team.
+   - **Anything else** (wrong, repeat of a shown answer, pass, out of time): press **✕ Wrong / pass** (or `X`). 0 points, next team.
+4. The board closes by itself when every answer is found, when a full round finds nothing new, or after 3 rounds. The display says which. **Close board** ends it early, for time.
+5. **Reveal remaining answers (0 points)**, then choose the next board and **Show this board**.
+
+**Mistakes:**
+- **Wrong button just pressed:** **Undo last action** takes the points back and returns the turn. A row everyone has seen stays shown for 0 points, so nobody can score it later.
+- **Older mistake:** fix that team's score on the **Play** tab (add or subtract). The board carries on where it is.
+- **Double click:** the second click is refused; points and turns move once.
+
+**Rehearsal script result:** after A TikTok, B TikTok again, C Spotify, D pass, A Instagram, B Zoom, C timeout, D Teams, the scores are **A 19, B 2, C 0, D 6** and only ranks 1, 2, 5 and 9 are shown, matching the plan. The separate checks pass as well: a no-match round, a double click, close and reveal, the next board's starter, corrections, and privacy across a reconnect.
+
 ## Dress rehearsal script (about 60 minutes)
 
 **People:** you as owner on a laptop, a co-host on a second computer, a moderator, and at least six players on their own phones in three or more teams. Use a mix of iPhone and Android, Wi-Fi and mobile data. Join them all to a video call.

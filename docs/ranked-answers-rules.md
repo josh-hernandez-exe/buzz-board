@@ -43,6 +43,7 @@ This decides the shape of a board. Every other option hangs off it.
 | Option | Values | Notes |
 | --- | --- | --- |
 | **Answers or turns per team** (`turnCycles`) | 1–4 | Round robin: answers per team. Pass-along: turns per team (a turn ends at a miss) |
+| **A full round with no new answer** (`endOnEmptyCycle`) | keep going (default), closes the board | Round robin only: once every team has had a turn without finding anything new (repeats, misses and passes count), the board closes |
 
 ## 5. Buzz race
 
@@ -69,7 +70,7 @@ The race uses the real buzzer. In queue mode the buzz queue *is* the race order,
 
 | Option | Values | Notes |
 | --- | --- | --- |
-| **Points by rank** | positive, strictly decreasing, up to 8 | Default 30/25/20/15/10/8/5/2 |
+| **Points by rank** | positive, strictly decreasing, up to 10 | Default 30/25/20/15/10/8/5/2 |
 | Per-board / per-answer points | survey counts or custom values | On each board |
 | **Multiplier** | game-wide, and per board | "Double points" final boards |
 | **Points lost for a miss** (`missPenalty`) | 0–1000 | Applies when one team alone was answering: a strike, a round robin or pass-along miss, a race miss. Not in all-play or steals. Practice boards never change scores |

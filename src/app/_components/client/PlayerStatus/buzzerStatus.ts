@@ -28,6 +28,53 @@ export function buzzerStatus(
   };
 }
 
+/** Ranked Answers styles where teams answer without buzzing. */
+const NO_BUZZER_STYLES = new Set([
+  "roundRobin",
+  "passAlong",
+  "allPlay",
+  "open",
+]);
+
+/**
+ * While a Ranked Answers board that doesn't use the buzzer is running (and
+ * the host hasn't opened the buzzer anyway), what the player's page shows
+ * instead of the Buzz button. Null when the buzzer applies.
+ */
+export function noBuzzerTurn(
+  state: PrivateGameState,
+  gameUserId: string,
+): { mine: boolean; message: string } | null {
+  const mode = state.mode;
+  if (
+    mode?.kind !== "rankedAnswers" ||
+    mode.status !== "running" ||
+    !NO_BUZZER_STYLES.has(mode.playStyle) ||
+    !mode.board ||
+    mode.board.phase === "closed" ||
+    state.game.isBuzzerListening
+  ) {
+    return null;
+  }
+  const teamId = state.gameUsers[gameUserId]?.gameTeamId ?? null;
+  const current = mode.board.currentTeam;
+  if (mode.board.phase !== "turns" || !current) {
+    return {
+      mine: false,
+      message: "No buzzer on this board: answer when the host asks.",
+    };
+  }
+  if (current === teamId) {
+    return { mine: true, message: "Your team's turn! Say your answer." };
+  }
+  const name =
+    state.gameTeams.find((t) => t.id === current)?.name ?? "Another team";
+  return {
+    mine: false,
+    message: `${name}'s turn. No buzzer: wait for your team's turn.`,
+  };
+}
+
 /**
  * In a captains-only team game, the name of the teammate who buzzes and
  * answers for this player's team; null when this player may do it.

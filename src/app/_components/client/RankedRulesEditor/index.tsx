@@ -59,6 +59,7 @@ export function withPreset(
     turnCycles: rules.turnCycles,
     allPlayRounds: rules.allPlayRounds,
     missPenalty: rules.missPenalty,
+    endOnEmptyCycle: rules.endOnEmptyCycle,
     targetScore: rules.targetScore,
   };
 }
@@ -356,6 +357,17 @@ export function RankedRulesEditor({
                 min={1}
                 max={4}
                 onChange={(turnCycles) => set({ turnCycles })}
+              />
+            )}
+            {show.endOnEmptyCycle && (
+              <Choice
+                label="A full round of turns with no new answer"
+                value={r.endOnEmptyCycle ? "close" : "continue"}
+                options={[
+                  ["continue", "Keep going"],
+                  ["close", "Closes the board"],
+                ]}
+                onChange={(v) => set({ endOnEmptyCycle: v === "close" })}
               />
             )}
             {show.allPlayRounds && (

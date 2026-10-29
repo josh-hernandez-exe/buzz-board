@@ -8,6 +8,7 @@ import {
   currentTurnTeam,
   stealersOf,
   type EngineState,
+  type BoardState,
   type Phase,
 } from "./engine";
 
@@ -55,6 +56,8 @@ export type PublicBoard = {
   usesBank: boolean;
   /** The host voided the board: no points from it count. */
   voided: boolean;
+  /** Turn styles: why the board closed on its own (null: the host closed it, or another style). */
+  endedBy: BoardState["endedBy"] | null;
 };
 
 export type PublicModeView = {
@@ -118,6 +121,7 @@ export function projectPublic(
       lockedOut: b.lockedOut ?? [],
       usesBank: opts.scoring === "bank",
       voided: b.voided ?? false,
+      endedBy: b.endedBy ?? null,
     };
   }
   return {

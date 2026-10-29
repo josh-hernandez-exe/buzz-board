@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { PrivateGameState } from "@/types";
 
-import { buzzerStatus, captainFor } from "./buzzerStatus";
+import { buzzerStatus, captainFor, noBuzzerTurn } from "./buzzerStatus";
 
 function state(
   overrides: {
@@ -244,5 +244,58 @@ describe("buzzerStatus", () => {
         "me",
       ).canBuzz,
     ).toBe(true);
+  });
+});
+
+describe("noBuzzerTurn (Ranked Answers without a buzzer)", () => {
+  const withBoard = (
+    playStyle: string,
+    phase: string,
+    currentTeam: string | null,
+    listening = false,
+  ) => {
+    const s = state({ game: { isBuzzerListening: listening } });
+    return {
+      ...s,
+      mode: {
+        kind: "rankedAnswers",
+        status: "running",
+        playStyle,
+        board: { phase, currentTeam },
+      },
+    } as unknown as PrivateGameState;
+  };
+
+  it("tells the team whose turn it is, and everyone else whose turn it is", () => {
+    expect(noBuzzerTurn(withBoard("roundRobin", "turns", "t1"), "me")).toEqual({
+      mine: true,
+      message: "Your team's turn! Say your answer.",
+    });
+    expect(noBuzzerTurn(withBoard("roundRobin", "turns", "t2"), "me")).toEqual({
+      mine: false,
+      message: "Foxes's turn. No buzzer: wait for your team's turn.",
+    });
+  });
+
+  it("keeps the Buzz button for buzzer styles, closed boards, or an open buzzer", () => {
+    expect(noBuzzerTurn(withBoard("buzzRace", "race", null), "me")).toBeNull();
+    expect(
+      noBuzzerTurn(withBoard("faceOffLadder", "faceOff", null), "me"),
+    ).toBeNull();
+    expect(
+      noBuzzerTurn(withBoard("roundRobin", "closed", null), "me"),
+    ).toBeNull();
+    expect(
+      noBuzzerTurn(withBoard("roundRobin", "turns", "t1", true), "me"),
+    ).toBeNull();
+    expect(noBuzzerTurn(state(), "me")).toBeNull();
+  });
+
+  it("all-play and open answering: no turns, no buzzer", () => {
+    expect(
+      noBuzzerTurn(withBoard("allPlay", "allPlay", null), "me"),
+    ).toMatchObject({
+      mine: false,
+    });
   });
 });

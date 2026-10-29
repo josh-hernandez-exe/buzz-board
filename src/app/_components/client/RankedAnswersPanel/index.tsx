@@ -960,10 +960,13 @@ function AnswerButtons({
   onPick: (answerId: string | null) => void;
   wrongLabel: string;
 }) {
+  // Ranks 1-9 are their digit; rank 10 is 0.
+  const keyFor = (rank: number) => String(rank % 10);
+  const top = Math.max(0, ...hidden.map((a) => a.rank));
   useHotkeys(
     {
       ...Object.fromEntries(
-        hidden.map((a) => [String(a.rank), () => onPick(a.id)]),
+        hidden.map((a) => [keyFor(a.rank), () => onPick(a.id)]),
       ),
       x: () => onPick(null),
     },
@@ -977,7 +980,7 @@ function AnswerButtons({
             key={a.id}
             disabled={disabled}
             className="bg-info text-info-foreground hover:bg-info/90"
-            aria-keyshortcuts={String(a.rank)}
+            aria-keyshortcuts={keyFor(a.rank)}
             onClick={() => onPick(a.id)}
           >
             #{a.rank} {a.text}
@@ -995,7 +998,7 @@ function AnswerButtons({
       <p className="text-muted-foreground text-xs">
         Keyboard:{" "}
         {hotkeyHint([
-          ["1–8", "answer"],
+          [top >= 10 ? "1–9, 0 for #10" : `1–${Math.max(1, top)}`, "answer"],
           ["X", "miss"],
         ])}
       </p>

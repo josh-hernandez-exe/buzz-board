@@ -51,6 +51,13 @@ export function boardStatus(board: PublicBoard, names: TeamNames): string {
       if (board.bankWinners.length > 0) {
         return `${list(board.bankWinners, names)} ${board.bankWinners.length === 1 ? "takes" : "take"} the bank: ${board.bank} points`;
       }
+      if (board.endedBy === "cleared") return "Board cleared!";
+      if (board.endedBy === "emptyCycle") {
+        return "Board over: a full round found nothing new";
+      }
+      if (board.endedBy === "outOfTurns") {
+        return "Board over: every team has had its turns";
+      }
       return "Board over";
   }
 }

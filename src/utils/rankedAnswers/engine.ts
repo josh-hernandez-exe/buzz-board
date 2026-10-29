@@ -53,6 +53,10 @@ export type BoardState = {
   /** Round robin: turn order and turns used. All-play: rounds used. */
   order: string[];
   turn: number;
+  /** Round robin: the turn of the latest find on this board. */
+  lastFindTurn?: number;
+  /** Turn styles: why the board closed on its own. */
+  endedBy?: "cleared" | "emptyCycle" | "outOfTurns";
   round: number;
   /** Points each team earned on this board (after any miss penalties). */
   awarded: Record<string, number>;
@@ -417,13 +421,23 @@ export function apply(
         const p = points(rank);
         reveal(rank, [team], p);
         award(b, team, p);
+        b.lastFindTurn = b.turn;
       } else {
         penalize(team);
       }
       if (rules.playStyle !== "passAlong" || !found) b.turn++;
-      if (allFound() || b.turn >= b.order.length * rules.turnCycles) {
-        b.phase = "closed";
+      const cycle = b.order.length;
+      const emptyCycle =
+        opts.endOnEmptyCycle &&
+        rules.playStyle === "roundRobin" &&
+        b.turn % cycle === 0 &&
+        (b.lastFindTurn ?? -1) < b.turn - cycle;
+      if (allFound()) b.endedBy = "cleared";
+      else if (emptyCycle) b.endedBy = "emptyCycle";
+      else if (b.turn >= b.order.length * rules.turnCycles) {
+        b.endedBy = "outOfTurns";
       }
+      if (b.endedBy) b.phase = "closed";
       return done(b);
     }
     case "steal": {
