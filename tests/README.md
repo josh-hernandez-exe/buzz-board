@@ -27,6 +27,12 @@ The browser tests sign a host in by seeding a NextAuth database session and cook
 
 Characterization tests describe today's behavior. A known defect is written with the **correct** expectation and marked `it.fails("KNOWN DEFECT: ...")`, so the suite stays green while the defect exists. When a fix lands, Vitest reports the unexpected pass; change it to a normal `it` in the same PR. Tests named `CURRENT BEHAVIOR: ...` pin behavior a later PR may change deliberately. The current list is in [docs/pr01-baseline.md](../docs/pr01-baseline.md).
 
+## Running the browser tests against a production build
+
+`next dev` is what CI runs, but a production build is faster and can expose timing assumptions in tests. Build with the test services' settings (`DATABASE_URL`, `KV_URL`, `AUTH_SECRET` from `tests/support/testEnv.ts`, and `NEXTAUTH_URL`/`NEXT_PUBLIC_QRCODE_BASE_URL` set to `http://localhost:3100`), start it with `bunx next start --port 3100` (without `DEV_LOGIN`), then run `E2E_PORT=3100 bunx playwright test`. Playwright reuses the running server.
+
+Two tests are expected to differ there, by design: the development sign-in page doesn't exist in production, so `devLogin.spec.ts` fails and `auth.spec.ts`'s first test is sent straight to the real Discord/Google sign-in page instead of `/dev-login`. Everything else should pass.
+
 ## Spikes
 
 `tests/spike/` holds measurements, not pass/fail tests: stream counts per page (`RUN_SPIKES=1 bunx playwright test tests/spike`) and a two-instance fan-out run (`bun tests/spike/twoInstance.ts`, after a production build). Their reports go to `test-results/`; recorded results live in the `docs/pr0*-baseline.md` files.

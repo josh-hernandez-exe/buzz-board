@@ -16,8 +16,11 @@ import {
 async function openChat(page: Page) {
   // Wide player screens show chat beside the tabs, without a Chat tab.
   const tab = page.getByRole("tab", { name: "Chat", exact: true });
+  const region = page.getByRole("region", { name: "Chat" });
+  // Wait for the page to render one or the other before deciding.
+  await expect(tab.or(region).first()).toBeVisible();
   if (await tab.isVisible()) await tab.click();
-  await expect(page.getByRole("region", { name: "Chat" })).toBeVisible();
+  await expect(region).toBeVisible();
 }
 
 async function say(page: Page, text: string) {

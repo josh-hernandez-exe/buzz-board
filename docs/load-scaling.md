@@ -175,6 +175,17 @@ What *is* architectural, by design:
 - **One game is one lock.** Writes in a game are serialised so first-buzz and scoring stay exact. A single room of 1,000 has a throughput ceiling no hardware removes; separate games don't share it.
 - **The connection pool plus a 5 s wait** turns overload into polite "busy" refusals instead of unbounded queues. Nothing is half-saved.
 
+**After the dependency upgrade (2026-10-30)** to Next.js 16.4, Auth.js beta.32, Prisma 6.19, tRPC 11.22 and zod 4, on the same machine:
+
+| | 10 users before → after | 100 users before → after |
+| --- | --- | --- |
+| Buzz ack p50 / p95 | 10 / 30 → 10 / 32 ms | 202 / 380 → 168 / 257 ms |
+| Chat delivery p50 / p95 | 151 / 177 → 147 / 162 ms | 334 / 655 → 302 / 562 ms |
+| Server CPU ms / request | 11.0 → 11.0 | 7.4 → 6.9 |
+| Errors / invariants | 0 / all hold → 0 / all hold | 0 / all hold → 0 / all hold |
+
+No regression; slightly faster at 100.
+
 ## Bottom line
 
 - **Up to ~100 players in one game:** the app scales linearly on this 4-vCPU machine with headroom. Bursty buzz p95s are by design (exact first-buzz).
