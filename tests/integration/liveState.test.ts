@@ -46,6 +46,26 @@ async function redisConnectionCount() {
     .filter((line) => line.includes(mine)).length;
 }
 
+/**
+ * Simulates Redis losing the app's data without FLUSHALL, which would also
+ * erase unrelated data if TEST_KV_URL pointed at a shared server.
+ */
+async function deleteAppKeys() {
+  let cursor = "0";
+  do {
+    const [next, keys] = await redis.sendCommand<[string, string[]]>([
+      "SCAN",
+      cursor,
+      "MATCH",
+      "buzz-board:*",
+      "COUNT",
+      "1000",
+    ]);
+    if (keys.length > 0) await redis.sendCommand(["UNLINK", ...keys]);
+    cursor = next;
+  } while (cursor !== "0");
+}
+
 async function channelSubscribers(gameId: string) {
   const reply = await redis.sendCommand<[string, number]>([
     "PUBSUB",
@@ -367,14 +387,14 @@ describe("Redis loss", () => {
     await Promise.all([listener.close(), publisher.close()]);
   });
 
-  it("recovers the current buzz winner from PostgreSQL after Redis loses its data", async () => {
+  it("recovers the current buzz winner from PostgreSQL after Redis loses the app's data", async () => {
     const { admin, game, gameTeams } = await createGame();
     const guest = await joinAsGuest(game.code);
     await guest.player.gameUser.changeTeams({ gameTeamId: gameTeams[1]!.id });
     await admin.gameAdmin.startBuzzer();
     await guest.player.gameUser.buzzIn();
 
-    await redis.sendCommand(["FLUSHALL"]);
+    await deleteAppKeys();
 
     const state = await admin.gameGeneral.currentGameState();
     expect(state.buzzWinner).toEqual({

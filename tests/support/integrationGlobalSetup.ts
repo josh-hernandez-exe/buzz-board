@@ -4,6 +4,7 @@ import { createClient } from "redis";
 
 import {
   assertDisposableDatabase,
+  assertDisposableRedis,
   testDatabaseUrl,
   testKvUrl,
 } from "./testEnv";
@@ -17,6 +18,7 @@ import {
 export default async function setup() {
   const databaseUrl = testDatabaseUrl();
   assertDisposableDatabase(databaseUrl);
+  assertDisposableRedis(testKvUrl());
 
   const redis = createClient({
     url: testKvUrl(),

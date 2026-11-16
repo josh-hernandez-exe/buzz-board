@@ -4,7 +4,8 @@
  * example, CI service containers).
  *
  * Test code is allowed to reset this database, so `assertDisposableDatabase`
- * refuses anything that does not look like a local, test-only database.
+ * refuses anything that does not look like a local, test-only database, and
+ * `assertDisposableRedis` refuses a non-local Redis.
  */
 export const DEFAULT_TEST_DATABASE_URL =
   "postgresql://postgres:postgres@localhost:55432/buzz_board_test";
@@ -43,5 +44,13 @@ export function assertDisposableDatabase(databaseUrl: string): void {
     throw new Error(
       `Refusing to reset database "${databaseName}": its name must contain "test".`,
     );
+  }
+}
+
+/** Redis has no database name to check, so only the host is guarded. */
+export function assertDisposableRedis(kvUrl: string): void {
+  const { hostname } = new URL(kvUrl);
+  if (!LOCAL_HOSTS.has(hostname)) {
+    throw new Error(`Refusing to use non-local test Redis host "${hostname}".`);
   }
 }

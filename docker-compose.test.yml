@@ -1,6 +1,7 @@
 # Disposable services for automated tests only. Data lives in tmpfs and is
 # discarded when the containers stop. Ports differ from docker-compose.db.yml so
-# tests never touch a development database.
+# tests never touch a development database. Ports are published on loopback
+# only: the PostgreSQL password is committed and Redis has no authentication.
 #
 #   bun test:services:up
 #   bun test:services:down
@@ -14,7 +15,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: buzz_board_test
     ports:
-      - "55432:5432"
+      - "127.0.0.1:55432:5432"
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:
@@ -27,7 +28,7 @@ services:
     image: redis:7-alpine
     command: redis-server --save "" --appendonly no
     ports:
-      - "56379:6379"
+      - "127.0.0.1:56379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s

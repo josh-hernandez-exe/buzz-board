@@ -8,14 +8,14 @@
 | Browser (Playwright, `next dev` on port 3100)      | `bun run test:e2e`         | Yes            | `tests/e2e/`                            |
 
 ```bash
-bun run test:services:up     # disposable PostgreSQL :55432 and Redis :56379 (tmpfs)
+bun run test:services:up     # disposable PostgreSQL :55432 and Redis :56379 (tmpfs, loopback only)
 bun run test:integration
 bunx playwright install chromium   # first time only
 bun run test:e2e
 bun run test:services:down
 ```
 
-Override the service URLs with `TEST_DATABASE_URL` and `TEST_KV_URL`. Integration and browser runs **reset the test database**, so [testEnv.ts](./support/testEnv.ts) refuses any database that is not on localhost or whose name does not contain `test`. Never point these at a development or production database.
+Override the service URLs with `TEST_DATABASE_URL` and `TEST_KV_URL`. Integration and browser runs **reset the test database**, so [testEnv.ts](./support/testEnv.ts) refuses any database that is not on localhost or whose name does not contain `test`, and integration runs refuse a Redis that is not on localhost. Never point these at a development or production database or Redis.
 
 ## How the integration tests reach the app
 
