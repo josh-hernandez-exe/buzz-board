@@ -2,7 +2,7 @@
 
 Two host features for the buzzer:
 
-1. **Queued buzzing (opt-in).** Instead of only the first buzz counting, every team that buzzes joins a queue in order, and the host works through it. The default stays exactly as today: the first buzz wins.
+1. **Queued buzzing (opt-in).** Instead of only the first buzz counting, every team that buzzes joins a queue in order, and the host works through it. First-buzz mode remains the default.
 2. **Buzzer history.** Every host buzzer action can be undone and redone, so an accidental press (Next question instead of Wrong, say) never loses who buzzed.
 
 ## Words
@@ -10,7 +10,7 @@ Two host features for the buzzer:
 | Word | Meaning |
 | --- | --- |
 | **Question** | One round of buzzing, from **Next question** to the next **Next question**. Internally a "window" number. |
-| **First-buzz mode** | Today's behaviour, and the default: the first buzz wins and closes the buzzer. |
+| **First-buzz mode** | The default: the first buzz wins and closes the buzzer. |
 | **Queue mode** | Every buzz joins the queue; the buzzer stays open until the host closes it. |
 | **Answering** | The team at the front of the queue, whose answer the host is judging. |
 
@@ -39,7 +39,7 @@ Two host features for the buzzer:
 | Answering | "Your team is answering!" |
 | Wrong this question | "Not this time: your team is locked out until the next question" |
 | Correct | "Correct!" |
-| Buzzer closed | as today |
+| Buzzer closed | Closed-state message; buzzing is disabled |
 
 One entry per team per question: a teammate's buzz counts for the team ("Ada already buzzed for your team"). Muted chat never affects buzzing, and the chat lock is separate.
 
@@ -63,9 +63,9 @@ The queue in order with team names and status (answering, waiting, wrong, correc
 - **Scores are separate:** they keep their own undo and redo. **Correct** doesn't award points by itself, so undoing a buzzer action never changes scores silently.
 - **Bounds:** the last 50 actions are kept.
 
-## Data model (additive migration)
+## Data model
 
-| Change | Why |
+| Field or model | Why |
 | --- | --- |
 | `Game.buzzerMode` (`first` by default) | Opt-in queue mode |
 | `Game.buzzerWindowHigh` | Questions are never reused, even after undo: a new question always gets a number above any used before. Without this, undoing then reopening could pick a number that already has a winner. |

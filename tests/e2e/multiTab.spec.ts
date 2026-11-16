@@ -32,8 +32,8 @@ test("a reloaded host tab keeps controlling its own game", async ({
     await page.close();
   }
 
-  // Only one app tab is open at a time: several open tabs exceed the HTTP/1.1
-  // connection budget (see docs/pr02-baseline.md), which is a separate defect.
+  // Only one app tab is open at a time: connection-budget pressure is separate
+  // from the shared-storage regression this test covers (see docs/load-scaling.md).
   await selectFromDashboard(alpha.name, alpha.id);
   // Selecting Bravo last makes it the shared cookie/localStorage game.
   await selectFromDashboard(bravo.name, bravo.id);

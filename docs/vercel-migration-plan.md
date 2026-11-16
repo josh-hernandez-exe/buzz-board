@@ -13,7 +13,9 @@ There are two separate fallback paths:
 
 Prepare ahead of time; reserve roughly an hour for the cutover, extending it if the rehearsal takes longer. There is no need for percentage-based canaries or a permanent second production stack at this usage level.
 
-## Release-specific findings
+## Preparation snapshot (2026-11-15)
+
+The commit IDs and branch comparisons below record the preparation date, not the latest branch heads. Recheck them against the release you intend to deploy.
 
 | Finding                                                                                                                                                                                                                    | Consequence                                                                                                                                                                                                          |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -88,7 +90,7 @@ The focused migration test is:
 bunx vitest run --project integration tests/integration/migrations.test.ts
 ```
 
-Run it with the disposable services described in [tests/README.md](../tests/README.md), never with production credentials. Integration and browser tests reset test databases. Run the full existing CI gates as well for this unusually large release; historical test results alone are not approval.
+Run it with the disposable services described in [testing.md](./testing.md), never with production credentials. Integration and browser tests reset test databases. Run the full existing CI gates as well for this unusually large release; historical test results alone are not approval.
 
 ### Environment checklist
 

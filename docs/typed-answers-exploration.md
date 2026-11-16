@@ -1,119 +1,57 @@
-# Typed answers: exploration
+# Typed answers beyond Sequential Quiz
 
-> [!note] Status: exploration for a decision, nothing built
-> This weighs whether Buzz Board should let players **type** answers in the app, what that would take, and which games it would make possible. It ends with a recommendation and the decisions the owner needs to make. It builds on the plan's existing **Team answer** design for Sequential Quiz (W16 in the [delivery plan](./buzz-board-game-kit-delivery-plan.md)).
+> **Future proposal:** typed answers already work in Sequential Quiz. This page considers extending them to Ranked Answers and other formats; those extensions are not implemented or committed to a release.
 
-## Summary
+## Current behavior
 
-- **The buzzer and typed answers do different jobs.** The buzzer decides **who answers and in what order** (speed, turn-taking, lockouts). A typed answer carries **what they answered**. Typing replaces *speaking*, not *buzzing*.
-- **Speed formats keep the buzzer.** A typed answer only helps there when speaking is the problem (a noisy call, a secret face-off).
-- **Simultaneous formats don't need a buzzer at all.** These are all-play boards, pub-quiz rounds and secret steals. For them, typed answers are the natural way to collect many answers at once, privately.
-- **For the first event (families on a call), typed answers aren't needed.** Buzz formats work with spoken answers. All-play and multi-team steals work with captains posting in their **team chat**, which hosts can already read in **All channels**.
-- **Worth building later**, as one shared feature ("Team answer"), when either of these happens:
-  - You run all-play with many teams (about 8 or more).
-  - You want pub-quiz style rounds (the plan's Sequential Quiz).
-- **Smallest useful slice:** about three PRs. The rest of this page has the detail.
+| Area | Implemented behavior |
+| --- | --- |
+| [Sequential Quiz](./sequential-quiz-mode.md) | One saved answer per team and question, revision-checked replacement, host grouping and marking, and scoring on reveal |
+| [Team captains](./team-captains.md) | Any teammate can save by default; captains-only games restrict saves to the captain |
+| Answer privacy | Only the submitting team and owners/co-hosts can read quiz answer text. Other teams, moderators and the audience display cannot |
+| [Ranked Answers](./ranked-answers-mode.md) | Teams speak or post in team chat; the host records the matched row or miss. There is no dedicated player answer box |
+| [Category Grid](./category-grid-mode.md) | The buzzer decides who answers; the host judges the spoken answer |
 
-## Why have a buzzer if teams can type?
+The buzzer and typed answers solve different problems. A buzzer decides **who answers and in what order**; a typed submission records **what they answered**. Typing should not replace the buzzer as a speed contest.
 
-Because they answer different questions:
+## Possible extensions
 
-| Question in the game | Tool | Why |
-| --- | --- | --- |
-| Who gets to answer first? | Buzzer | A race needs one shared, server-decided order; the queue makes it fair for many teams |
-| Whose turn is it? | Buzzer / host | Turn styles (Classic, Round robin, Pass-along) decide by rules, not by typing |
-| What did each team say, when they all answer at once? | Typed answers | Speaking over each other doesn't scale; a typed list does |
-| What did they say, without the other teams hearing? | Typed answers | Secret face-offs and steals need privacy |
-| Who typed the right answer first? | Neither, ideally | A typing race rewards fast typists and good connections, and invites searching the web. Use the buzzer for speed, and typing for content |
+- **Ranked Answers all-play:** collect each team's answer in one private list rather than making the host read several chat channels.
+- **Secret face-offs and multi-team steals:** collect answers privately, close the window and judge them together.
+- **Answer suggestions:** group identical answers and suggest a board row or alias for the host to confirm. Fuzzy suggestions would be new behavior, not an existing matching guarantee.
+- **Buzz, then type:** retain the buzz order while letting teams type when audio is difficult.
 
-So the two combine rather than compete:
+Timed individual bonus rounds and closest-number formats are separate future possibilities, not prerequisites for these extensions.
 
-- **Buzz, then speak** (today): best in a room or on a call with good audio.
-- **Buzz, then type**: the buzz queue fixes the order and each team in line types its answer. The host sees answers in queue order, with no talking over each other. Useful on laggy calls.
-- **No buzzer, everyone types**: all-play, quiz rounds and secret steals. The host closes the window, then judges and reveals.
+## Proposed flow
 
-## What it would enable
+1. The host opens an answer window for the current board and phase.
+2. A team saves or replaces its answer. The UI distinguishes a local draft, an in-flight save, a server-confirmed answer, a conflict, and a failed or late save. Captains-only settings still apply.
+3. The host closes the window and sees received/missing counts and grouped answers. Chat messages do not automatically become submissions.
+4. The host confirms the matched rows and applies the existing Ranked Answers action. Board state and scores change together, and mode undo keeps revealed answers visible.
+5. Players see their own submission; the audience sees progress and revealed board rows, not raw submitted text.
 
-| Game or improvement | Without typed answers | With typed answers |
-| --- | --- | --- |
-| **All-play** Ranked Answers with 8–50 teams | Captains post in team chat; the host reads All channels and picks each team's row from a menu | Each team's answer arrives in one list. Rows are **suggested** from the board's answers and aliases, and the host confirms them in one tap |
-| **Secret face-offs and multi-team steals** | Teams say answers aloud (no longer secret) or post in team chat | Private by design; revealed together |
-| **Unique-answers all-play** ("Scattergories" style) | Works, but the host has to spot duplicate answers by ear | Identical answers are grouped automatically |
-| **Pub-quiz rounds** (the plan's Sequential Quiz) | Not possible | The core feature: answer each question, then grade and reveal |
-| **Fast-money style bonus round** | Not possible fairly (needs per-player timed input) | Possible, with a timer per player and no repeated answers |
-| **Closest-number questions** ("How many lights on the tree?") | Shouting numbers | Typed numbers, closest wins, sorted automatically |
-| **Accessibility** | Hard-of-hearing or shy players depend on teammates | Anyone on the team can see and type (if the team allows) |
-| **Disputes** | "I said tinsel first!" | A timestamped record of what each team submitted |
+## Implementation considerations
 
-## What it costs players and hosts
+The quiz already provides storage, conflict checks, an answer composer and host grouping. Its answer keys and endpoints are quiz-specific; extending them requires an explicit design rather than assuming they work for arbitrary board phases.
 
-| Concern | Detail | Mitigation |
-| --- | --- | --- |
-| Typing on phones is slow | Especially for children and older relatives, and under time pressure | Short answers only; generous windows; a captain types for the team |
-| Less "game-show energy" | Shouting answers is half the fun at a family event | Keep typing optional per board or round; buzz formats stay spoken |
-| Spelling | "Ornamints" | Matching ignores case, punctuation and accents, uses aliases, and **suggests** fuzzy matches; the host always confirms |
-| Searching the web | Typing time is googling time | Short windows, and honour-system reminders. Ranked Answers is about opinions (survey answers), which is harder to search |
-| Host overload | 40 unique answers to judge | Grouping of identical answers, and one-tap "match to row". Recommend team play, not individual, for big events (as W16 says) |
-| Who types for a team? | Several devices per team | One **Team answer** per team that any member (or only the captain) can replace until the window closes; everyone sees the latest |
-| Moderation | Answers can be rude | Text is only shown to hosts. The display shows the matched board row, never raw text, unless the host reveals it |
+| Area | Work for an extension |
+| --- | --- |
+| Storage and lifetime | Scope submissions to the game, mode session, board and phase; define retention and whether a shared answer-window model is needed |
+| Service | Open/close windows under the game lock, reject late or stale submissions, preserve revision checks and rate limits, and enforce team/captain access |
+| Live updates | Publish progress without answer text; refresh private views only for authorized teams and hosts |
+| Matching | Reuse the quiz's meaning-preserving normalization where appropriate; keep any new fuzzy matching advisory until the host confirms |
+| Host controls | Add received/missing lists and suggested rows to all-play, face-off and steal controls |
+| Tests and Help | Cover cross-team privacy, captains, conflicts, late saves, double actions, undo and reconnects before exposing the new flow |
 
-## How the user flows would change
+## Trade-offs and open decisions
 
-**Players.**
-- When the host opens an answer window, the Buzzer tab shows a **Team answer** box with **Save** (or **Replace**) under the board.
-- After saving, it shows "Received 19:42: *lights*" and lets them change it until the window closes.
-- Chat is never an official answer.
-- Players never see other teams' answers before the reveal.
+Typing can help with noisy calls and many simultaneous teams, but it slows phone users and adds host review work. Keep spoken play available, use short answers, and give teams enough time.
 
-**Host (Ranked Answers).**
-- During all-play, a secret face-off or a steal, the desk shows **Open answers** and **Close answers**, plus a received/missing count.
-- The answer list is grouped by suggested row: "#1 Lights ← Owls, Foxes".
-- The host confirms or changes each match, then presses **Reveal round**. It's today's action, with the picks pre-filled from the typed answers. Undo works as now.
+Before implementing an extension, decide:
 
-**Host (quiz rounds, later).** Each question opens a window. The host locks it, grades (with grouping), resolves teams that didn't answer, and finalises. Scores land on the scoreboard (W16).
-
-**Audience display.** It shows "7 of 9 teams answered" while the window is open, and the matched rows on reveal. It never shows raw text.
-
-**Moderators.** No access to typed answers, the same as hidden board answers (they don't run the game).
-
-## Work required
-
-| Part | What | Size |
-| --- | --- | --- |
-| Data | `AnswerWindow` (game, purpose such as rankedAllPlay, steal, faceOff or quiz question, status open/closed/finalised, opened and closed times), `TeamAnswer` (window, team or player, text, revision, submitter, timestamps), retention like chat | Small migration |
-| Service | Open and close windows under the game lock; save or replace with revision checks; one answer per team per window; rate limits; refuse after close; staff read; team members read their own | Medium |
-| Live updates | Players learn about open and closed windows from the game state. Hosts get answers through a staff-only refresh signal. Answer text is never in public state | Small: reuses the chat pulse pattern |
-| Matching | Normalise text (case, punctuation, accents, plurals), match exactly against answers and aliases, suggest fuzzy matches by edit distance. Pure and unit-tested; suggestions only | Small |
-| Player UI | Team-answer composer with distinct Draft, Sending, Received, Replaced, Failed and Closed states (W16). Phone-first | Medium |
-| Host UI | Answer list with grouping, one-tap match, missing teams, and "pre-fill picks" into all-play, steal and face-off controls | Medium |
-| Display | Answered counts and reveal | Small |
-| Quiz rounds | The Sequential Quiz mode itself (question bank, grading, finalise) | Large: the plan's PR24 and PR26 |
-| Tests and Help | Unit (matching), integration (windows, privacy, concurrency), e2e (all-play with typed answers), a Help article | Medium |
-
-**Suggested slices:**
-1. **Answer windows and Team answer**: backend, privacy, retention, and the player composer.
-2. **Ranked Answers integration**: host answer list, matching suggestions, and pre-filled all-play, steal and secret face-off picks.
-3. **(Later) Sequential Quiz** on the same service, as the plan already describes.
-
-## Recommendation
-
-1. **For the first event: don't build it.** Use spoken answers with the buzzer (queue mode for many teams). For all-play and multi-team steals, ask captains to post in team chat, which the host reads in **All channels**.
-2. **After the event, decide from what happened.** Build slices 1–2 if any of these were painful:
-   - All-play with many teams.
-   - Hearing answers on the call.
-   - Keeping steals secret.
-3. **Never make typing the way to decide speed.** The buzzer stays the source of "who first".
-
-## Update: typed answers in Sequential Quiz
-
-The typed-answer core now exists, but only inside [Sequential Quiz](./sequential-quiz-mode.md), where typing is the whole point. That covers the `TeamAnswer` storage, any-member saving with conflict checks, host-only grouping and marking, and privacy. Ranked Answers all-play and steals still use spoken answers. Slices 1–2 above can reuse the quiz's storage and answer box if the owner decides to build them (T1).
-
-## Decisions for the owner
-
-| # | Decision | Options | Suggested |
-| --- | --- | --- | --- |
-| T1 | Build typed answers now, after the first event, or not at all | now / after / never | After, based on how the event goes |
-| T2 | Who types for a team | any member (last save wins) / captain only | Any member, with the latest answer visible to all (simpler for families); add captains with Sequential Quiz |
-| T3 | Where typing is used first | all-play only / plus steals and secret face-offs / plus quiz rounds | All-play, steals and secret face-offs (slice 2) |
-| T4 | Automatic matching | suggest only / auto-accept exact matches | Suggest only: the host always confirms |
-| T5 | Show raw text on the display | never / host chooses / always | Host chooses, per answer, after the reveal |
+- Which Ranked Answers phases need it first: all-play, steals or secret face-offs.
+- Whether exact matches can be accepted automatically or always require host confirmation.
+- Whether raw answers ever become visible beyond the team and hosts. The current quiz keeps them private even after reveal.
+- How long submitted text is retained.
+- Whether event experience shows enough benefit to justify the extra controls.

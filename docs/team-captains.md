@@ -8,7 +8,7 @@ An **option** for team games, off by default. By default everyone on a team can 
 - `repairCaptains(tx, gameId)` ([captains.ts](../src/server/roster/captains.ts)) runs under the game lock after every membership change (join, move, removal). A captain who moved, left or was removed is replaced by the earliest member left. Stale captains are cleared before new ones are assigned, so the unique key never collides when a captain moves to another team.
 - Captains are maintained even while the rule is off, so switching it on is instant and hosts can pick captains in advance.
 - The migration backfills a captain for every existing team game.
-- The plan proposed "no automatic election". The owner was unavailable, and automatic first-joined captains with free reassignment were chosen as the friendlier default for family events, so a team never ends up locked out.
+- Automatic selection keeps a populated team from being locked out when captains-only play is enabled; staff or the current captain can reassign the role.
 
 ## Choosing a captain
 
@@ -33,5 +33,5 @@ The player's buzzer says **Buzzer open: only your captain, Ana, can buzz.** and 
 ## Tests
 
 - [captains.test.ts](../tests/integration/captains.test.ts): first-joined captain, moves and removals, staff and moderator choice, hand-off rules, captains-only buzzing in both modes (including that a refused buzz doesn't close the buzzer), switching off, quiz answers, creation, duplicate, and refusal for individual games.
-- [buzzerStatus.test.ts](../src/app/_components/client/PlayerStatus/buzzerStatus.test.ts): player messages.
+- [buzzerStatus.test.ts](../tests/unit/app/_components/client/PlayerStatus/buzzerStatus.test.ts): player messages.
 - [captainsAndLibrary.spec.ts](../tests/e2e/captainsAndLibrary.spec.ts): the browser flow.

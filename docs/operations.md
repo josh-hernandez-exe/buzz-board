@@ -20,6 +20,19 @@ It prints one JSON line and exits non-zero on failure. **Alert on**:
 
 If cleanup is late, players still never see expired text: reads hide it after 7 days. Cleanup can't erase backups or screenshots; set backup expiry in your database host's settings, and the Help article says so.
 
+## Rate limits
+
+Join, resume, unknown-code, and link-redemption limits are per client address. They use Redis counters; if Redis is unavailable, those requests are allowed so an outage cannot stop a game.
+
+| Action | Limit |
+| --- | --- |
+| Join or resume | 300 per minute |
+| Unknown game code | 30 per 5 minutes |
+| Invitation or recovery link redemption | 30 per 10 minutes |
+| Team answer saves | 60 per minute per player |
+
+Chat has separate limits: 5 messages per 10 seconds and 30 per minute per person, plus 50 messages per second per game. Unlike join limits, chat sends fail closed while Redis is unavailable. These limits never apply to buzzing or scoring. In development, KeyDB does not support `EXPIRE ... NX`; the limiter starts expiry on the first increment and repairs any counter that has lost its expiry.
+
 ## Load runner
 
 [scripts/load/run.ts](../scripts/load/run.ts) drives real bots against the app's real HTTP/tRPC/SSE endpoints. Each bot joins with its own token and holds the same two streams as a player page (game state and chat). It chats through the real invalidation-plus-fetch path and buzzes when the buzzer opens. Four more clients act as owner (coordinator), co-host, moderator and audience display.
@@ -51,7 +64,7 @@ Each report records:
 
 Compare reports with `bun scripts/load/compare.ts <reports>`.
 
-Workload, from the delivery plan: 6 teams. Each bot sends one 128-byte message about every 30 seconds (seeded jitter), 80% to its team and 20% to everyone. Every 10 seconds the coordinator resets and opens the buzzer for 3 seconds; every bot tries to buzz, and the winner's team gets 1 point. During the hold, probes run once each:
+Default workload: 6 teams. Each bot sends one 128-byte message about every 30 seconds (seeded jitter), 80% to its team and 20% to everyone. Every 10 seconds the coordinator resets and opens the buzzer for 3 seconds; every bot tries to buzz, and the winner's team gets 1 point. During the hold, probes run once each:
 
 | Probe              | Checks                                                                          |
 | ------------------ | ------------------------------------------------------------------------------- |
@@ -106,7 +119,7 @@ The runner prints a summary and writes `load-results/<profile>-<runId>.json` wit
 | `noPrivateLeaks`         | No bot could read another team's channel.                                  |
 | `mutedCanStillBuzz`      | The muted bot was refused in chat and processed by the buzzer.             |
 
-**Targets** are from the plan, for calibration rather than pass/fail: buzz and send acknowledgment p95 under 500 ms, chat visible delivery p95 under 1 s and p99 under 2 s, unexpected failures under 0.1%, and a reconnect getting current state within 5 s. Visible delivery is timed from the sender's send to the moment another bot's fetch returns the message, on the runner's monotonic clock. Only recipients who were in the channel when it was sent count. If targets aren't met on adequate hardware, report the shortfall; never relax permissions or correctness to meet them.
+**Targets** are calibration thresholds rather than pass/fail gates: buzz and send acknowledgment p95 under 500 ms, chat visible delivery p95 under 1 s and p99 under 2 s, unexpected failures under 0.1%, and a reconnect getting current state within 5 s. Visible delivery is timed from the sender's send to the moment another bot's fetch returns the message, on the runner's monotonic clock. Only recipients who were in the channel when it was sent count. If targets aren't met on adequate hardware, report the shortfall; never relax permissions or correctness to meet them.
 
 **Expected, not errors:** `notListening` buzzes (someone else won first), `teammateHeld` (a teammate already holds it), one refused send from the muted bot, and `TOO_MANY_REQUESTS` if a bot exceeds the chat limits.
 

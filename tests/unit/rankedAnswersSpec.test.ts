@@ -1,7 +1,6 @@
 /**
- * PR13: worked examples of the proposed Ranked Answers rules
- * (docs/pr13-ranked-answers-event-spec.md), run against a small reference
- * model. Review aids for the owner, and the future mode's acceptance tests.
+ * Worked examples of the historical Ranked Answers rules baseline
+ * (docs/ranked-answers-reference.md), run against an independent reference model.
  */
 import { describe, expect, it } from "vitest";
 

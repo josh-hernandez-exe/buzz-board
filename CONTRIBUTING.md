@@ -30,7 +30,7 @@ bun run test:e2e             # Playwright browser journeys
 bun run build
 ```
 
-CI runs the same commands (`.github/workflows/ci.yml`). [tests/README.md](./tests/README.md) explains the test layers, the safety check that stops tests from resetting a non-test database, and the `it.fails` convention for known defects.
+CI runs the same commands (`.github/workflows/ci.yml`). [docs/testing.md](./docs/testing.md) explains the test folder structure, the safety check that stops tests from resetting a non-test database, and the `it.fails` convention for known defects.
 
 ## Rules of thumb
 
@@ -48,8 +48,9 @@ Help is part of the product. If a change affects what players or hosts see or do
 
 - Articles are plain Markdown in `src/help/articles/<id>.md`, listed in `src/help/manifest.ts` (title, summary, audiences, fact panels). Don't repeat the title as a `#` heading. Phrase `##` headings as the questions people ask; they become FAQ entries and link anchors.
 - No raw HTML or template syntax in articles. Limits come from fact panels (`src/app/_components/server/FactPanels`), not prose.
-- Link to Help from the app with `helpHref("article-id", "heading-anchor")`. `src/help/help.test.ts` fails if any link, anchor or article is missing.
+- Link to Help from the app with `helpHref("article-id", "heading-anchor")`. `tests/unit/help/help.test.ts` fails if any link, anchor or article is missing.
 - Add an article only for a feature that has shipped.
+- Keep topic docs about the current implementation, with useful historical context clearly labeled. Describe future work separately as proposals, not as shipped behavior. Use feature names rather than obsolete delivery-plan, phase or PR-step identifiers.
 
 ## Pull requests
 

@@ -5,7 +5,7 @@
  *
  * The host judges every answer (spoken, or posted in team chat) and records
  * the outcome; the engine applies the rules. Rules are documented in
- * docs/pr13-ranked-answers-event-spec.md.
+ * docs/ranked-answers-rules.md.
  */
 import { err, ok, type Result } from "neverthrow";
 

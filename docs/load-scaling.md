@@ -92,6 +92,8 @@ The machine is half idle (46%) and the server's main thread is at half a core. T
 
 **2. App scaling problems (found and fixed)**
 
+The early browser topology check also exposed the per-host HTTP/1.1 connection budget: opening a stream per component could leave no connection for actions such as starting the buzzer. The page now shares a single member game-state stream across components.
+
 | Problem | Effect | Fix | Before → after (1,000 users) |
 | --- | --- | --- | --- |
 | Every game-state update re-sent the **whole player list** to every viewer | Bytes and CPU grew with players × viewers. Updates grew from 4.2 KB (10 users) to 22.7 KB (100 users). | The list is sent once per stream, then only the players who changed, or nothing ([liveRoster.ts](../src/utils/liveRoster.ts), [rosterTracker.ts](../src/server/live/rosterTracker.ts)). A lagging stream catches up with chained changes. Team member lists are rebuilt on the page instead of sent. | Bytes / update **22.7 KB → 1.8 KB**; server CPU / update **4.3 → 2.0 ms**; runner lag p99 3.1 s → 0.3 s |

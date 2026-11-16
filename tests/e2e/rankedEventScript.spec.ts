@@ -238,6 +238,6 @@ test("the event script on the host desk: turns, judging and scores", async ({
   ).toBeVisible();
   await expect.poll(scores).toEqual([19, 2, 0, 6]);
   await shot(desk, "06-desk-empty-cycle-closed");
-  // `next dev` can log a false hydration warning (see tests/README.md).
+  // `next dev` can log a false hydration warning (see docs/testing.md).
   expect(consoleProblems.filter((m) => !/hydrat/i.test(m))).toEqual([]);
 });

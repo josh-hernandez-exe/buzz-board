@@ -24,6 +24,8 @@ The [T3 Stack](https://create.t3.gg/) is a modular and type-safe full-stack deve
 
 Players join with a code or link and a nickname; no account is needed. Hosts sign in to create games, share them, run the buzzer and scores, and finish, reopen, duplicate or delete them.
 
+Current features include [first-buzz and queued buzzing with undo/redo](./docs/buzzer-queue-and-history.md), [Ranked Answers](./docs/ranked-answers-mode.md), [Category Grid](./docs/category-grid-mode.md), [Sequential Quiz with typed answers](./docs/sequential-quiz-mode.md), and optional [team captains](./docs/team-captains.md). Hosts have quick per-team scoring and advanced score tools, helper roles, roster controls, chat and an audience display.
+
 Instructions for players and hosts live in the app's public **Help** at `/help`. Its source is in [`src/help`](./src/help), so it is versioned with the features it describes. Contributors: see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Development Setup
@@ -150,7 +152,7 @@ bun run test:e2e             # Playwright smoke tests (first run: bunx playwrigh
 bun run test:services:down
 ```
 
-See [tests/README.md](./tests/README.md) for the conventions, including how known defects are tracked with `it.fails`.
+Unit and component tests live in `tests/unit/`, mirroring the `src/` folder structure. See [docs/testing.md](./docs/testing.md) for the full layout, commands, and conventions, including how known defects are tracked with `it.fails`.
 
 Load testing uses real bots over the app's HTTP and live streams, locally only: `bun run load -- --profile smoke-10 --dry-run` shows the plan first. See [docs/operations.md](./docs/operations.md#load-runner) for profiles, safety interlocks and how to read the report.
 
@@ -223,77 +225,20 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
 - Vercel's managed PostgreSQL and Redis services are optimized for production use and include features like automatic backups and monitoring.
 - For advanced configurations, refer to the [Vercel PostgreSQL Documentation](https://vercel.com/docs/postgres) and [Vercel Storage (redis-like) Documentation](https://vercel.com/docs/storage).
 
-## TODO
+## Future development
 
-- refactor game state.
-  - make game state smaller by removing uses.
-    - bascially the public game state.
-  - create new team subscriptions for teams and the users names.
-    - replace usages of game state for displaying user names with this instead
-    - test to see if an admin endpoint can "union" these subscriptions into one.
-      - otherwise the web UI will dynamically need to "sub" to all of these
-- Maybe admin should be able to edit team names.
-- Admin must be able to turn off team switching
-- Update scoreboard visuals:
-  - scoreboard game content is too narrow. It can take more width of the screen
-- admin should be able to kick a user
-- admin should be able to turn off users joining
-- Team swtiching toggle appears for individual games. It should not be there.
-- there should be admin settings for quick score buttons
-  - this requires a new UI to create these settings. Maybe as crude as json text block.
-  - should look into seeing a UI element that have dynamic user created list elements. kinda like a todo list.
-- game user buzzer should change color to green if they are they (or their team) have buzzed in.
-- game user buzzer should change color to red if their team is rejected from the buzzer
-- admin user needs to actually be able to delete games.
-- Split score control into a quick score control and an advanced score control:
-  - Quick score control:
-    - Team format:
-      - Have a list of all the teams and an increment and decrement button.
-      - There should also be a box near the top to indicate how much.
-        - This box should be a dropdown to be able to change the amount.
-    - Single format:
-      - Similar to team format, but instead of the teams, just all who is rejected and "all" selected.
-      - This feature will likely need a refactor to treat buzzers like scoreboards.
-  - Quick score control will have a list of all the teams.
-- Add more login providers:
-  - Ideally just: Apple / Google / Discord.
-    - But will have to see how easy it is to switch over to JWT (or use multiple token types).
-- Migrate from "(Classic) React Query Integration" to pure TanStack React Query
-  - https://trpc.io/docs/client/tanstack-react-query/setup
-  - need to figure out how to replace subscriptions with the pure tanstack version.
-- Consider swtiching from prisma cloud to something else
-  - prisma prices per request ask 100k
-  - supabase free teir caps at 5 GB of bandwidth
-  - neon prices in compute hours after 190
-    - $0.16 per hour over
-    - [compute hours] = [compute size] x [hours your compute runs]
-    - https://neon.tech/pricing#compute-hour
-    - with autoscaling the computer size can decrese
-      - https://neon.tech/docs/introduction/autoscaling
-      - Autoscaling currently supports a range of 1/4 (.25) to 16 vCPUs
-      - free tier
-        - 0.25 CPU would last the whole month
-        - max size is 2 CPU
-        - they offer scaling to zero
+These are ideas, not implemented features or release commitments:
 
+- Extend typed submissions beyond Sequential Quiz, starting with [Ranked Answers all-play or secret answers](./docs/typed-answers-exploration.md).
+- Add saved quick-score presets; the current panel lets the host change **Points per tap**.
+- Offer games without a visible scoreboard, or optional automatic scoring for buzzer judgments. Basic buzzer outcomes and manual score changes are currently separate.
+- Add Apple sign-in alongside the existing Google and Discord providers.
+- Evaluate the [tRPC TanStack React Query integration](https://trpc.io/docs/client/tanstack-react-query/setup), including how to preserve live subscriptions.
+- Reassess database hosting against measured usage and current provider pricing. Do not combine a provider move with an untested application release.
 
+### Historical diagnostic to recheck
 
-
-### Errors to Investigate
-
-- ⨯ [Error [InvariantError]: Invariant: Cannot call waitUntil() on an AwaiterOnce that was already awaited. This is a bug in Next.js.]
-- (Resolved in PR04) `tRPC failed on gameGeneral.whoBuzzedIn: Aborted`: streams now end cleanly when a client disconnects.
-
-
-
-## Future Features
-
-- Buzzed in queue. So everyone can buzz in, but the sequence who has buzzed is remembered.
-  - this would need a "Next" button to move from the current "selected" to next in line and make previous rejected until whoever has something correct.
-- Have an option to not use the score mechanism.
-* In the future, the `null` team will auto select the teams who buzzed in and apply score changes to them.
-	* Teams with the state `BUZZER_PRESSED_FAILED` will have their score removed from them.
-	* The team with the state `BUZZER_PRESSED` will have their score increased.
+`Invariant: Cannot call waitUntil() on an AwaiterOnce that was already awaited` was previously observed from Next.js. Its reproduction status on the current version is not recorded.
 
 ## External Sources
 

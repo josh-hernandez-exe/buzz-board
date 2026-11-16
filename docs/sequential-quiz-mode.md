@@ -1,8 +1,8 @@
 # Sequential Quiz mode
 
-Sequential Quiz is the plan's W16 / PR17 + PR26: pub-quiz rounds with **typed team answers**. Questions go in a fixed order. While a question is open, every team types one answer on a phone. The host locks answers, marks them (identical answers grouped), and reveals the answer and the points together. There's no buzzer race. It is the "simultaneous format" that [typed answers exploration](./typed-answers-exploration.md) identified as the one place typed answers are clearly worth it.
+Sequential Quiz runs pub-quiz rounds with **typed team answers**. Questions go in a fixed order. While a question is open, every team types one answer on a phone. The host locks answers, marks them (identical answers grouped), and reveals the answer and the points together. There's no buzzer race.
 
-It's built on [Game Kit](./game-kit.md), so the runner's guarantees apply. These cover retries, stale screens, scores in the same transaction, deleted teams, the score-history barrier and the W23 handoff. Help: `/help/sequential-quiz`.
+It's built on [Game Kit](./game-kit.md), so the runner's guarantees apply. These cover retries, stale screens, scores in the same transaction, deleted teams, the score-history barrier and the one-way handoff to basic controls. Help: `/help/sequential-quiz`.
 
 ## Content
 
@@ -50,7 +50,7 @@ Marks don't need the latest step, so two hosts can mark different teams at once.
 
 ## Tests
 
-- [engine.test.ts](../src/utils/sequentialQuiz/engine.test.ts): rules, preflight, normalisation, projection privacy, and a 300-seed randomised play-and-undo invariant test. The invariants: points always equal recorded results, a shown answer is never hidden again, and there is one result per question.
+- [engine.test.ts](../tests/unit/utils/sequentialQuiz/engine.test.ts): rules, preflight, normalisation, projection privacy, and a 300-seed randomised play-and-undo invariant test. The invariants: points always equal recorded results, a shown answer is never hidden again, and there is one result per question.
 - [sequentialQuiz.test.ts](../tests/integration/sequentialQuiz.test.ts): creation and duplicate, roles, privacy before and after the reveal, teammate conflicts, blanks, late saves, reopen, no team, individual games, reveal once with retry, undo, the score barrier, two hosts marking, a deleted team, void, and handoff.
 - [sequentialQuiz.spec.ts](../tests/e2e/sequentialQuiz.spec.ts): the browser flow from creation to points on the display.
 

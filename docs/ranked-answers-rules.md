@@ -10,12 +10,12 @@ This decides the shape of a board. Every other option hangs off it.
 
 | Style | Teams | Flow | Built |
 | --- | --- | --- | --- |
-| **Open answering** | 2–50 | No turns: any team answers any time; the host reveals a row and credits every team that got it | Yes (new; suggested for 3+ teams) |
+| **Open answering** | 2–50 | No turns: any team answers any time; the host reveals a row and credits every team that got it | Yes; default suggestion |
 | **Classic feud** (`faceOffLadder`) | 2–8 | The TV format: with two teams, the show exactly; with more, a rotating pair faces off each board → play or pass → the playing team answers until it clears the board or strikes out → steal | Yes |
 | Classic, two teams only | 2 | The TV show exactly | **Merged into Classic feud** (owner decision, 2026-10-28: two-team events are supported, though most events have more teams). Classic feud plays it identically with two teams; drafts or games saved with the old style load as Classic feud |
 | **Round robin** | 2–12 | One answer per team per turn, rotating; starting team rotates per board | Yes |
-| **Pass-along** | 2–12 | A team keeps answering until it misses, then the next team takes over | Yes (new) |
-| **Buzz race** | 2–50 | Every answer is a buzzer race: first to buzz answers; a hit scores, a miss locks the team out | Yes (new) |
+| **Pass-along** | 2–12 | A team keeps answering until it misses, then the next team takes over | Yes |
+| **Buzz race** | 2–50 | Every answer is a buzzer race: first to buzz answers; a hit scores, a miss locks the team out | Yes |
 | **All-play** | 2–50 | Every team answers privately at once each round; reveal together | Yes |
 | Bracket tournament | 4–16 | Pairs play classic matches, winners advance | No: needs a bracket screen and seeding; head-to-head pairs plus the scoreboard covers a casual version |
 | Fast money / bonus round | 1–2 players | One player answers five boards against a clock; a second player can't repeat answers; reach a target | No: it needs per-player timed input, which is a typed-answers feature. See [typed answers exploration](./typed-answers-exploration.md) |
@@ -81,7 +81,7 @@ The race uses the real buzzer. In queue mode the buzz queue *is* the race order,
 
 ## Turn-order review
 
-Before the first event the engine was reviewed line by line and tested with randomised games ([fuzz.test.ts](../src/utils/rankedAnswers/fuzz.test.ts)): every preset at several team counts, random legal and illegal host actions and random undos. After every step it checks:
+Before the first event the engine was reviewed line by line and tested with randomised games ([fuzz.test.ts](../tests/unit/utils/rankedAnswers/fuzz.test.ts)): every preset at several team counts, random legal and illegal host actions and random undos. After every step it checks:
 - No row is revealed twice, and a shown row stays shown.
 - Points awarded match the scores reported.
 - The bank only holds banked rows.
@@ -101,4 +101,4 @@ Fixed rotations are pinned by explicit tests:
 
 ## Compatibility
 
-All new options are optional fields. Drafts and running games saved before them load unchanged, because `resolveRules` fills in each style's previous behaviour (for example the ladder's "everyone steals"). The original engine tests pass unmodified; [variants.test.ts](../src/utils/rankedAnswers/variants.test.ts) covers every new option, and [rankedAnswers.test.ts](../tests/integration/rankedAnswers.test.ts) creates a game with rules chosen up front, duplicates it, and plays a buzz race through the API.
+All new options are optional fields. Drafts and running games saved before them load unchanged, because `resolveRules` fills in each style's previous behaviour (for example the ladder's "everyone steals"). The original engine tests pass unmodified; [variants.test.ts](../tests/unit/utils/rankedAnswers/variants.test.ts) covers every new option, and [rankedAnswers.test.ts](../tests/integration/rankedAnswers.test.ts) creates a game with rules chosen up front, duplicates it, and plays a buzz race through the API.

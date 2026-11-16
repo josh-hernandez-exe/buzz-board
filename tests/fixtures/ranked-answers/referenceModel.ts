@@ -1,8 +1,7 @@
 /**
- * Executable worked examples of the **proposed** Ranked Answers rules
- * (docs/pr13-ranked-answers-event-spec.md). A review aid, not the runtime:
- * the mode itself is built later and these examples become its acceptance
- * tests. Pure, and never imported by the app.
+ * Historical Ranked Answers rules baseline (docs/ranked-answers-reference.md).
+ * Independent scoring examples for regression tests, not the runtime.
+ * Pure, and never imported by the app.
  */
 
 /**

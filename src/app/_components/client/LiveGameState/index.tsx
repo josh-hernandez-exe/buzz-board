@@ -31,7 +31,7 @@ const PublicLiveState = createContext<LiveState<PublicGameState> | null>(null);
 /**
  * Opens the page's single member game-state stream. Every component on the
  * page reads it through `useLiveGameState`; opening a stream per component
- * exhausted the browser's six HTTP/1.1 connections (see docs/pr02-baseline.md).
+ * can exhaust the browser's per-host HTTP/1.1 connections.
  */
 export function LiveGameStateProvider({
   initialState,

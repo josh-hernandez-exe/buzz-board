@@ -24,7 +24,7 @@ Things to know:
 
 Your trivia questions, board answers, logos, images and sounds are separate from the code and can have their own terms:
 
-- **Keep event content out of this repository.** The plan already requires it, and it stops answers leaking before the event.
+- **Keep private event content out of this repository.** This prevents answers and participant data from leaking; committed examples and fixtures use synthetic content.
 - If you want to share a pack afterwards, **CC BY 4.0** (anyone may reuse with credit) or **CC BY-NC 4.0** (non-commercial reuse only) are the usual choices for content.
 - Only use images, sounds and music you made, have permission for, or that are clearly licensed for reuse. TV show names, logos and theme music are trademarks or copyrighted: call your game something like "Holiday Family Feud night" in your own invitations if you like, but don't put the show's logo, theme or name in the app or its assets.
 

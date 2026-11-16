@@ -41,7 +41,7 @@ The 10 / 100 / 1,000-user comparison, and how to tell app scaling problems from 
 - At 1,000 players with chat, two server processes complete the run and this 4-vCPU machine is the limit. The slow acknowledgements there are CPU starvation, not an app design problem; a whole room buzzing at once no longer ties up database connections.
 - At 100 players: buzz ack p95 380 ms, chat delivery p95 655 ms.
 
-The table below is the earlier PR12 history.
+The table below records earlier runs, before the scaling fixes described above.
 
 All runs were local: a production build, PostgreSQL and Redis in Docker, and 100 bots plus 4 staff and display clients, all on one 4-vCPU, 16 GB machine.
 
@@ -58,11 +58,11 @@ All runs were local: a production build, PostgreSQL and Redis in Docker, and 100
 - Muted players can still buzz.
 - No unexpected errors.
 
-**Speed:** the targets (p95 under 500 ms for buzzes and sends, chat under 1 s) are still missed on this machine, where the bots share the CPU with the server. Queued buzzing is no slower than first-buzz. A family event is far below 100 people, but run the soak on hardware like the real host before relying on these numbers.
+**Speed in these earlier runs:** the targets (p95 under 500 ms for buzzes and sends, chat under 1 s) were missed on this machine, where the bots shared the CPU with the server. Queued buzzing was no slower than first-buzz. The later results above meet these latency targets at 100 players. Run the soak on hardware like the real host before relying on either set of measurements.
 
 ## Editor responsiveness
 
-Measured 2026-10-28 with [editorResponsiveness.spec.ts](../tests/spike/editorResponsiveness.spec.ts) on a production build (Chromium, 4-vCPU codespace). The bank is the plan's reference: 200 questions, 906 KB, an 8 × 10 grid and four images per clue. Times are from the browser's Event Timing API: each key press or click until the next paint.
+Measured 2026-10-28 with [editorResponsiveness.spec.ts](../tests/spike/editorResponsiveness.spec.ts) on a production build (Chromium, 4-vCPU codespace). The reference bank contains 200 questions, 906 KB, an 8 × 10 grid and four images per clue. Times are from the browser's Event Timing API: each key press or click until the next paint.
 
 | Interaction | p95 | p95, CPU slowed 4× | Target |
 | --- | --- | --- | --- |
@@ -73,12 +73,12 @@ Measured 2026-10-28 with [editorResponsiveness.spec.ts](../tests/spike/editorRes
 
 - The editor is usable about 1 s after loading. No media is requested until a question is selected, and then only that question's.
 - Per key press, the app's own JavaScript (including React) takes 3–5 ms, or 11–17 ms with the CPU slowed. The rest is the browser painting a large page, so rewriting the editor wouldn't help much. (Memoising the grid tiles was tried and made no measurable difference, so it wasn't kept.)
-- Saved setups are capped at 1 MiB (the plan's limit) for every mode. A bigger one is refused with its size and a hint; nothing is lost.
+- Saved setups are capped at 1 MiB for every mode. A bigger one is refused with its size and a hint; nothing is lost.
 - Not yet done: a real iPad or Android tablet check (emulation isn't proof).
 
 ## Running the search-prediction trivia format
 
-The event plan's format (teams take turns, one answer each, 11 − rank points, no buzzer, strikes or steals) is **Ranked Answers → Round robin**. Checked 2026-10-29 against the plan's rehearsal script, in [rankedEventScript.test.ts](../tests/integration/rankedEventScript.test.ts) (API and scoreboard) and [rankedEventScript.spec.ts](../tests/e2e/rankedEventScript.spec.ts) (host desk, player phone and display in a browser).
+For teams taking turns with one answer each, 11 − rank points, and no buzzer, strikes or steals, use **Ranked Answers → Round robin**. This format was checked on 2026-10-29 in [rankedEventScript.test.ts](../tests/integration/rankedEventScript.test.ts) (API and scoreboard) and [rankedEventScript.spec.ts](../tests/e2e/rankedEventScript.spec.ts) (host desk, player phone and display in a browser).
 
 **Setup (Ranked Answers tab, before starting):**
 
@@ -107,7 +107,7 @@ Team order is the order on the Players tab (Team A, B, C, D). Board 1 starts wit
 - **Older mistake:** fix that team's score on the **Play** tab (add or subtract). The board carries on where it is.
 - **Double click:** the second click is refused; points and turns move once.
 
-**Rehearsal script result:** after A TikTok, B TikTok again, C Spotify, D pass, A Instagram, B Zoom, C timeout, D Teams, the scores are **A 19, B 2, C 0, D 6** and only ranks 1, 2, 5 and 9 are shown, matching the plan. The separate checks pass as well: a no-match round, a double click, close and reveal, the next board's starter, corrections, and privacy across a reconnect.
+**Rehearsal script result:** after A TikTok, B TikTok again, C Spotify, D pass, A Instagram, B Zoom, C timeout, D Teams, the scores are **A 19, B 2, C 0, D 6** and only ranks 1, 2, 5 and 9 are shown. The separate checks pass as well: a no-match round, a double click, close and reveal, the next board's starter, corrections, and privacy across a reconnect.
 
 ## Dress rehearsal script (about 60 minutes)
 
