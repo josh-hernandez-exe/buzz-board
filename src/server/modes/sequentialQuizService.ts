@@ -7,6 +7,7 @@
  * slip in after the host locks). A team sees only its own answer; owners
  * and co-hosts see them all; moderators and other teams never do.
  */
+import { GameStatus } from "@prisma/client";
 import { err, ok, type Result } from "neverthrow";
 
 import { db } from "@/server/db";
@@ -141,6 +142,7 @@ export const discardQuizDraft = (gameId: string) =>
 export type AnswerError =
   | GameTransactionError
   | { kind: "answersClosed" }
+  | { kind: "gameFinished" }
   | { kind: "emptyAnswer" }
   | { kind: "notOnTeam" }
   | { kind: "captainOnly"; captain: string }
@@ -186,6 +188,14 @@ export async function submitTeamAnswer({
   const outcome = await withGameLock(
     gameId,
     async (tx): Promise<Result<SavedAnswer, AnswerError>> => {
+      // Finishing the game closes answering even if a question was open.
+      const game = await tx.game.findUnique({
+        where: { id: gameId },
+        select: { status: true },
+      });
+      if (game?.status === GameStatus.finished) {
+        return err({ kind: "gameFinished" });
+      }
       const mode = await tx.gameMode.findUnique({ where: { gameId } });
       const bank =
         mode?.kind === QUIZ_KIND && mode.status === "running"
@@ -303,7 +313,7 @@ export async function myTeamAnswer(
       gameTeam: {
         select: { captainId: true, captain: { select: { name: true } } },
       },
-      game: { select: { format: true, captainsOnly: true } },
+      game: { select: { format: true, captainsOnly: true, status: true } },
     },
   });
   const key = quiz ? questionKey(quiz.bank, quiz.state) : null;
@@ -338,7 +348,9 @@ export async function myTeamAnswer(
     : null;
   return {
     questionKey: key,
-    open: quiz.state.phase === "open",
+    open:
+      quiz.state.phase === "open" &&
+      player.game.status !== GameStatus.finished,
     onTeam: true,
     answeredByCaptain,
     answer: row

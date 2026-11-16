@@ -16,10 +16,13 @@ import { helpHref } from "@/help/manifest";
  * credential; the player's name, team and scores stay in the game.
  */
 export function PlayerHeader({
+  gameId,
   gameUserId,
   signedIn = false,
   linked = false,
 }: {
+  /** This page's game; scopes the credential this header reads and forgets. */
+  gameId: string;
   gameUserId: string;
   /** Whether this browser is signed in to an account. */
   signedIn?: boolean;
@@ -28,7 +31,7 @@ export function PlayerHeader({
 }) {
   const router = useRouter();
   const { data } = useLiveGameState();
-  const [, , leaveGame] = useGameTokenData();
+  const [, , leaveGame] = useGameTokenData({ scopeGameId: gameId });
   const linkAccount = api.gameUser.linkAccount.useMutation();
   if (!data) return null;
   const isLinked = linked || linkAccount.isSuccess;

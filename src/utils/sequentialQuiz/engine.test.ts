@@ -245,6 +245,33 @@ describe("Sequential Quiz engine", () => {
     expect(projectQuiz(b, current, "running").question?.answer).not.toBeNull();
   });
 
+  it("undoing back before a shown question never reopens it for answers", () => {
+    const b = quiz();
+    const steps: QuizAction[] = [
+      { type: "next" },
+      { type: "lock" },
+      { type: "resolveRemaining", answered: [] },
+      { type: "reveal" },
+    ];
+    const states = [initialQuizState(TEAMS)];
+    for (const a of steps) states.push(run(b, states.at(-1)!, a).state);
+    // Undo all four steps, back to before the first question.
+    let current = states.at(-1)!;
+    for (let i = states.length - 2; i >= 0; i--) {
+      current = undoQuiz(current, states[i]!);
+    }
+    expect(current.phase).toBe("ready");
+
+    const again = run(b, current, { type: "next" }).state;
+    expect(again).toMatchObject({
+      position: 0,
+      phase: "locked",
+      answerShown: true,
+    });
+    expect(applyQuiz(b, again, { type: "reopen" }).isErr()).toBe(true);
+    expect(projectQuiz(b, again, "running").question?.answer).not.toBeNull();
+  });
+
   it("reopens answers until the answer has been shown", () => {
     const b = quiz();
     const { state } = play(b, [{ type: "next" }, { type: "lock" }]);
@@ -377,6 +404,12 @@ describe("Sequential Quiz invariants under random play and undo", () => {
       const history: { state: QuizState; scores: Record<string, number> }[] =
         [];
       const totals: Record<string, number> = {};
+      // Questions whose answers have been on screens during this run.
+      const everShown = new Set<number>();
+      const neverReopened = (s: QuizState) => {
+        if (s.answerShown) everShown.add(s.position);
+        if (s.phase === "open") expect(everShown.has(s.position)).toBe(false);
+      };
       const add = (scores: Record<string, number>, sign: 1 | -1) => {
         for (const [t, p] of Object.entries(scores)) {
           totals[t] = (totals[t] ?? 0) + sign * p;
@@ -392,6 +425,7 @@ describe("Sequential Quiz invariants under random play and undo", () => {
             expect(state.answerShown).toBe(true);
           }
           if (state.phase === "open") expect(state.answerShown).toBe(false);
+          neverReopened(state);
           continue;
         }
         const team = pick(TEAMS);
@@ -425,6 +459,7 @@ describe("Sequential Quiz invariants under random play and undo", () => {
           expect(state.answerShown).toBe(true);
         }
         if (state.phase === "open") expect(state.answerShown).toBe(false);
+        neverReopened(state);
         // Points on the scoreboard always equal the points in the results.
         const expected: Record<string, number> = {};
         for (const r of state.results) {

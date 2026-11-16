@@ -192,7 +192,7 @@ type RecoveryStatus = "valid" | "used" | "revoked" | "expired";
 async function findRecovery(token: string) {
   const invite = await db.gameInvite.findUnique({
     where: { tokenHash: hashToken(token) },
-    include: { game: { select: { id: true, name: true } } },
+    include: { game: { select: { id: true, name: true, code: true } } },
   });
   return invite?.purpose === InvitePurpose.guestRecovery &&
     invite.targetGameUserId
@@ -241,7 +241,10 @@ export async function redeemRecovery({
   token: string;
   now?: Date;
 }): Promise<
-  Result<{ gameId: string; token: string; gameUser: GameUser }, IdentityError>
+  Result<
+    { gameId: string; gameCode: string; token: string; gameUser: GameUser },
+    IdentityError
+  >
 > {
   const invite = await findRecovery(token);
   if (!invite) return err({ kind: "inviteNotFound" });
@@ -284,7 +287,13 @@ export async function redeemRecovery({
         where: { id: current.id },
         data: { usedAt: now },
       });
-      return ok({ gameId: invite.gameId, token: newToken, gameUser });
+      return ok({
+        gameId: invite.gameId,
+        // Lets the join screen offer "Resume" for this code later.
+        gameCode: invite.game.code,
+        token: newToken,
+        gameUser,
+      });
     }),
   );
 }

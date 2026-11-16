@@ -9,7 +9,8 @@ import { Panel, StatusPill } from "@/app/_components/ui/page";
 import { api } from "@/trpc/react";
 import type { PrivateGameState } from "@/types";
 import { newRequestId } from "@/utils/requestId";
-import { hotkeyHint, useHotkeys } from "@/utils/useHotkeys";
+import { HotkeyHint } from "@/app/_components/client/HotkeyHint";
+import { useHotkeys } from "@/utils/useHotkeys";
 
 type Queue = PrivateGameState["buzzQueue"];
 type Entry = Queue[number];
@@ -237,9 +238,8 @@ export function BuzzerPanel() {
 
       <ErrorNotice error={error} />
 
-      <p className="text-muted-foreground text-xs">
-        Keyboard:{" "}
-        {hotkeyHint([
+      <HotkeyHint
+        parts={[
           ["O", "open/close"],
           ["N", "next question"],
           ...(queueMode
@@ -249,8 +249,8 @@ export function BuzzerPanel() {
                 ["S", "skip"],
               ] as [string, string][])
             : []),
-        ])}
-      </p>
+        ]}
+      />
       <div className="border-border flex flex-wrap items-center gap-2 border-t pt-3">
         <Button
           variant="outline"

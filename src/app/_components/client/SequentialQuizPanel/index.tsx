@@ -33,7 +33,8 @@ import {
   questionUses,
 } from "@/utils/questionBank/library";
 import { newRequestId } from "@/utils/requestId";
-import { hotkeyHint, useHotkeys } from "@/utils/useHotkeys";
+import { HotkeyHint } from "@/app/_components/client/HotkeyHint";
+import { useHotkeys } from "@/utils/useHotkeys";
 
 type HostView = RouterOutputs["sequentialQuiz"]["hostView"];
 type Response =
@@ -614,7 +615,7 @@ function QuizControls({ view }: { view: HostView }) {
       grades[r.team] !== "correct",
   );
 
-  useHotkeys(
+  const keys = useHotkeys(
     {
       n: canNext && !isLast ? () => send({ type: "next" }) : undefined,
       l: running && phase === "open" ? () => send({ type: "lock" }) : undefined,
@@ -657,7 +658,7 @@ function QuizControls({ view }: { view: HostView }) {
           {canNext && !isLast && (
             <Button
               disabled={busy}
-              aria-keyshortcuts="N"
+              aria-keyshortcuts={keys ? "N" : undefined}
               onClick={() => send({ type: "next" })}
             >
               {state.position < 0 ? "Open first question" : "Next question"}
@@ -666,7 +667,7 @@ function QuizControls({ view }: { view: HostView }) {
           {phase === "open" && (
             <Button
               disabled={busy}
-              aria-keyshortcuts="L"
+              aria-keyshortcuts={keys ? "L" : undefined}
               onClick={() => send({ type: "lock" })}
             >
               Lock answers
@@ -685,7 +686,7 @@ function QuizControls({ view }: { view: HostView }) {
             <Button
               className="bg-success text-success-foreground hover:bg-success/90"
               disabled={busy || ungraded.length > 0}
-              aria-keyshortcuts="R"
+              aria-keyshortcuts={keys ? "R" : undefined}
               title={
                 ungraded.length > 0
                   ? "Mark every team first, or use Mark the rest wrong"
@@ -749,14 +750,13 @@ function QuizControls({ view }: { view: HostView }) {
       )}
 
       {running && phase !== "finished" && (
-        <p className="text-muted-foreground text-xs">
-          Keyboard:{" "}
-          {hotkeyHint([
+        <HotkeyHint
+          parts={[
             ["N", "next question"],
             ["L", "lock answers"],
             ["R", "reveal"],
-          ])}
-        </p>
+          ]}
+        />
       )}
 
       <ErrorNotice

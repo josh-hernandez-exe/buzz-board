@@ -16,6 +16,13 @@ import type { PublicGameState, PrivateGameState, WhoBuzzedIn } from "@/types";
 
 const gameGone = (error: Error) => error instanceof GameNotFoundError;
 
+/** The error that ends a live stream whose game was deleted. */
+export const gameDeletedError = () =>
+  new TRPCError({
+    code: "NOT_FOUND",
+    message: "This game was deleted by its host.",
+  });
+
 /**
  * Yields a live feed, turning "the game was deleted" into a clear error
  * that ends the stream instead of leaving the page silently stale.
@@ -26,12 +33,7 @@ export async function* endWhenGameDeleted<T>(
   try {
     yield* stream;
   } catch (error) {
-    if (error instanceof GameNotFoundError) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "This game was deleted by its host.",
-      });
-    }
+    if (error instanceof GameNotFoundError) throw gameDeletedError();
     throw error;
   }
 }

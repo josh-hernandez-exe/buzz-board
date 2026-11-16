@@ -271,6 +271,24 @@ describe("answering", () => {
     ).resolves.toMatchObject({ revision: 3 });
   });
 
+  it("closes answering when the host finishes the game mid-question", async () => {
+    const { admin, game, sq, players } = await readyQuiz();
+    const [ada] = players;
+    await act(sq, { type: "next" });
+    await admin.gameAdmin.finishGame();
+
+    expect(await ada!.player.sequentialQuiz.myAnswer()).toMatchObject({
+      open: false,
+    });
+    await expect(
+      submit(ada!, { text: "Six", baseRevision: 0 }),
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: "This game has finished.",
+    });
+    expect(await db.teamAnswer.count({ where: { gameId: game.id } })).toBe(0);
+  });
+
   it("refuses a player who isn't on a team", async () => {
     const created = await createGame({ teams: 2, teamAssignment: "choose" });
     const sq = created.admin.sequentialQuiz;

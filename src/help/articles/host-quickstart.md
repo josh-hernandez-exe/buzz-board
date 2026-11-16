@@ -51,6 +51,8 @@ Every player's buzzer says whether it is open, closed or locked, so players alwa
 
 Yes, on a computer. They're single keys, they don't work while you're typing in a box or a dialog is open, and the screen lists them under each set of buttons.
 
+If single keys get in your way (for example with speech input, where a spoken word can press keys), clear **Single-key shortcuts** next to the list. That turns them off in this browser for every panel until you tick it again.
+
 | Where | Keys |
 | --- | --- |
 | **Play** tab, buzzer | **O** open or close the buzzer, **N** next question. In queue mode: **C** correct, **W** wrong, **S** skip for whoever is answering |

@@ -208,6 +208,7 @@ export function LiveSequentialQuiz() {
         view={data.mode}
         solo={data.game.format === "individual"}
         captainKey={captainKey}
+        gameFinished={data.game.status === "finished"}
       />
     </div>
   );
@@ -223,6 +224,7 @@ export function QuizAnswerBox({
   view,
   solo = false,
   captainKey = "",
+  gameFinished = false,
 }: {
   view: PublicQuizView;
   /** An individual game: each player is their own team. */
@@ -232,6 +234,8 @@ export function QuizAnswerBox({
    * so who may answer is re-read at once.
    */
   captainKey?: string;
+  /** The host finished the game: answering is closed even mid-question. */
+  gameFinished?: boolean;
 }) {
   const yours = solo ? "Your" : "Your team's";
   const you = solo ? "You" : "Your team";
@@ -311,6 +315,21 @@ export function QuizAnswerBox({
   }
 
   if (view.phase !== "open") return null;
+
+  if (gameFinished) {
+    return (
+      <Notice role="status" tone="neutral">
+        <strong>This game has finished, so answers are closed.</strong>{" "}
+        {saved ? (
+          <>
+            {yours} answer: &ldquo;{saved.text}&rdquo;
+          </>
+        ) : (
+          `${you} didn't answer.`
+        )}
+      </Notice>
+    );
+  }
 
   if (mine.answeredByCaptain) {
     return (

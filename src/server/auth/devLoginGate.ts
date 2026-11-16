@@ -43,13 +43,18 @@ export function isLoopbackHost(host: string | null | undefined): boolean {
 
 /** A same-site path to return to after signing in, never another site. */
 export function safeCallbackPath(raw: string | null | undefined): string {
+  const fallback = "/dashboard";
   if (
     !raw?.startsWith("/") ||
     raw.startsWith("//") ||
     raw.startsWith("/\\") ||
-    raw.length > 500
+    raw.length > 500 ||
+    // URL parsing drops tabs and newlines, so "/\t/evil.example" would
+    // become "//evil.example".
+    /\p{Cc}/u.test(raw)
   ) {
-    return "/dashboard";
+    return fallback;
   }
-  return raw;
+  const base = "http://callback.invalid";
+  return new URL(raw, base).origin === base ? raw : fallback;
 }

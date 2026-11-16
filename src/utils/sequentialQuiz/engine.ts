@@ -32,6 +32,12 @@ export type QuizState = {
   grades: Record<string, Verdict>;
   /** Stays true once the answer was on screens, even across undo. */
   answerShown: boolean;
+  /**
+   * Positions whose answers have been on screens. Kept across undo, so
+   * undoing back past a question never lets it reopen for answers. Missing
+   * in states saved before it existed.
+   */
+  shownPositions?: number[];
   /** Voided: closed with no points and no answer shown. */
   voided: boolean;
   results: QuizResult[];
@@ -89,6 +95,7 @@ export function initialQuizState(teams: string[]): QuizState {
     phase: "ready",
     grades: {},
     answerShown: false,
+    shownPositions: [],
     voided: false,
     results: [],
   };
@@ -120,12 +127,16 @@ export function applyQuiz(
       if (state.position + 1 >= quizOrder(bank).length) {
         return err({ kind: "noMoreQuestions" });
       }
+      const position = state.position + 1;
+      // Back to a question whose answer was shown (after undo): it comes
+      // back locked with the answer showing, for marking and revealing again.
+      const shown = state.shownPositions?.includes(position) ?? false;
       return done({
         ...state,
-        position: state.position + 1,
-        phase: "open",
+        position,
+        phase: shown ? "locked" : "open",
         grades: {},
-        answerShown: false,
+        answerShown: shown,
         voided: false,
       });
     }
@@ -173,6 +184,7 @@ export function applyQuiz(
           ...state,
           phase: "revealed",
           answerShown: true,
+          shownPositions: withPosition(state.shownPositions, state.position),
           results: record(correct, points, false),
         },
         Object.fromEntries(correct.map((t) => [t, points])),
@@ -201,11 +213,16 @@ export function applyQuiz(
  */
 export function undoQuiz(current: QuizState, previous: QuizState): QuizState {
   const restored: QuizState = structuredClone(previous);
-  if (
-    current.answerShown &&
-    current.position === restored.position &&
-    !restored.answerShown
-  ) {
+  let shownPositions = restored.shownPositions ?? [];
+  for (const p of current.shownPositions ?? []) {
+    shownPositions = withPosition(shownPositions, p);
+  }
+  // States saved before shownPositions existed only know the current one.
+  if (current.answerShown && current.position >= 0) {
+    shownPositions = withPosition(shownPositions, current.position);
+  }
+  restored.shownPositions = shownPositions;
+  if (shownPositions.includes(restored.position)) {
     restored.answerShown = true;
   }
   // Answering never reopens once people have seen the answer: undoing past
@@ -214,4 +231,9 @@ export function undoQuiz(current: QuizState, previous: QuizState): QuizState {
     restored.phase = "locked";
   }
   return restored;
+}
+
+function withPosition(positions: number[] | undefined, position: number) {
+  const list = positions ?? [];
+  return list.includes(position) ? list : [...list, position];
 }

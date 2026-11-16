@@ -19,7 +19,11 @@ export function RecoverPlayer({
   const [, setGameTokenData] = useGameTokenData();
   const redeem = api.public.redeemRecovery.useMutation({
     onSuccess: (data) => {
-      setGameTokenData({ token: data.token, gameId: data.gameId });
+      setGameTokenData({
+        token: data.token,
+        code: data.gameCode,
+        gameId: data.gameId,
+      });
       router.push(`/game/${data.gameId}/user`);
     },
   });

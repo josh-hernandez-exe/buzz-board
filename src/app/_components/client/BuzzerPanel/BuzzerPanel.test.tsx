@@ -85,6 +85,7 @@ function gameState(
 describe("BuzzerPanel", () => {
   beforeEach(() => {
     for (const fn of Object.values(calls)) fn.mockReset();
+    localStorage.clear();
     history = { past: [], future: [] };
     state = gameState();
   });
@@ -208,5 +209,24 @@ describe("BuzzerPanel", () => {
     await userEvent.type(screen.getAllByLabelText("Points")[0]!, "w");
     expect(calls.judge).not.toHaveBeenCalled();
     unmount();
+  });
+
+  it("keyboard: shortcuts can be turned off for this browser", async () => {
+    render(<BuzzerPanel />);
+    const toggle = screen.getByRole("checkbox", {
+      name: "Single-key shortcuts",
+    });
+    await userEvent.click(toggle);
+    expect(toggle).not.toBeChecked();
+    expect(screen.queryByText(/^Keyboard:/)).toBeNull();
+    // Keys pressed while the checkbox has focus never count as shortcuts.
+    toggle.blur();
+    await userEvent.keyboard("o");
+    expect(calls.open).not.toHaveBeenCalled();
+
+    await userEvent.click(toggle);
+    toggle.blur();
+    await userEvent.keyboard("o");
+    expect(calls.open).toHaveBeenCalledTimes(1);
   });
 });

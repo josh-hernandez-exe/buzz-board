@@ -35,7 +35,8 @@ import {
   questionUses,
 } from "@/utils/questionBank/library";
 import { newRequestId } from "@/utils/requestId";
-import { hotkeyHint, useHotkeys } from "@/utils/useHotkeys";
+import { HotkeyHint } from "@/app/_components/client/HotkeyHint";
+import { useHotkeys } from "@/utils/useHotkeys";
 
 type HostView = RouterOutputs["categoryGrid"]["hostView"];
 type Action = Parameters<
@@ -784,7 +785,7 @@ function GridControls({ view }: { view: HostView }) {
       if (syncBuzzer) closeBuzzer.mutate();
     });
   const clueOpen = running && clue?.phase === "open";
-  useHotkeys(
+  const keys = useHotkeys(
     {
       c: clueOpen && team ? () => judge(true) : undefined,
       w: clueOpen && team ? () => judge(false) : undefined,
@@ -914,7 +915,7 @@ function GridControls({ view }: { view: HostView }) {
                     <Button
                       className="bg-success text-success-foreground hover:bg-success/90"
                       disabled={busy || !team}
-                      aria-keyshortcuts="C"
+                      aria-keyshortcuts={keys ? "C" : undefined}
                       onClick={() => judge(true)}
                     >
                       ✓ Correct
@@ -923,7 +924,7 @@ function GridControls({ view }: { view: HostView }) {
                     <Button
                       variant="destructive"
                       disabled={busy || !team}
-                      aria-keyshortcuts="W"
+                      aria-keyshortcuts={keys ? "W" : undefined}
                       onClick={() => judge(false)}
                     >
                       ✕ Wrong
@@ -934,7 +935,7 @@ function GridControls({ view }: { view: HostView }) {
                     <Button
                       variant="secondary"
                       disabled={busy}
-                      aria-keyshortcuts="R"
+                      aria-keyshortcuts={keys ? "R" : undefined}
                       onClick={revealAnswer}
                     >
                       Nobody got it: show the answer
@@ -945,22 +946,21 @@ function GridControls({ view }: { view: HostView }) {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     disabled={busy}
-                    aria-keyshortcuts="B"
+                    aria-keyshortcuts={keys ? "B" : undefined}
                     onClick={() => send({ type: "closeClue" })}
                   >
                     Back to the grid
                   </Button>
                 </div>
               )}
-              <p className="text-muted-foreground text-xs">
-                Keyboard:{" "}
-                {hotkeyHint([
+              <HotkeyHint
+                parts={[
                   ["C", "correct"],
                   ["W", "wrong"],
                   ["R", "show the answer"],
                   ["B", "back to the grid"],
-                ])}
-              </p>
+                ]}
+              />
               <Button
                 variant="ghost"
                 size="sm"

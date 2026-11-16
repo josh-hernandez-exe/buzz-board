@@ -6,11 +6,58 @@ import {
 import { getPrivateGameState } from "@/server/db/common";
 import { rosterTracker } from "@/server/live/rosterTracker";
 import { withoutRoster } from "@/utils/liveRoster";
-import { endWhenGameDeleted, liveFeeds } from "@/server/utils/events";
+import {
+  endWhenGameDeleted,
+  gameDeletedError,
+  liveFeeds,
+} from "@/server/utils/events";
 import { isStillStaff } from "@/server/staff/staffService";
 import { TRPCError } from "@trpc/server";
 
 import type { BasicGameInfo } from "@/types";
+import type { db as database } from "@/server/db";
+
+/**
+ * Re-checks, before every update a live stream sends, that whoever opened it
+ * may still see the game. A player's credential must still be current
+ * (removal and guest recovery both replace it, keeping the player's ID); staff
+ * must still hold a role. Checked per update so open streams lose access too.
+ */
+function streamAccess({
+  db,
+  gameId,
+  userId,
+  player,
+}: {
+  db: typeof database;
+  gameId: string;
+  userId: string | undefined;
+  player: { id: string; token: string } | null | undefined;
+}) {
+  return async () => {
+    // Deleting a game removes its players and staff too: say so instead.
+    const denied = async (message: string) =>
+      (await db.game.findUnique({ where: { id: gameId }, select: { id: true } }))
+        ? new TRPCError({ code: "FORBIDDEN", message })
+        : gameDeletedError();
+    if (player) {
+      const current = await db.gameUser.findUnique({
+        where: { id: player.id },
+        select: { removedAt: true, token: true },
+      });
+      if (!current || current.removedAt) {
+        throw await denied("You were removed from this game.");
+      }
+      if (current.token !== player.token) {
+        throw await denied("This player was recovered on another device.");
+      }
+      return;
+    }
+    if (userId && !(await isStillStaff(gameId, userId))) {
+      throw await denied("Your role in this game was removed.");
+    }
+  };
+}
 
 export const gameGeneralRouter = createTRPCRouter({
   getBasicGameInfo: protectedGameGeneralProcedure.query(async ({ ctx }) => {
@@ -42,37 +89,23 @@ export const gameGeneralRouter = createTRPCRouter({
     signal,
   }) {
     const gameId = ctx.gameSession.id;
-    const userId = ctx.session?.user?.id;
-    const playerId =
-      "gameUser" in ctx.gameSession ? ctx.gameSession.gameUser?.id : undefined;
-    // Re-check access as state changes, so removal takes effect for streams
-    // that are already open, not just new requests.
-    const staffOnly = !playerId && !!userId;
+    const player =
+      "gameUser" in ctx.gameSession ? ctx.gameSession.gameUser : undefined;
+    const checkAccess = streamAccess({
+      db: ctx.db,
+      gameId,
+      userId: ctx.session?.user?.id,
+      player,
+    });
     // The roster is sent whole once, then as changes (src/utils/liveRoster.ts).
     let sentRoster: number | null = null;
     for await (const state of endWhenGameDeleted(
       liveFeeds.privateGameState.subscribe(gameId, signal),
     )) {
-      if (playerId && !state.gameUsers[playerId]) {
-        // A snapshot read before this player joined (shared reads can
-        // start a moment earlier) doesn't list them yet: check, and wait
-        // for the next snapshot instead of ending the stream.
-        const player = await ctx.db.gameUser.findUnique({
-          where: { id: playerId },
-          select: { removedAt: true },
-        });
-        if (player && !player.removedAt) continue;
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You were removed from this game.",
-        });
-      }
-      if (staffOnly && !(await isStillStaff(gameId, userId))) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Your role in this game was removed.",
-        });
-      }
+      await checkAccess();
+      // A snapshot read before this player joined (shared reads can start a
+      // moment earlier) doesn't list them yet: wait for the next one.
+      if (player && !state.gameUsers[player.id]) continue;
       const roster = rosterTracker.updateFor(gameId, state, sentRoster);
       sentRoster = roster.version;
       yield withoutRoster(state, roster);
@@ -83,6 +116,19 @@ export const gameGeneralRouter = createTRPCRouter({
     ctx,
     signal,
   }) {
-    yield* liveFeeds.whoBuzzedIn.subscribe(ctx.gameSession.id, signal);
+    const gameId = ctx.gameSession.id;
+    const checkAccess = streamAccess({
+      db: ctx.db,
+      gameId,
+      userId: ctx.session?.user?.id,
+      player: "gameUser" in ctx.gameSession ? ctx.gameSession.gameUser : null,
+    });
+    for await (const update of liveFeeds.whoBuzzedIn.subscribe(
+      gameId,
+      signal,
+    )) {
+      await checkAccess();
+      yield update;
+    }
   }),
 });

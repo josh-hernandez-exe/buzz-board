@@ -16,7 +16,8 @@ import { isModeKind, MODE_LABEL } from "@/utils/modes";
 import { helpHref } from "@/help/manifest";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { newRequestId } from "@/utils/requestId";
-import { hotkeyHint, useHotkeys } from "@/utils/useHotkeys";
+import { HotkeyHint } from "@/app/_components/client/HotkeyHint";
+import { useHotkeys } from "@/utils/useHotkeys";
 import {
   LIMITS,
   contentSchema,
@@ -963,7 +964,7 @@ function AnswerButtons({
   // Ranks 1-9 are their digit; rank 10 is 0.
   const keyFor = (rank: number) => String(rank % 10);
   const top = Math.max(0, ...hidden.map((a) => a.rank));
-  useHotkeys(
+  const keys = useHotkeys(
     {
       ...Object.fromEntries(
         hidden.map((a) => [keyFor(a.rank), () => onPick(a.id)]),
@@ -980,7 +981,7 @@ function AnswerButtons({
             key={a.id}
             disabled={disabled}
             className="bg-info text-info-foreground hover:bg-info/90"
-            aria-keyshortcuts={keyFor(a.rank)}
+            aria-keyshortcuts={keys ? keyFor(a.rank) : undefined}
             onClick={() => onPick(a.id)}
           >
             #{a.rank} {a.text}
@@ -989,19 +990,18 @@ function AnswerButtons({
         <Button
           variant="destructive"
           disabled={disabled}
-          aria-keyshortcuts="X"
+          aria-keyshortcuts={keys ? "X" : undefined}
           onClick={() => onPick(null)}
         >
           {wrongLabel}
         </Button>
       </div>
-      <p className="text-muted-foreground text-xs">
-        Keyboard:{" "}
-        {hotkeyHint([
+      <HotkeyHint
+        parts={[
           [top >= 10 ? "1–9, 0 for #10" : `1–${Math.max(1, top)}`, "answer"],
           ["X", "miss"],
-        ])}
-      </p>
+        ]}
+      />
     </div>
   );
 }
@@ -1335,7 +1335,7 @@ function OpenControls({
   const playing = board.teams.filter((t) => t in names);
   const credit = (answerId: string) =>
     send({ type: "credit", answerId, teams: who }, () => setWho([]));
-  useHotkeys(
+  const keys = useHotkeys(
     Object.fromEntries(hidden.map((h) => [String(h.rank), () => credit(h.id)])),
     // A number key never reveals an answer for nobody by accident.
     !disabled && who.length > 0,
@@ -1378,7 +1378,7 @@ function OpenControls({
       </div>
       <p className="text-muted-foreground text-sm">
         Then tap the answer they gave ({label})
-        {who.length > 0 ? ", or press its number" : ""}.
+        {keys && who.length > 0 ? ", or press its number" : ""}.
       </p>
       <div className="flex flex-wrap gap-2">
         {hidden.map((a) => (
@@ -1386,7 +1386,7 @@ function OpenControls({
             key={a.id}
             disabled={disabled}
             className="bg-info text-info-foreground hover:bg-info/90"
-            aria-keyshortcuts={String(a.rank)}
+            aria-keyshortcuts={keys ? String(a.rank) : undefined}
             onClick={() => credit(a.id)}
           >
             #{a.rank} {a.text}

@@ -52,6 +52,16 @@ jobs:
         run: bun run test:integration
       - name: Build
         run: bun run build
+        env:
+          # A production build validates that auth settings exist (src/env.js).
+          # These placeholders are not secrets and reach no provider; the
+          # build only checks they are present. DEV_LOGIN stays unset.
+          AUTH_SECRET: ci-build-placeholder-not-a-secret
+          NEXTAUTH_URL: http://localhost:3000
+          AUTH_DISCORD_CLIENT_ID: ci-build-placeholder
+          AUTH_DISCORD_CLIENT_SECRET: ci-build-placeholder
+          AUTH_GOOGLE_CLIENT_ID: ci-build-placeholder
+          AUTH_GOOGLE_CLIENT_SECRET: ci-build-placeholder
 
       - name: Install Playwright browser
         run: bunx playwright install --with-deps chromium

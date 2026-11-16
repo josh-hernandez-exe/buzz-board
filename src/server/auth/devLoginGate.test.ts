@@ -85,6 +85,9 @@ describe("safeCallbackPath", () => {
       "//evil.example",
       "/\\evil.example",
       "javascript:alert(1)",
+      "/\t/evil.example",
+      "/\n/evil.example",
+      "/\r\\evil.example",
     ]) {
       expect(safeCallbackPath(bad)).toBe("/dashboard");
     }

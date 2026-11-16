@@ -85,6 +85,7 @@ export default async function GameUserPage({
             defaultTab={defaultTab}
             header={
               <PlayerHeader
+                gameId={gameId}
                 gameUserId={gameUser.id}
                 signedIn={!!session?.user}
                 linked={!!gameUser.user}

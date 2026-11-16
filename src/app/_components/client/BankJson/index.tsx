@@ -61,6 +61,18 @@ export function BankJson({
         >
           Import
         </Button>
+        {/* The box keeps what was typed; this replaces it with the bank as
+            edited since, for exporting. */}
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            setText(JSON.stringify(bank, null, 2));
+            setProblem(null);
+          }}
+        >
+          Show current bank
+        </Button>
       </div>
       {problem && (
         <p role="alert" className="text-destructive">

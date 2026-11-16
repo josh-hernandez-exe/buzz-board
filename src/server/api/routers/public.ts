@@ -103,6 +103,8 @@ export const publicRouter = createTRPCRouter({
       await enforceRateLimit("redeemLink", clientAddress(ctx.headers));
       const result = await redeemRecovery({ token: input.token });
       if (result.isErr()) throw toTRPCError(result.error);
+      // Ends live streams still open with the replaced credential.
+      await emitUpdatedGameState({ gameId: result.value.gameId });
       return { ...result.value, resumed: true };
     }),
   /**

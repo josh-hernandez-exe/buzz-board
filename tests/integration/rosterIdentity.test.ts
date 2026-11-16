@@ -527,6 +527,7 @@ describe("guest recovery", () => {
 
     const recovered = await requestCaller({}).public.redeemRecovery({ token });
 
+    expect(recovered.gameCode).toBe(game.code);
     expect(recovered.gameUser).toMatchObject({
       id: guest.gameUser.id,
       name: "Ada",
@@ -547,6 +548,36 @@ describe("guest recovery", () => {
     await expect(
       requestCaller({}).public.redeemRecovery({ token }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  it("ends live streams still open with the replaced credential", async () => {
+    const { game, guest, admin } = await teamGameWithPlayer();
+    const controller = new AbortController();
+    const oldDevice = requestCaller({
+      gameId: game.id,
+      gameUserToken: guest.token,
+      signal: controller.signal,
+    });
+    const streams = [
+      (await oldDevice.gameGeneral.gameState())[Symbol.asyncIterator](),
+      (await oldDevice.gameGeneral.whoBuzzedIn())[Symbol.asyncIterator](),
+    ];
+    for (const stream of streams) await stream.next();
+
+    const token = await recoveryFor(guest.gameUser.id, admin);
+    await requestCaller({}).public.redeemRecovery({ token });
+
+    for (const stream of streams) {
+      const ended = (async () => {
+        for (let i = 0; i < 5; i++) await stream.next();
+        return "still streaming";
+      })();
+      await expect(ended).rejects.toMatchObject({
+        code: "FORBIDDEN",
+        message: "This player was recovered on another device.",
+      });
+    }
+    controller.abort();
   });
 
   it("keeps a moderated name and lock through recovery", async () => {
