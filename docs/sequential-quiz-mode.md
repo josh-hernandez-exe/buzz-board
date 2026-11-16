@@ -27,7 +27,7 @@ It warns about repeated questions, questions left out of the order, and more tha
 | revealed | Next question, Finish | The answer, which teams got it, their own verdict |
 | finished | — | "That's the end of the quiz" |
 
-- **Marking** is per team. The desk groups identical answers (case, accents, spaces and punctuation ignored) so one tap marks a group. **Mark exact matches correct** marks every answer equal to the answer or an accepted wording. **Mark the rest wrong** marks unmarked teams that answered as wrong and teams that didn't as missing.
+- **Marking** is per team. The desk groups identical answers (case, spaces, punctuation and accents on Latin letters ignored) so one tap marks a group. Differences that change the meaning are kept: a minus sign or separator in a number (`-40`, `3.5`, `3/5`), super/subscripts, other scripts' marks, and symbol-only answers. **Mark exact matches correct** marks every answer equal to the answer or an accepted wording under the same rules. **Mark the rest wrong** marks unmarked teams that answered as wrong and teams that didn't as missing.
 - **Reveal** awards `pointsPerQuestion` to each team marked correct, once, through the shared score writer.
 - **Void** closes the question with no points and without showing the answer.
 - **Undo** reverses the last action and its points. Undoing a reveal returns to marking with the answer still showing. Answering never reopens after that, even when undoing back past the lock.

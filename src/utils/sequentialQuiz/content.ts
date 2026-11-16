@@ -55,12 +55,34 @@ export function quizPreflight(bank: Bank, teamCount: number) {
   return { blocking, warnings };
 }
 
-/** Text for grouping identical answers: case, spaces and punctuation ignored. */
+// Super/subscripts and vulgar fractions change a number's meaning ("10²"
+// isn't "102", "½" isn't "12"), so compatibility folding skips them.
+const KEEP_UNFOLDED =
+  /([\u00B2\u00B3\u00B9\u00BC-\u00BE\u2070-\u209F\u2150-\u215F\u2189]+)/u;
+
+/**
+ * Text for grouping identical answers, and for "Mark exact matches
+ * correct": case, spaces, punctuation and accents on Latin letters are
+ * ignored. Anything that changes meaning is kept: other scripts' marks
+ * ("かぎ" isn't "かき"), a minus sign or separator in a number ("-40",
+ * "3.5", "3/5") and super/subscripts. An answer with no letters or digits
+ * is compared as typed, so different symbols never share a group.
+ */
 export function normalizeAnswer(text: string) {
-  return text
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
+  const key = text
+    .split(KEEP_UNFOLDED)
+    .map((part, i) => (i % 2 ? part : part.normalize("NFKC")))
+    .join("")
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
+    .normalize("NFD")
+    .replace(/(\p{Script=Latin})\p{M}+/gu, "$1")
+    .replace(/[\u2010-\u2015\u2212]/g, "-")
+    .replace(
+      /((?<=\p{N})[.,/:-](?=\p{N})|-(?=\p{N}))|[^\p{L}\p{M}\p{N}]/gu,
+      (_, kept?: string) => kept ?? " ",
+    )
+    .replace(/ {2,}/g, " ")
+    .trim()
+    .normalize("NFC");
+  return key || text.normalize("NFC").trim();
 }

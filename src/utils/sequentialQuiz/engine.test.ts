@@ -112,7 +112,29 @@ describe("Sequential Quiz content", () => {
       "the winter solstice",
     );
     expect(normalizeAnswer("Noël")).toBe(normalizeAnswer("noel"));
-    expect(normalizeAnswer("...")).toBe("");
+    expect(normalizeAnswer("İstanbul")).toBe("istanbul");
+    expect(normalizeAnswer("ＷＩＮＴＥＲ")).toBe("winter");
+    expect(normalizeAnswer("−40°")).toBe(normalizeAnswer("-40"));
+  });
+
+  it("never groups answers that mean different things", () => {
+    const distinct = [
+      ["-40", "40"],
+      ["3.5", "3/5"],
+      ["3.5", "35"],
+      ["2-3", "23"],
+      ["10²", "102"],
+      ["½", "12"],
+      ["かぎ", "かき"],
+      ["กิน", "กัน"],
+      ["мой", "мои"],
+      ["🍎", "🍌"],
+      ["?", "!"],
+    ];
+    for (const [a, b] of distinct) {
+      expect(normalizeAnswer(a!), `${a} vs ${b}`).not.toBe(normalizeAnswer(b!));
+    }
+    expect(normalizeAnswer(" 🍎 ")).toBe("🍎");
   });
 });
 

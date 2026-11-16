@@ -35,7 +35,7 @@ If **Save answer** says answers are closed, the host had already locked them, so
 
 1. **Open first question** (then **Next question**). Everyone sees it, and the count of teams that have answered goes up as they save.
 2. **Lock answers** when time's up. Late saves are refused. **Reopen answers** lets teams answer again, until you reveal.
-3. **Mark the answers.** Identical answers are grouped, ignoring capitals, spaces and punctuation, so one tap can mark a whole group **Correct** or **Wrong**. You can still mark any team on its own.
+3. **Mark the answers.** Identical answers are grouped, ignoring capitals, spaces, punctuation and accents, so one tap can mark a whole group **Correct** or **Wrong**. Anything that changes the meaning still counts, such as a minus sign or decimal point in a number (`-40`, `3.5`). You can still mark any team on its own.
 4. Teams that didn't answer must be marked too: **Mark the rest wrong** marks every unmarked team that answered as wrong, and every team that didn't answer as missing.
 5. **Reveal answer** shows the answer on every screen and gives points to every team marked correct, all at once.
 
