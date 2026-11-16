@@ -82,7 +82,7 @@ Two tests are expected to differ there, by design: the development sign-in page 
 
 `tests/spike/` holds measurements, not pass/fail tests: stream counts per page (`RUN_SPIKES=1 bunx playwright test tests/spike`) and a two-instance fan-out run (`bun tests/spike/twoInstance.ts`, after a production build). Their reports go to `test-results/`; current scaling findings are summarized in [load-scaling](./load-scaling.md).
 
-`tests/spike/editorResponsiveness.spec.ts` times the Category Grid editor with the [reference bank](./event-readiness.md#editor-responsiveness) (200 questions, near 1 MiB, the largest grid, four images per clue). Measure a production build: build, run `next start --port 3100` with the test services' environment, then `E2E_PORT=3100 RUN_SPIKES=1 bunx playwright test tests/spike/editorResponsiveness`. Results are in [event readiness](./event-readiness.md#editor-responsiveness).
+`tests/spike/editorResponsiveness.spec.ts` times the Category Grid editor with a synthetic bank at the current content limits (200 questions, near 1 MiB, an 8 × 10 grid, and four images per clue). Measure a production build: build, run `next start --port 3100` with the test services' environment, then `E2E_PORT=3100 RUN_SPIKES=1 bunx playwright test tests/spike/editorResponsiveness`. The report is written to `test-results/editor-responsiveness.json`.
 
 Storybook is not part of this stack; the test organization above is the project's testing strategy.
 

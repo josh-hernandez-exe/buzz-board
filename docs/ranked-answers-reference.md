@@ -108,7 +108,7 @@ The [runtime engine tests](../tests/unit/utils/rankedAnswers/engine.test.ts) com
 
 [synthetic-pack.json](../tests/fixtures/ranked-answers/synthetic-pack.json) contains one practice board, three main boards and a spare. All content is invented, and every board is marked `"source": { "kind": "synthetic" }`.
 
-This fixture uses the reference model's format, not the host editor's import format. For a live rehearsal, start with the editor's [sample boards](../src/utils/rankedAnswers/sample.ts) and follow [event readiness](./event-readiness.md).
+This fixture uses the reference model's format, not the host editor's import format. For the editor's import format, start with the [sample boards](../src/utils/rankedAnswers/sample.ts).
 
 ## Preparing real boards
 

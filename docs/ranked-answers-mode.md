@@ -43,7 +43,7 @@ It runs on [Game Kit](./game-kit.md). One `GameMode` row per game stores the dra
   - the host loads sample boards, saves, starts and runs a Classic feud face-off, play, strikes and a steal;
   - the player page and the audience display show each answer only once revealed;
   - the bank and status line update live, and the score lands on the scoreboard.
-- See [testing](./testing.md) for validation commands and [event readiness](./event-readiness.md) for real-device and host rehearsals.
+- See [testing](./testing.md) for validation commands and optional responsiveness measurements.
 
 ## Current limitations and future work
 

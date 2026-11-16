@@ -1,5 +1,5 @@
 /**
- * Editor responsiveness with the plan's reference bank: 200 questions near
+ * Editor responsiveness with a synthetic reference bank: 200 questions near
  * the 1 MiB limit, the largest grid (8 × 10) and four media items per clue.
  * Measures, with the browser's Event Timing API, how long each keystroke and
  * each tile selection takes to reach the next paint.
