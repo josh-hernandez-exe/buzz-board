@@ -153,10 +153,9 @@ Load testing uses real bots over the app's HTTP and live streams, locally only: 
 
 Buzz Board is designed to be deployed on Vercel for a seamless and scalable hosting experience. Follow the [Vercel Deployment Guide](https://create.t3.gg/en/deployment/vercel) for detailed instructions on deploying T3 Stack applications.
 
-```bash
-git checkout production
-git merge --ff-only development
-```
+For an existing deployment, follow the [Vercel migration and fallback plan](./docs/vercel-migration-plan.md): verify the release branch, rehearse restoring a database backup, apply reviewed migrations, and promote a staged production build. Make sure the intended feature changes have reached `development` before promoting them to `production`; merging an unchanged branch does not release them.
+
+**Merging into `development` does not apply database migrations.** CI migrates only disposable test databases; neither installation nor the build migrates the hosted database. Follow the [development migration gate](./docs/vercel-migration-plan.md#development-deployment-gate) before enabling the new deployment.
 
 ### Scheduled cleanup
 
@@ -201,7 +200,7 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
 3. **Apply Database Migrations**:
    - Never run `prisma migrate reset`, `prisma migrate dev` or `db push --force-reset` against a deployed database: they can delete every game, score and account.
    - Back up the database first (for example with your provider's snapshot or `pg_dump`), outside of a live event.
-   - **One time only**, for a database that was created with `db push` before migrations existed, mark the baseline as already applied. This changes no tables:
+   - **One time only**, for a populated database created with `db push` before migrations existed, first verify that its schema matches `0_init`, then mark the baseline as already applied. This changes no application tables and does not verify the schema for you. Skip this for empty or already-baselined databases:
      ```bash
      bun --env-file=.env.production run db:baseline
      ```
@@ -209,7 +208,7 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
      ```bash
      bun prod:db:migrate
      ```
-   - Rolling back means restoring the backup or deploying a forward fix; migrations are additive so the previous application version keeps working on the upgraded schema unless a migration's notes say otherwise.
+   - Vercel rollback restores the application, not the database. Additive migrations alone do not guarantee that old code can safely handle new data. Rehearse application compatibility and the separate backup-restore fallback in the [migration plan](./docs/vercel-migration-plan.md#5-fallback-procedures).
 
 4. **Verify Connections**:
    - Ensure that your application can connect to the managed PostgreSQL and Redis instances by testing locally or deploying to Vercel.
