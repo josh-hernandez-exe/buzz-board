@@ -12,7 +12,7 @@ This decides the shape of a board. Every other option hangs off it.
 | --- | --- | --- | --- |
 | **Open answering** | 2–50 | No turns: any team answers any time; the host reveals a row and credits every team that got it | Yes; default suggestion |
 | **Classic feud** (`faceOffLadder`) | 2–8 | The TV format: with two teams, the show exactly; with more, a rotating pair faces off each board → play or pass → the playing team answers until it clears the board or strikes out → steal | Yes |
-| Classic, two teams only | 2 | The TV show exactly | **Merged into Classic feud** (owner decision, 2026-10-28: two-team events are supported, though most events have more teams). Classic feud plays it identically with two teams; drafts or games saved with the old style load as Classic feud |
+| Classic, two teams only | 2 | The TV show exactly | **Merged into Classic feud** (two-team games are supported, though most have more teams). Classic feud plays it identically with two teams; drafts or games saved with the old style load as Classic feud |
 | **Round robin** | 2–12 | One answer per team per turn, rotating; starting team rotates per board | Yes |
 | **Pass-along** | 2–12 | A team keeps answering until it misses, then the next team takes over | Yes |
 | **Buzz race** | 2–50 | Every answer is a buzzer race: first to buzz answers; a hit scores, a miss locks the team out | Yes |
@@ -81,7 +81,7 @@ The race uses the real buzzer. In queue mode the buzz queue *is* the race order,
 
 ## Turn-order review
 
-Before the first event the engine was reviewed line by line and tested with randomised games ([fuzz.test.ts](../tests/unit/utils/rankedAnswers/fuzz.test.ts)): every preset at several team counts, random legal and illegal host actions and random undos. After every step it checks:
+The engine was reviewed line by line and tested with randomised games ([fuzz.test.ts](../tests/unit/utils/rankedAnswers/fuzz.test.ts)): every preset at several team counts, random legal and illegal host actions and random undos. After every step it checks:
 - No row is revealed twice, and a shown row stays shown.
 - Points awarded match the scores reported.
 - The bank only holds banked rows.

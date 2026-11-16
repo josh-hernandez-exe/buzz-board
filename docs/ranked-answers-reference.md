@@ -114,7 +114,7 @@ This fixture uses the reference model's format, not the host editor's import for
 
 Real boards aren't in this repository and must never be committed. Two sources work:
 
-**Your own survey** (the classic family-feud way, and simplest for a holiday event):
+**Your own survey** (the classic family-feud way, and simplest for a party):
 
 1. Ask a group (friends, family, colleagues) each prompt, for example with a form, and count the answers.
 2. Merge obvious duplicates into one row with aliases ("pumpkin pie", "pie"). Keep the top 4–8.

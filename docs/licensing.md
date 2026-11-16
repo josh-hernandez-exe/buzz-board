@@ -20,13 +20,13 @@ Things to know:
 
 **Suggestion:** if you want people to use and improve it freely, pick **MIT**. If you mainly care that improvements to a hosted version come back to everyone, pick **AGPL-3.0**. If you're unsure, stay as you are until the first public release.
 
-## Event content and assets
+## Game content and assets
 
 Your trivia questions, board answers, logos, images and sounds are separate from the code and can have their own terms:
 
-- **Keep private event content out of this repository.** This prevents answers and participant data from leaking; committed examples and fixtures use synthetic content.
+- **Keep private game content out of this repository.** This prevents answers and participant data from leaking; committed examples and fixtures use synthetic content.
 - If you want to share a pack afterwards, **CC BY 4.0** (anyone may reuse with credit) or **CC BY-NC 4.0** (non-commercial reuse only) are the usual choices for content.
-- Only use images, sounds and music you made, have permission for, or that are clearly licensed for reuse. TV show names, logos and theme music are trademarks or copyrighted: call your game something like "Holiday Family Feud night" in your own invitations if you like, but don't put the show's logo, theme or name in the app or its assets.
+- Only use images, sounds and music you made, have permission for, or that are clearly licensed for reuse. TV show names, logos and theme music are trademarks or copyrighted: call your game something like "Family Trivia Night" in your own invitations if you like, but don't put the show's logo, theme or name in the app or its assets.
 
 ## To decide
 

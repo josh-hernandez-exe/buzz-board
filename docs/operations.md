@@ -45,7 +45,7 @@ It is the only load suite; it replaced the old k6 HTTP script. Players' own edit
 | --------------------- | --------------------------- | ---------------------------------------- | ------------------------------------ |
 | `smoke-10`            | 10 bots + 4                 | 15 s ramp, 90 s hold, 15 s ramp-down     | After small changes                  |
 | `mixed-100`           | 100 bots + 4                | 2 min ramp, 10 min hold, 2 min ramp-down | After material shared-core changes   |
-| `soak-100`            | 100 bots + 4                | 5 min ramp, 60 min hold, 5 min ramp-down | Before an event or release           |
+| `soak-100`            | 100 bots + 4                | 5 min ramp, 60 min hold, 5 min ramp-down | Before a release or a long game      |
 | `capacity-1000-local` | 100 → 250 → 500 → 1,000 + 4 | Stepped, 29 minutes                      | Optional research, **not** a promise |
 | `scale-10` / `scale-100` / `scale-1000` | 10 / 100 / 1,000 + 4 | Same workload and short shape at each size | Scaling comparison ([load scaling](./load-scaling.md)) |
 
@@ -133,14 +133,14 @@ Redis holds only rate-limit counters and change notifications, so it needs no ba
 
 ### What a backup-restore rehearsal is
 
-A backup you've never restored is a hope, not a backup. A **rehearsal** is a practice run of the real thing, done before an event while nothing is wrong:
+A backup you've never restored is a hope, not a backup. A **rehearsal** is a practice run of the real thing, done ahead of time while nothing is wrong:
 
 1. Restore your latest backup into a **new, separate** database. Never restore over the live one.
 2. Check the restored copy matches: every table, and a game you know (its scores, players and chat).
 3. Write down how long it took, who did it, and anything confusing, so a real restore at a stressful moment is a routine.
 4. Delete the restored copy.
 
-"Recorded" means step 3 is written somewhere you can find it, for example a dated line in your event notes.
+"Recorded" means step 3 is written somewhere you can find it, for example a dated line in your release notes.
 
 ### Rehearsing with a hosted database
 
@@ -161,4 +161,4 @@ A backup you've never restored is a hope, not a backup. A **rehearsal** is a pra
 
 Without local PostgreSQL tools, add `--docker-container buzz-board-test-buzz-board-test-db-1` to use the ones in the test container. The report goes to the git-ignored `backups/` folder.
 
-**Recorded local rehearsal (21 Oct 2026):** passed. The whole database (18 tables) matched after restore, and the marker game's scores, players and chat came back. Backup took 0.26 s and restore 0.26 s for a 56 KB test database. A deliberately altered score in the restored copy was reported as `ScoreEffect: same row count, different contents`. A rehearsal with the production host's own backups is still to do before the first event.
+**Recorded local rehearsal (21 Oct 2026):** passed. The whole database (18 tables) matched after restore, and the marker game's scores, players and chat came back. Backup took 0.26 s and restore 0.26 s for a 56 KB test database. A deliberately altered score in the restored copy was reported as `ScoreEffect: same row count, different contents`. A rehearsal with the production host's own backups has not been recorded here; the [migration plan](./vercel-migration-plan.md) makes one a release gate.
