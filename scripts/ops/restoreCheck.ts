@@ -9,6 +9,20 @@ export type TableFingerprint = { table: string; rows: number; hash: string };
 
 const quote = (identifier: string) => `"${identifier.replaceAll('"', '""')}"`;
 
+/**
+ * Names a database in a report without credentials: scheme, host and
+ * database only. Query parameters are dropped because they can carry
+ * secrets too (`password`, `sslpassword`, `api_key`).
+ */
+export function describeDatabase(url: string): string {
+  try {
+    const { protocol, host, pathname } = new URL(url);
+    return `${protocol}//${host}${pathname}`;
+  } catch {
+    return "(unparseable URL)";
+  }
+}
+
 export async function fingerprint(url: string): Promise<TableFingerprint[]> {
   const db = new PrismaClient({ datasources: { db: { url } } });
   try {

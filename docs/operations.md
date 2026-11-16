@@ -131,7 +131,7 @@ A backup you've never restored is a hope, not a backup. A **rehearsal** is a pra
 
 1. Pause anything writing to the database, or note the time, because later writes show up as differences.
 2. Use your host's restore feature to create a **new** database from the latest backup.
-3. Compare: `bun run ops:verify-restore -- --source "$DATABASE_URL" --restored "$RESTORED_DATABASE_URL"`. It reads both databases (never writes), compares every table's row count and a fingerprint of all its contents, and exits 1 with the tables that differ.
+3. Compare: `SOURCE_DATABASE_URL="$DATABASE_URL" RESTORED_DATABASE_URL="$RESTORED_DATABASE_URL" bun run ops:verify-restore`. The URLs are read from the environment so they never appear in the echoed command or process listings, and the report names each database by host and name only. It reads both databases (never writes), compares every table's row count and a fingerprint of all its contents, and exits 1 with the tables that differ.
 4. Optionally point a local copy of the app at the restored database and open a known game.
 5. Delete the restored database, and record the result and the time taken.
 

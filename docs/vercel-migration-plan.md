@@ -114,10 +114,11 @@ Register the exact `/api/auth/callback/google` and `/api/auth/callback/discord` 
 3. Before changing the copy, verify it against the still-idle source:
 
    ```bash
-   bun run ops:verify-restore -- --source "$SOURCE_DATABASE_URL" --restored "$RESTORED_DATABASE_URL"
+   # With SOURCE_DATABASE_URL and RESTORED_DATABASE_URL set in the environment:
+   bun run ops:verify-restore
    ```
 
-   Supply these URLs securely on a private operator machine or protected runner. The command is read-only and must exit successfully with no table/count/content differences. It compares tables individually, so keep writers paused throughout. Do not publish its connection metadata.
+   Supply these URLs securely on a private operator machine or protected runner, as environment variables (never command-line arguments, which `bun run` echoes and process listings show). The command is read-only and must exit successfully with no table/count/content differences. Its report names each database by host and name only. It compares tables individually, so keep writers paused throughout. Do not publish its connection metadata.
 
    If production has resumed writing, compare with an unchanged copy from the same restore point instead; differences from later writes do not prove a bad backup. Resume normal production use after this backup-verification pause while the isolated rehearsal continues.
 

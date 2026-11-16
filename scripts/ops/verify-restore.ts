@@ -3,38 +3,41 @@
  * count and a fingerprint of its full contents. Read-only on both. Works
  * however the backup was made (pg_dump, your host's point-in-time restore).
  *
- *   bun run ops:verify-restore -- --source "$DATABASE_URL" --restored "$RESTORED_URL"
+ *   SOURCE_DATABASE_URL="$DATABASE_URL" RESTORED_DATABASE_URL="$RESTORED_URL" \
+ *     bun run ops:verify-restore
+ *
+ * The URLs come from the environment, not arguments: `bun run` echoes its
+ * command line and arguments show in process listings, which would expose
+ * the passwords. The report names each database without credentials.
  *
  * Compare while the source is idle (or against a copy taken at backup
  * time): rows written after the backup will show as differences.
  */
-import { parseArgs } from "node:util";
+import {
+  compareFingerprints,
+  describeDatabase,
+  fingerprint,
+} from "./restoreCheck";
 
-import { compareFingerprints, fingerprint } from "./restoreCheck";
-
-const redact = (url: string) => url.replace(/\/\/[^@/]*@/, "//***@");
-
-const { values } = parseArgs({
-  options: {
-    source: { type: "string" },
-    restored: { type: "string" },
-  },
-});
-if (!values.source || !values.restored) {
-  console.error("Usage: --source <database URL> --restored <database URL>");
+const sourceUrl = process.env.SOURCE_DATABASE_URL;
+const restoredUrl = process.env.RESTORED_DATABASE_URL;
+if (!sourceUrl || !restoredUrl) {
+  console.error(
+    "Set SOURCE_DATABASE_URL and RESTORED_DATABASE_URL to the two database URLs.",
+  );
   process.exit(2);
 }
 const [source, restored] = await Promise.all([
-  fingerprint(values.source),
-  fingerprint(values.restored),
+  fingerprint(sourceUrl),
+  fingerprint(restoredUrl),
 ]);
 const differences = compareFingerprints(source, restored);
 console.log(
   JSON.stringify(
     {
       ok: differences.length === 0,
-      source: redact(values.source),
-      restored: redact(values.restored),
+      source: describeDatabase(sourceUrl),
+      restored: describeDatabase(restoredUrl),
       tables: source.length,
       rows: source.reduce((s, t) => s + t.rows, 0),
       differences,
