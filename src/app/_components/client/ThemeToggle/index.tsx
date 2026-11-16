@@ -51,11 +51,17 @@ export function ThemeToggle() {
     // Reading localStorage must wait until after hydration.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setChoice(readChoice());
-    const onChange = () => applyTheme(readChoice());
+  }, []);
+
+  // Follows the device only while "device setting" is chosen. Uses the
+  // in-page choice, not storage, which may be blocked (private browsing).
+  useEffect(() => {
+    if (choice !== "system") return;
+    const onChange = () => applyTheme("system");
     const query = media();
     query.addEventListener("change", onChange);
     return () => query.removeEventListener("change", onChange);
-  }, []);
+  }, [choice]);
 
   const current = choice ?? "system";
   const Icon = current === "light" ? Sun : current === "dark" ? Moon : Monitor;

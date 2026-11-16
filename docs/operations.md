@@ -67,8 +67,8 @@ Everything is local: a production build of the app, and the disposable PostgreSQ
 
 ```bash
 bun run test:services:up
-export DATABASE_URL=postgresql://postgres:postgres@localhost:55432/buzz_board_test
-export KV_URL=redis://localhost:56379/0 SKIP_ENV_VALIDATION=1
+export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/buzz_board_test
+export KV_URL=redis://127.0.0.1:56379/0 SKIP_ENV_VALIDATION=1
 bunx prisma migrate deploy
 bun run build
 

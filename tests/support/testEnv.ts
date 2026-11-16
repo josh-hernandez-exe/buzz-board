@@ -7,9 +7,11 @@
  * refuses anything that does not look like a local, test-only database, and
  * `assertDisposableRedis` refuses a non-local Redis.
  */
+// 127.0.0.1, not localhost: docker-compose.test.yml publishes on IPv4 loopback
+// only, and Prisma reports a refused ::1 instead of the real error.
 export const DEFAULT_TEST_DATABASE_URL =
-  "postgresql://postgres:postgres@localhost:55432/buzz_board_test";
-export const DEFAULT_TEST_KV_URL = "redis://localhost:56379/0";
+  "postgresql://postgres:postgres@127.0.0.1:55432/buzz_board_test";
+export const DEFAULT_TEST_KV_URL = "redis://127.0.0.1:56379/0";
 
 export function testDatabaseUrl(): string {
   return process.env.TEST_DATABASE_URL ?? DEFAULT_TEST_DATABASE_URL;

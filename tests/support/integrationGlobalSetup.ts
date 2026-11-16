@@ -56,8 +56,14 @@ export default async function setup() {
       },
     );
   } catch (error) {
+    // Only an unreachable server means the services are down; anything else
+    // (for example a failing migration) is reported with Prisma's output.
+    const { stderr } = error as { stderr?: Buffer | string };
+    const output = (stderr?.toString() ?? "").trim();
     throw new Error(
-      `Could not prepare the test database at ${databaseUrl}. Run \`bun test:services:up\` first.`,
+      output.includes("P1001")
+        ? `Test PostgreSQL is not reachable at ${databaseUrl}. Run \`bun test:services:up\` first.`
+        : `Resetting the test database with the checked-in migrations failed:\n${output}`,
       { cause: error },
     );
   }

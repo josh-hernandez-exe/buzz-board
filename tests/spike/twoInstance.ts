@@ -4,7 +4,7 @@
  * and Redis connections per subscriber, then writes a JSON report.
  *
  *   bun run test:services:up
- *   SKIP_ENV_VALIDATION=1 KV_URL=redis://localhost:56379/0 bun run build
+ *   SKIP_ENV_VALIDATION=1 KV_URL=redis://127.0.0.1:56379/0 bun run build
  *   bun tests/spike/twoInstance.ts [subscribersPerInstance=25]
  *
  * Uses only the disposable test services; never point it at a real deployment.
