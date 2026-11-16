@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/app/_components/ui/button";
 import {
+  THEME_CHOICE_ATTRIBUTE,
   THEME_STORAGE_KEY,
   resolveDark,
   type ThemeChoice,
@@ -21,9 +22,12 @@ const LABEL: Record<ThemeChoice, string> = {
   dark: "Dark",
 };
 
-const media = () => window.matchMedia("(prefers-color-scheme: dark)");
+const isChoice = (value: string | null): value is ThemeChoice =>
+  value === "system" || value === "light" || value === "dark";
 
 function readChoice(): ThemeChoice {
+  const inPage = document.documentElement.getAttribute(THEME_CHOICE_ATTRIBUTE);
+  if (isChoice(inPage)) return inPage;
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
     return stored === "light" || stored === "dark" ? stored : "system";
@@ -32,10 +36,16 @@ function readChoice(): ThemeChoice {
   }
 }
 
+/** The <head> script (THEME_INIT_SCRIPT) reads the attribute on device changes. */
 function applyTheme(choice: ThemeChoice) {
-  document.documentElement.classList.toggle(
+  const root = document.documentElement;
+  root.setAttribute(THEME_CHOICE_ATTRIBUTE, choice);
+  root.classList.toggle(
     "dark",
-    resolveDark(choice, media().matches),
+    resolveDark(
+      choice,
+      window.matchMedia("(prefers-color-scheme: dark)").matches,
+    ),
   );
 }
 
@@ -52,16 +62,6 @@ export function ThemeToggle() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setChoice(readChoice());
   }, []);
-
-  // Follows the device only while "device setting" is chosen. Uses the
-  // in-page choice, not storage, which may be blocked (private browsing).
-  useEffect(() => {
-    if (choice !== "system") return;
-    const onChange = () => applyTheme("system");
-    const query = media();
-    query.addEventListener("change", onChange);
-    return () => query.removeEventListener("change", onChange);
-  }, [choice]);
 
   const current = choice ?? "system";
   const Icon = current === "light" ? Sun : current === "dark" ? Moon : Monitor;

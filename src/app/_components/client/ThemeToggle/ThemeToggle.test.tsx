@@ -2,7 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { THEME_INIT_SCRIPT } from "@/utils/theme";
+import { THEME_CHOICE_ATTRIBUTE, THEME_INIT_SCRIPT } from "@/utils/theme";
 
 import { ThemeToggle } from ".";
 
@@ -14,10 +14,17 @@ function setSystemDark(dark: boolean) {
   act(() => listeners.forEach((listener) => listener()));
 }
 
+/** Runs the inline <head> script string the way the browser does. */
+function runHeadScript() {
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, @typescript-eslint/no-unsafe-call
+  new Function(THEME_INIT_SCRIPT)();
+}
+
 beforeEach(() => {
   systemDark = false;
   listeners.clear();
   document.documentElement.classList.remove("dark");
+  document.documentElement.removeAttribute(THEME_CHOICE_ATTRIBUTE);
   vi.stubGlobal("matchMedia", (query: string) => ({
     media: query,
     get matches() {
@@ -43,16 +50,15 @@ afterEach(() => {
 });
 
 describe("theme with blocked storage", () => {
-  it("the init script still follows a dark device setting", () => {
+  it("the head script still follows a dark device setting", () => {
     systemDark = true;
-    // Runs the inline <head> script string the way the browser does.
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval, @typescript-eslint/no-unsafe-call
-    new Function(THEME_INIT_SCRIPT)();
+    runHeadScript();
     expect(document.documentElement).toHaveClass("dark");
   });
 
   it("keeps an in-page Light choice when the device switches to dark", async () => {
     const user = userEvent.setup();
+    runHeadScript();
     render(<ThemeToggle />);
     await user.click(screen.getByRole("button", { name: /Device setting/ }));
     expect(screen.getByRole("button", { name: /Light/ })).toBeInTheDocument();
@@ -62,9 +68,28 @@ describe("theme with blocked storage", () => {
     expect(document.documentElement).not.toHaveClass("dark");
   });
 
-  it("follows the device while Device setting is chosen", () => {
-    render(<ThemeToggle />);
+  it("follows the device after the toggle unmounts (client navigation)", () => {
+    runHeadScript();
+    render(<ThemeToggle />).unmount();
+
     setSystemDark(true);
+
+    expect(document.documentElement).toHaveClass("dark");
+  });
+
+  it("a remounted toggle shows the in-page choice", async () => {
+    const user = userEvent.setup();
+    runHeadScript();
+    const first = render(<ThemeToggle />);
+    await user.click(screen.getByRole("button", { name: /Device setting/ }));
+    await user.click(screen.getByRole("button", { name: /Light/ }));
+    first.unmount();
+
+    render(<ThemeToggle />);
+
+    expect(
+      await screen.findByRole("button", { name: /Colour theme: Dark/ }),
+    ).toBeInTheDocument();
     expect(document.documentElement).toHaveClass("dark");
   });
 });
