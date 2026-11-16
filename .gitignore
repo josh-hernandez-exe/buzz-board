@@ -86,6 +86,9 @@ yarn-error.log*
 /blob-report/
 /playwright/.cache/
 
+# ad-hoc screenshots from manual or agent UI checks
+/screenshots/
+
 # load runner reports (may include timings of local hardware)
 /load-results/
 
