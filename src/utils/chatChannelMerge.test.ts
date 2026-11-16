@@ -44,6 +44,16 @@ describe("chat channel merge", () => {
     expect(seqs(merged)).toEqual([5]);
   });
 
+  it("ignores a response older than the view held", () => {
+    const held = view([1, 2], { revision: 7 });
+    expect(mergeChannelView(held, view([1, 2, 3], { revision: 6 }), 50)).toBe(
+      held,
+    );
+    expect(
+      mergeChannelView(held, view([3], { appendOnly: true, revision: 6 }), 50),
+    ).toBe(held);
+  });
+
   it("asks for messages after the newest held, or everything for an empty view", () => {
     expect(sinceFor(view([4, 7], { revision: 5 }))).toEqual({
       revision: 5,

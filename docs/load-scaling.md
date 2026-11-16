@@ -105,7 +105,7 @@ Each fix has a test that fails without it. The same merge code runs in the brows
 
 Every chat message made every viewer re-fetch the channel's newest 50 messages (~16 KB). With 1,000 people posting, that was half of all traffic.
 
-Now each channel records the revision of its last change other than a new message (removal, pin, clear, settings). A viewer passes the view it holds (revision and newest message). If only new messages arrived since, it gets just those, and the page merges them in ([chatChannelMerge.ts](../src/utils/chatChannelMerge.ts)). Anything else, including a forged revision, a name change or a reconnect, still gets the full view.
+Now each channel records the revision of its last change other than a new message (removal, pin, clear, settings, or `ops:cleanup` erasing expired text). A viewer passes the view it holds (revision and newest message). If only new messages arrived since, it gets just those, and the page merges them in ([chatChannelMerge.ts](../src/utils/chatChannelMerge.ts)). Anything else, including a forged revision, a name change or a reconnect, still gets the full view. A response older than the view already held is ignored, so a slow fetch can't bring back removed text.
 
 | | 100 users before | 100 users after | 1,000 before (1 server) | 1,000 after (1 server) | 1,000 after (2 servers) |
 | --- | --- | --- | --- | --- | --- |

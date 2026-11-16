@@ -400,8 +400,8 @@ model ChatChannel {
   /// Changes whenever anything visible in the channel changes.
   revision               Int      @default(0)
   /// The revision of the last change other than a new message (removal,
-  /// pin, clear, settings). A viewer holding a view at least this recent
-  /// only needs the messages after its newest one.
+  /// pin, clear, settings, retention cleanup). A viewer holding a view at
+  /// least this recent only needs the messages after its newest one.
   modifiedRevision       Int      @default(0)
   createdAt              DateTime @default(now())
 

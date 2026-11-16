@@ -811,6 +811,30 @@ describe("retention", () => {
     expect(await db.chatMessage.count({ where: { gameId: game.id } })).toBe(1);
   });
 
+  it("makes viewers holding a message that expires fetch the whole channel", async () => {
+    const { guests, say } = await chatGame();
+    const { message } = await say(guests[0]!, "soon gone");
+    const held = await guests[1]!.player.chat.channel({ channelKey: GAME });
+    expect(held.messages.at(-1)).toMatchObject({ state: "visible" });
+    await db.chatMessage.update({
+      where: { id: message.id },
+      data: { createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) },
+    });
+
+    await cleanupChat();
+
+    const next = await guests[1]!.player.chat.channel({
+      channelKey: GAME,
+      since: sinceFor(held),
+    });
+    expect(next.appendOnly).toBe(false);
+    expect(mergeChannelView(held, next, 50).messages.at(-1)).toMatchObject({
+      id: message.id,
+      state: "expired",
+      body: null,
+    });
+  });
+
   it("strips moderation reasons after 30 days and drops expired mutes", async () => {
     const { game, guests, say, admin } = await chatGame();
     const { message } = await say(guests[0]!, "x");

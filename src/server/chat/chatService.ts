@@ -1009,15 +1009,31 @@ export async function setChatEnabled(gameId: string, enabled: boolean) {
  * Applies retention: removes chat bodies older than the retention period,
  * drops expired mutes, and strips moderation reasons older than 30 days.
  * Safe to run repeatedly; reads also hide expired bodies if this runs late.
+ * Channels that lost bodies get a new revision, so a viewer's next refetch
+ * returns the whole channel rather than only new messages.
  */
 export async function cleanupChat(now = new Date()) {
   const bodyCutoff = new Date(now.getTime() - RETENTION_MS);
   const reasonCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const [expiredBodies, expiredMutes, strippedReasons] = await Promise.all([
-    db.chatMessage.updateMany({
-      where: { body: { not: null }, createdAt: { lt: bodyCutoff } },
-      data: { body: null, bodyHash: REDACTED_HASH, expiredAt: now },
-    }),
+    db.$transaction(
+      async (tx) => {
+        const expired = await tx.chatMessage.updateManyAndReturn({
+          where: { body: { not: null }, createdAt: { lt: bodyCutoff } },
+          data: { body: null, bodyHash: REDACTED_HASH, expiredAt: now },
+          select: { channelId: true },
+        });
+        const channelIds = [...new Set(expired.map((m) => m.channelId))];
+        if (channelIds.length > 0) {
+          await tx.$executeRaw`
+            UPDATE "ChatChannel"
+            SET revision = revision + 1, "modifiedRevision" = revision + 1
+            WHERE id = ANY(${channelIds})`;
+        }
+        return expired.length;
+      },
+      { timeout: 60_000 },
+    ),
     db.chatMute.deleteMany({ where: { until: { lt: now } } }),
     db.$executeRaw`
       UPDATE "GameOperation" SET result = result - 'reason'
@@ -1025,7 +1041,7 @@ export async function cleanupChat(now = new Date()) {
         AND result ? 'reason'`,
   ]);
   return {
-    expiredBodies: expiredBodies.count,
+    expiredBodies,
     expiredMutes: expiredMutes.count,
     strippedReasons,
   };

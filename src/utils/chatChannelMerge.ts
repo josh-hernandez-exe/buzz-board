@@ -28,12 +28,15 @@ export function sinceFor(
 /**
  * The view after a fetch. Appended messages go after the held ones, keeping
  * at most `limit` (older ones scroll out of the window, so `hasOlder`).
+ * A fetch older than the held view (a slow response overtaken by a newer
+ * one) is ignored, so it can't bring back removed or expired text.
  */
 export function mergeChannelView<V extends MergeableView<Message>>(
   held: V | undefined,
   fetched: V,
   limit: number,
 ): V {
+  if (held && fetched.revision < held.revision) return held;
   if (!fetched.appendOnly) return fetched;
   if (!held) return { ...fetched, appendOnly: false };
   const known = new Set(held.messages.map((m) => m.sequence));
