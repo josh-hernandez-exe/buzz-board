@@ -39,11 +39,24 @@ export async function fingerprint(url: string): Promise<TableFingerprint[]> {
       ORDER BY n.nspname, c.relname`;
     const out: TableFingerprint[] = [];
     for (const { schema, name } of tables) {
-      const [row] = await db.$queryRawUnsafe<{ rows: bigint; hash: string }[]>(
-        `SELECT count(*) AS rows,
-                md5(coalesce(string_agg(t::text, '|' ORDER BY t::text), '')) AS hash
-         FROM ${quote(schema)}.${quote(name)} t`,
-      );
+      // A row's text form depends on session settings and its sort order on
+      // the database's collation, so pin both: a restore onto a server with
+      // other defaults must still hash the same. The settings are local to
+      // this batch's transaction, which keeps them on the query's connection.
+      const [, [row]] = await db.$transaction([
+        db.$queryRaw`
+          SELECT set_config('TimeZone', 'UTC', true),
+                 set_config('DateStyle', 'ISO, YMD', true),
+                 set_config('IntervalStyle', 'postgres', true),
+                 set_config('extra_float_digits', '1', true),
+                 set_config('bytea_output', 'hex', true),
+                 set_config('lc_monetary', 'C', true)`,
+        db.$queryRawUnsafe<{ rows: bigint; hash: string }[]>(
+          `SELECT count(*) AS rows,
+                  md5(coalesce(string_agg(t::text, '|' ORDER BY t::text COLLATE "C"), '')) AS hash
+           FROM ${quote(schema)}.${quote(name)} t`,
+        ),
+      ]);
       out.push({
         table: `${schema}.${name}`,
         rows: Number(row!.rows),
