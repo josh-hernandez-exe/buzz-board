@@ -8,7 +8,7 @@ import { testServiceEnv } from "./tests/support/testEnv.ts";
  * - unit:        pure server/shared helpers, no services.
  * - component:   React Testing Library in jsdom, no services.
  * - integration: real tRPC routers against disposable PostgreSQL + Redis
- *                (`bun test:services:up`). See tests/README.md.
+ *                (`bun test:services:up`). See docs/testing.md.
  */
 export default defineConfig({
   plugins: [react()],
@@ -28,7 +28,7 @@ export default defineConfig({
         test: {
           name: "unit",
           environment: "node",
-          include: ["src/**/*.test.ts", "tests/unit/**/*.test.ts"],
+          include: ["tests/unit/**/*.test.ts"],
         },
       },
       {
@@ -36,7 +36,7 @@ export default defineConfig({
         test: {
           name: "component",
           environment: "jsdom",
-          include: ["src/**/*.test.tsx", "tests/component/**/*.test.tsx"],
+          include: ["tests/unit/**/*.test.tsx"],
           setupFiles: ["./tests/support/componentSetup.ts"],
           env: {
             SKIP_ENV_VALIDATION: "1",
