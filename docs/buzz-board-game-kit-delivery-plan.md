@@ -1276,7 +1276,7 @@ Measure activation steps for the stated routine actions, task completion, mistak
 
 ## Benchmark profiles and cost-safe operations
 
-Use **one primary repository-local TypeScript/Bun streaming-capable runner** against actual HTTP/tRPC/SSE endpoints. Reuse existing client/protocol helpers. PR02 must prove a tiny real connection path before the full runner is built. The legacy k6 HTTP script can remain reference material, not a second required suite plus sidecar.
+Use **one primary repository-local TypeScript/Bun streaming-capable runner** against actual HTTP/tRPC/SSE endpoints. Reuse existing client/protocol helpers. PR02 must prove a tiny real connection path before the full runner is built. The legacy k6 HTTP script was superseded by this runner and has been removed; there is no second suite or sidecar.
 
 Fully local load testing includes real simultaneous bot connections, not mocked requests: the app, disposable PostgreSQL and Redis/KeyDB all run locally with synthetic sessions/media and no OAuth/upload/embed/provider traffic. A localhost app connected to a cloud database is not fully local. The 1,000-user profile is within scope as an explicitly run capacity probe, not a default CI job, 1,000 browser processes or a production-capacity guarantee.
 

@@ -24,6 +24,8 @@ If cleanup is late, players still never see expired text: reads hide it after 7 
 
 [scripts/load/run.ts](../scripts/load/run.ts) drives real bots against the app's real HTTP/tRPC/SSE endpoints. Each bot joins with its own token and holds the same two streams as a player page (game state and chat). It chats through the real invalidation-plus-fetch path and buzzes when the buzzer opens. Four more clients act as owner (coordinator), co-host, moderator and audience display.
 
+It is the only load suite; it replaced the old k6 HTTP script. Players' own edits (changing their name, team or team name) aren't part of its workload. Integration tests cover them.
+
 ### Profiles
 
 | Profile               | Clients                     | Shape                                    | Use                                  |

@@ -13,7 +13,6 @@ export default tseslint.config(
       "next-env.d.ts",
       "playwright-report/",
       "test-results/",
-      "scripts/k6/dist/",
     ],
   },
   ...nextCoreWebVitals,

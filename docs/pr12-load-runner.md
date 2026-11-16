@@ -11,7 +11,7 @@ This is the recorded evidence for **PR12** in the [delivery plan](./buzz-board-g
 
 ## What was built
 
-- **Runner** ([scripts/load](../scripts/load)), `bun run load`: one Bun/TypeScript runner against the real endpoints, as the plan asks. The legacy k6 script stays as reference.
+- **Runner** ([scripts/load](../scripts/load)), `bun run load`: one Bun/TypeScript runner against the real endpoints, as the plan asks. It replaced the legacy k6 HTTP script, which has since been removed.
   - Bots join with their own tokens and hold the two streams a player page holds (`gameGeneral.gameState`, `chat.live`). They fetch changed channels through the real `chat.channel` query (the PR10 invalidation-plus-fetch path, not a benchmark-only body stream) and buzz when the buzzer opens.
   - Four more clients act as owner/coordinator, co-host, moderator (fetching the merged moderation feed on each pulse) and audience display. Streams reopen like the browser client's do if they drop.
   - Probes: mute (a muted bot is refused in chat but can still buzz), rename + lock/unlock, message removal, team move, reconnect, role change, and a per-bot privacy probe (another team's channel must be refused).
