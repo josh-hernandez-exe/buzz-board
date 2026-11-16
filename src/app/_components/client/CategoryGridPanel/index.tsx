@@ -49,7 +49,7 @@ const field = "field px-2 py-1 text-sm";
  * The host desk's Category Grid tab: fill in the grid, then run it. Only
  * owners and co-hosts see it, because it shows every answer.
  */
-export function CategoryGridPanel() {
+export function CategoryGridPanel({ gameId }: { gameId: string }) {
   const utils = api.useUtils();
   const query = api.categoryGrid.hostView.useQuery();
   const live = useLiveGameState();
@@ -60,7 +60,8 @@ export function CategoryGridPanel() {
   }, [modeKey, utils]);
 
   if (query.error) return <ErrorNotice error={query.error} />;
-  const view = query.data;
+  // Never another game's cached view (see SequentialQuizPanel).
+  const view = query.data?.gameId === gameId ? query.data : undefined;
   if (!view) return <p className="text-sm">Loading…</p>;
 
   return (

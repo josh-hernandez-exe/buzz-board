@@ -49,7 +49,7 @@ const field = "field px-2 py-1 text-sm";
  * The host desk's Quiz tab: write the questions in order, then run them.
  * Only owners and co-hosts see it, because it shows answers.
  */
-export function SequentialQuizPanel() {
+export function SequentialQuizPanel({ gameId }: { gameId: string }) {
   const utils = api.useUtils();
   const query = api.sequentialQuiz.hostView.useQuery();
   const live = useLiveGameState();
@@ -60,7 +60,10 @@ export function SequentialQuizPanel() {
   }, [modeKey, utils]);
 
   if (query.error) return <ErrorNotice error={query.error} />;
-  const view = query.data;
+  // The cache isn't keyed by game, so after moving between host desks it can
+  // hold the last game's view. Wait for this game's, so its draft can't be
+  // edited here and saved over this game's bank.
+  const view = query.data?.gameId === gameId ? query.data : undefined;
   if (!view) return <p className="text-sm">Loading…</p>;
 
   return (

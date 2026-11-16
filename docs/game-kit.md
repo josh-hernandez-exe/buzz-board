@@ -7,7 +7,7 @@ Game Kit is the shared runner behind every game mode. A mode such as Ranked Answ
 | Guarantee | How |
 | --- | --- |
 | One mode per game | One `GameMode` row per game with a `kind`. Saving another kind's draft is refused ("set up for X, discard that setup first") |
-| Drafts can't overwrite each other | `draftRevision` compare-and-set |
+| Drafts can't overwrite each other | `draftRevision` compare-and-set. Host views carry `gameId`, and a host panel ignores a view for another game: the browser's query cache isn't keyed by game, so after moving between host desks it can hold the last game's draft |
 | Start is safe | Preflight must pass; the draft is frozen as `content`; a lobby game goes live |
 | Each host action happens once, in order | Under the game lock; a `GameOperation` receipt per `requestId` (a retry is a no-op); `expectedStep` refuses a stale screen ("another host changed it first") |
 | Board and scores always agree | The action's points go through the shared score writer in the same transaction |
@@ -26,7 +26,7 @@ Game Kit is the shared runner behind every game mode. A mode such as Ranked Answ
 2. **A module** in `src/server/modes/<mode>Service.ts`: a `ModeModule` object (`kind`, `parseDraft`, `emptyDraft`, `preflight`, `initialState`, `withTeams`, `apply`, `undo`, `ruleError`), plus one-line wrappers that call the runner. Two optional hooks: `enrich(tx, gameId, content, state, action)` fills in server-side facts before `apply` (Sequential Quiz adds which teams answered), and `ignoresStep(action)` exempts actions that carry their own conflict check from the stale-step rule (quiz marks carry the verdict the screen showed).
 3. **Register** the kind in [modes.ts](../src/utils/modes.ts) (`MODE_KINDS`, `MODE_LABEL`, a branch in `publicGameModeView`), add a rule-error variant to `ModeRuleError` and its messages in [errors.ts](../src/server/api/errors.ts).
 4. **Router** with `staffProcedure("runGame")`: `hostView`, `saveDraft`, `discardDraft`, `start`, `act`, `undo`, `end`. Copy [categoryGrid.ts](../src/server/api/routers/categoryGrid.ts).
-5. **UI:** a host panel (editor before start, controls after), a public board component, a desk tab, an option in the create form, and a Help article.
+5. **UI:** a host panel (editor before start, controls after) that takes the page's `gameId` and shows "Loading…" until `hostView` returns that game's view, a public board component, a desk tab, an option in the create form, and a Help article.
 6. **Tests:** engine unit tests, a randomised invariants test, API tests (privacy, retry, stale step, undo, deleted team), and one browser flow.
 
 The synthetic "Quiz Maze" module in [gameKit.test.ts](../tests/integration/gameKit.test.ts) is defined only in the test and runs through the real runner and database, which is the proof that the recipe needs no other app changes.

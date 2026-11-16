@@ -141,6 +141,8 @@ export async function teamsInOrder(client: GameTx | typeof db, gameId: string) {
 }
 
 export type ModeHostData<Content, State> = {
+  /** Lets a client tell this game's view from another game's cached one. */
+  gameId: string;
   status: "none" | "draft" | "running" | "ended";
   otherMode: string | null;
   draft: Content;
@@ -171,6 +173,7 @@ export async function modeHostData<C, S, A extends { type: string }, E>(
     ? module.parseDraft(mode.content).unwrapOr(null)
     : null;
   return {
+    gameId,
     status:
       (mode?.status as ModeHostData<C, S>["status"] | undefined) ?? "none",
     otherMode,

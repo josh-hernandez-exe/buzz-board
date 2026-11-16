@@ -89,17 +89,17 @@ export function GameAdminInfo({
         )}
         {showRanked && (
           <TabsContent value="ranked-answers">
-            <RankedAnswersPanel />
+            <RankedAnswersPanel gameId={initialGameState.game.id} />
           </TabsContent>
         )}
         {showGrid && (
           <TabsContent value="category-grid">
-            <CategoryGridPanel />
+            <CategoryGridPanel gameId={initialGameState.game.id} />
           </TabsContent>
         )}
         {showQuiz && (
           <TabsContent value="quiz">
-            <SequentialQuizPanel />
+            <SequentialQuizPanel gameId={initialGameState.game.id} />
           </TabsContent>
         )}
         <TabsContent value="players" className="flex flex-col gap-4">
