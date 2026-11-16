@@ -143,6 +143,11 @@ describe("join and resume", () => {
         code: "BAD_REQUEST",
       },
     );
+    for (const separator of ["\u2028", "\u2029"]) {
+      await expect(
+        joinAsGuest(game.code, `bad${separator}name`),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
   });
 
   it("resumes the same player and ignores a new nickname", async () => {

@@ -1,3 +1,5 @@
+import { TRPCError } from "@trpc/server";
+
 import { MessagePage, PageShell } from "@/app/_components/ui/page";
 import { api, HydrateClient } from "@/trpc/server";
 
@@ -18,9 +20,14 @@ export default async function GamePage({
     );
   }
 
+  // Only a missing game is "not found"; anything else (database or Redis
+  // outages, bugs) must surface as a server error rather than a 404 page.
   const currentGameState = await api.public
     .currentGameState({ gameId })
-    .catch(() => null);
+    .catch((error: unknown) => {
+      if (error instanceof TRPCError && error.code === "NOT_FOUND") return null;
+      throw error;
+    });
 
   if (!currentGameState) {
     return (

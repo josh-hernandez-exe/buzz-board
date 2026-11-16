@@ -8,8 +8,9 @@
  *   already hide them if this runs late.
  * - Expired chat mutes are deleted.
  * - Moderation reasons older than 30 days are stripped from the audit log.
- * - Unfinished games untouched for 7 days are reported, never deleted: the
- *   operator decides whether to contact the host or close them.
+ * - Unfinished games with no activity for 7 days (no buzzes, answers, chat,
+ *   score or mode actions, or roster changes) are reported, never deleted:
+ *   the operator decides whether to contact the host or close them.
  * - `overdueBodies` counts chat text that should already have been removed
  *   (over 2 hours late) before this run. Non-zero means earlier scheduled
  *   runs failed or were missed: alert on it.
@@ -17,13 +18,11 @@
  * Prints a JSON summary and exits non-zero on failure so a scheduler can
  * alert on it.
  */
-import { GameStatus } from "@prisma/client";
-
 import { cleanupChat } from "@/server/chat/chatService";
 import { CHAT_LIMITS } from "@/utils/chatLimits";
 import { db } from "@/server/db";
 
-const STALE_GAME_DAYS = 7;
+import { findStaleUnfinishedGames } from "./staleGames";
 
 try {
   const overdueBodies = await db.chatMessage.count({
@@ -37,16 +36,7 @@ try {
     },
   });
   const summary = await cleanupChat();
-  const staleBefore = new Date(Date.now() - STALE_GAME_DAYS * 86_400_000);
-  const staleUnfinishedGames = await db.game.findMany({
-    where: {
-      status: { not: GameStatus.finished },
-      updatedAt: { lt: staleBefore },
-    },
-    select: { id: true, code: true, status: true, updatedAt: true },
-    orderBy: { updatedAt: "asc" },
-    take: 100,
-  });
+  const staleUnfinishedGames = await findStaleUnfinishedGames();
   console.log(
     JSON.stringify({
       ok: true,
