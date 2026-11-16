@@ -443,12 +443,13 @@ describe("chat feed costs", () => {
       await room.admin.chat.send({
         as: "staff",
         channelKey: "game",
-        body: `m${i}`,
+        body: `summary-leak-probe-${i}`,
         requestId: rid(),
       });
     }
     const summary = (await loadChatSummary(room.game.id))._unsafeUnwrap();
     expect(summary.revisions).toEqual({ game: 5 });
-    expect(JSON.stringify(summary)).not.toContain("m1");
+    // The marker contains "-", which never appears in a generated id.
+    expect(JSON.stringify(summary)).not.toContain("summary-leak-probe");
   });
 });
