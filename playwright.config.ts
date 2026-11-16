@@ -27,7 +27,9 @@ export default defineConfig({
   },
   projects: [{ name: "desktop", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `bunx next dev --port ${PORT}`,
+    // Loopback only: development sign-in refuses to run on a server other
+    // machines can reach (src/server/auth/devServerExposure.ts).
+    command: `bunx next dev --hostname 127.0.0.1 --port ${PORT}`,
     url: `${baseURL}/join`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

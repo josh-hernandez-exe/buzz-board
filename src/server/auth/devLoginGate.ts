@@ -13,7 +13,9 @@
  *    as a constant in production builds) or on Vercel, and otherwise only
  *    true with DEV_LOGIN=1.
  * 4. The page and route answer only requests to localhost, and the route
- *    only same-origin form posts.
+ *    only same-origin form posts. Both headers are the caller's to choose, so
+ *    neither works while other machines can connect to the server at all
+ *    (devServerExposure.ts): start it with `--hostname 127.0.0.1`.
  */
 
 export function devLoginEnabled(): boolean {

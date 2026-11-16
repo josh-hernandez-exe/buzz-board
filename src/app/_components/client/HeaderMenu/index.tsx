@@ -19,6 +19,7 @@ export function HeaderMenu({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
 
   useEffect(() => {
@@ -27,7 +28,12 @@ export function HeaderMenu({
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      // A focused link is about to unmount: keep keyboard users' place.
+      if (ref.current?.contains(document.activeElement)) {
+        buttonRef.current?.focus();
+      }
+      setOpen(false);
     };
     document.addEventListener("pointerdown", onPointer);
     document.addEventListener("keydown", onKey);
@@ -40,6 +46,7 @@ export function HeaderMenu({
   return (
     <div ref={ref} className="relative">
       <Button
+        ref={buttonRef}
         variant="outline"
         size="sm"
         aria-expanded={open}

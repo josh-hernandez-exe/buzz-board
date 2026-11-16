@@ -10,6 +10,7 @@ import {
   isLoopbackHost,
   safeCallbackPath,
 } from "@/server/auth/devLoginGate";
+import { reachableFromNetwork } from "@/server/auth/devServerExposure";
 
 const notFound = () => new NextResponse("Not found", { status: 404 });
 
@@ -17,6 +18,9 @@ export async function POST(request: Request) {
   if (process.env.NODE_ENV === "production") return notFound();
   const host = request.headers.get("host");
   if (!devLoginEnabled() || !isLoopbackHost(host)) return notFound();
+  // Any client can claim Host: localhost, so also refuse while other machines
+  // can connect at all.
+  if (await reachableFromNetwork()) return notFound();
 
   // Only this site's own form may sign someone in.
   const origin = request.headers.get("origin");

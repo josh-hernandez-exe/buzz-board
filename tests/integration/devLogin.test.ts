@@ -1,12 +1,46 @@
 /**
  * The development-only sign-in route: off by default, never in production,
- * localhost and same-origin only, and it creates a real database session.
+ * localhost and same-origin only, only on a server other machines can't
+ * reach, and it creates a real database session.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { createServer, type AddressInfo, type Server } from "node:net";
+import { networkInterfaces } from "node:os";
+
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { POST } from "@/app/api/dev-login/route.dev";
 
 import { db } from "../support/integration";
+
+// Stand-ins for the dev server's own port (PORT): one listening only on
+// loopback (`next dev --hostname 127.0.0.1`), one on every address (the default).
+let loopbackOnly: Server;
+let everyAddress: Server;
+const listen = (host?: string) =>
+  new Promise<Server>((resolve) => {
+    const server = createServer();
+    server.listen(0, host, () => resolve(server));
+  });
+const portOf = (server: Server) =>
+  String((server.address() as AddressInfo).port);
+
+beforeAll(async () => {
+  loopbackOnly = await listen("127.0.0.1");
+  everyAddress = await listen();
+});
+
+afterAll(() => {
+  loopbackOnly.close();
+  everyAddress.close();
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -38,7 +72,12 @@ function enable() {
   vi.stubEnv("NODE_ENV", "development");
   vi.stubEnv("VERCEL", "");
   vi.stubEnv("DEV_LOGIN", "1");
+  vi.stubEnv("PORT", portOf(loopbackOnly));
 }
+
+const hasNetworkAddress = Object.values(networkInterfaces()).some((list) =>
+  list?.some((address) => !address.internal),
+);
 
 describe("dev login route", () => {
   it("doesn't exist unless DEV_LOGIN=1, and never in production", async () => {
@@ -67,6 +106,20 @@ describe("dev login route", () => {
     expect((await post({ origin: "https://evil.example" })).status).toBe(403);
     expect((await post({ account: "root" })).status).toBe(400);
   });
+
+  it.skipIf(!hasNetworkAddress)(
+    "refuses while other machines can connect, whatever Host and Origin say",
+    async () => {
+      enable();
+      const sessions = await db.session.count();
+      vi.stubEnv("PORT", portOf(everyAddress));
+      expect((await post()).status).toBe(404);
+      // Unknown port: can't rule it out.
+      vi.stubEnv("PORT", "");
+      expect((await post()).status).toBe(404);
+      expect(await db.session.count()).toBe(sessions);
+    },
+  );
 
   it("signs in as a ready-made account with a real database session", async () => {
     enable();

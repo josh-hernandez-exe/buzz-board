@@ -63,6 +63,12 @@ You don't need Discord or Google to try hosting locally. Put this in **`.env.dev
 DEV_LOGIN=1
 ```
 
+and start the server so it listens only on this machine (the test sign-in refuses to run while other machines can connect):
+
+```bash
+bun dev --hostname 127.0.0.1
+```
+
 Then **Host a game** (or any sign-in link) opens `/dev-login`, where you sign in as a ready-made account with one click:
 
 | Account | Use it for |
@@ -79,7 +85,7 @@ Accounts are created on first use, with emails at `dev-login.buzz-board.invalid`
 - **The build checks itself.** `bun run build` (also used by CI and Vercel) runs `scripts/build/assert-no-dev-login.mjs`, which fails the build if a dev-login route or any of its code is in the output.
 - **Refuses to run.** `next build` and `next start` stop with an error if `DEV_LOGIN` is set. That's why it belongs in `.env.development.local`, not `.env` or `.env.local`.
 - **Switched off in code.** It's off whenever `NODE_ENV` is `production` or on Vercel, even with `DEV_LOGIN=1`.
-- **Local and same-site only.** It only answers `localhost` and only accepts this site's own sign-in form.
+- **Local and same-site only.** It only answers `localhost` and only accepts this site's own sign-in form. A client can claim both, so it also stays off while the dev server accepts connections from other machines (`next dev` listens on every network address unless started with `--hostname 127.0.0.1`). Don't forward the port through a public tunnel while it's on.
 
 Details: [devLoginGate.ts](./src/server/auth/devLoginGate.ts). Automated tests sign hosts in by writing a session straight to the test database (`tests/e2e/support.ts`), so they need neither.
 
