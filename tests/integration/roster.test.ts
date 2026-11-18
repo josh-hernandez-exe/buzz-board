@@ -156,29 +156,118 @@ describe("teams", () => {
     ]);
   });
 
-  it("removes a team, unassigns its players and re-indexes the rest", async () => {
-    const { admin, game, gameTeams } = await createGame({ teams: 3 });
-    const { player, gameUser } = await joinAsGuest(game.code);
-    await player.gameUser.changeTeams({ gameTeamId: gameTeams[0]!.id });
+  it.each(["choose", "auto"] as const)(
+    "lets guest and account players pick another team after deletion under %s assignment",
+    async (teamAssignment) => {
+      const { admin, game, gameTeams } = await createGame({
+        teams: 3,
+        teamAssignment,
+      });
+      const players = [];
+      for (const signedIn of [false, true]) {
+        const joined = await joinAsGuest(game.code);
+        const player = requestCaller({
+          gameId: game.id,
+          gameUserToken: joined.token,
+          user: signedIn ? await createUser() : undefined,
+        });
+        await player.gameUser.changeTeams({ gameTeamId: gameTeams[0]!.id });
+        players.push({ ...joined, player });
+      }
+      await admin.gameAdmin.setJoiningOpen({ open: false });
+      await admin.gameAdmin.removeTeam({ gameTeamId: gameTeams[0]!.id });
 
-    await admin.gameAdmin.removeTeam({ gameTeamId: gameTeams[0]!.id });
-
-    const remaining = await db.gameTeam.findMany({
-      where: { gameId: game.id },
-      orderBy: { index: "asc" },
-    });
-    expect(remaining.map((t) => [t.id, t.index])).toEqual([
-      [gameTeams[1]!.id, 1],
-      [gameTeams[2]!.id, 2],
-    ]);
-    expect(
-      (await db.gameUser.findUniqueOrThrow({ where: { id: gameUser.id } }))
-        .gameTeamId,
-    ).toBeNull();
-  });
+      const remaining = await db.gameTeam.findMany({
+        where: { gameId: game.id },
+        orderBy: { index: "asc" },
+      });
+      expect(remaining.map((t) => [t.id, t.index])).toEqual([
+        [gameTeams[1]!.id, 1],
+        [gameTeams[2]!.id, 2],
+      ]);
+      for (const [index, { player, gameUser, token }] of players.entries()) {
+        expect(
+          await db.gameUser.findUniqueOrThrow({ where: { id: gameUser.id } }),
+        ).toMatchObject({ gameTeamId: null, token, removedAt: null });
+        await player.gameUser.changeTeams({
+          gameTeamId: remaining[index]!.id,
+        });
+        await admin.gameAdmin.startBuzzer();
+        await player.gameUser.buzzIn();
+        expect(
+          (await player.gameGeneral.currentGameState()).buzzWinner,
+        ).toMatchObject({
+          gameUserId: gameUser.id,
+          gameTeamId: remaining[index]!.id,
+        });
+        await admin.gameAdmin.resetBuzzer();
+      }
+      expect(await db.gameUser.count({ where: { gameId: game.id } })).toBe(2);
+    },
+  );
 });
 
 describe("removing teams", () => {
+  it.each(["frozen", "staff", "buzzer-open"] as const)(
+    "allows recovery after deletion with the %s restriction still enforced",
+    async (restriction) => {
+      const { admin, game, gameTeams } = await createGame();
+      const { player, gameUser } = await joinAsGuest(game.code);
+      await player.gameUser.changeTeams({ gameTeamId: gameTeams[0]!.id });
+      if (restriction === "frozen") {
+        await admin.gameAdmin.toggleFreezeTeams({ freeze: true });
+      } else if (restriction === "staff") {
+        await admin.gameAdmin.setTeamAssignment({ teamAssignment: "staff" });
+      } else {
+        await admin.gameAdmin.startBuzzer();
+      }
+      await admin.gameAdmin.removeTeam({ gameTeamId: gameTeams[0]!.id });
+
+      await expect(
+        player.gameUser.changeTeams({ gameTeamId: gameTeams[1]!.id }),
+      ).rejects.toMatchObject({
+        code: restriction === "buzzer-open" ? "CONFLICT" : "FORBIDDEN",
+      });
+      if (restriction === "buzzer-open") {
+        await admin.gameAdmin.pauseBuzzer();
+        await player.gameUser.changeTeams({ gameTeamId: gameTeams[1]!.id });
+      } else {
+        await admin.gameAdmin.movePlayerToTeam({
+          gameUserId: gameUser.id,
+          targetGameTeamId: gameTeams[1]!.id,
+        });
+      }
+      expect(await player.gameUser.getSelfInfo()).toMatchObject({
+        id: gameUser.id,
+        gameTeamId: gameTeams[1]!.id,
+      });
+      await admin.gameAdmin.startBuzzer();
+      await player.gameUser.buzzIn();
+      expect(
+        (await player.gameGeneral.currentGameState()).buzzWinner?.gameUserId,
+      ).toBe(gameUser.id);
+    },
+  );
+
+  it("lets an existing player join a newly added team after the last team is deleted", async () => {
+    const { admin, game, gameTeams } = await createGame({ teams: 1 });
+    const { player, gameUser } = await joinAsGuest(game.code);
+    await player.gameUser.changeTeams({ gameTeamId: gameTeams[0]!.id });
+    await admin.gameAdmin.removeTeam({ gameTeamId: gameTeams[0]!.id });
+
+    expect((await player.gameGeneral.currentGameState()).gameTeams).toEqual([]);
+    const replacement = await admin.gameAdmin.addTeam();
+    await player.gameUser.changeTeams({ gameTeamId: replacement.id });
+    await admin.gameAdmin.startBuzzer();
+    await player.gameUser.buzzIn();
+    expect(
+      (await player.gameGeneral.currentGameState()).buzzWinner,
+    ).toMatchObject({
+      gameUserId: gameUser.id,
+      gameTeamId: replacement.id,
+    });
+  });
+
   it("re-indexes whatever order the rows are stored in", async () => {
     const { admin, game, gameTeams } = await createGame({ teams: 6 });
     // An update moves a row to the end of the table: store the teams in

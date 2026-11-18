@@ -21,6 +21,14 @@ The **Team** tab says which of these applies.
 
 Use the host desk's **Players** tab: **Teams** at the top adds and deletes teams and controls switching, and the player list below renames, moves or removes players. Moves wait while the buzzer is open. Moving a player doesn't move their past points: points belong to the team that earned them. See [Managing players](/help/moderation).
 
+## What if my team is deleted?
+
+You stay in the game with the same nickname, but without a team. Open **Team** and pick a remaining team while the buzzer is closed. This works for guests and signed-in players; you don't need to leave or join the game again. Automatic assignment only places new players, so it doesn't move you automatically after deletion.
+
+If switching is locked or the host assigns teams, ask a host or moderator to move you using **Players**. Hosts can also turn **Players can switch teams** back on; if **Host assigns** is selected, they must change that setting too before players can choose for themselves. If no teams remain, the host must add one first.
+
+Deleting a team removes its score. Its points don't follow players to their next team.
+
 ## What are team captains?
 
 By default **everyone on a team can buzz and answer**. A host can instead choose **Only team captains can buzz and answer**, either when creating a team game or later on the host desk's **Room** tab. Then each team's captain is the only one who can:

@@ -15,6 +15,119 @@ test.afterAll(async () => {
   await db.$disconnect();
 });
 
+test("players choose surviving teams after deletion, including after switching is unlocked", async ({
+  browser,
+  baseURL,
+}) => {
+  const hostContext = await browser.newContext();
+  const host = await signInAsNewHost(hostContext, baseURL!);
+  const game = await createGameForHost(host.id, {
+    name: `Team removal ${Date.now()}`,
+    teams: 3,
+  });
+  const desk = await hostContext.newPage();
+  await desk.goto(`/game/${game.id}/admin`);
+  await desk.getByRole("tab", { name: "Players", exact: true }).click();
+
+  const players = [];
+  for (const [nickname, signedIn, destination] of [
+    ["Ada", false, "Team 1"],
+    ["Bo", true, "Team 2"],
+  ] as const) {
+    const context = await browser.newContext();
+    if (signedIn) await signInAsNewHost(context, baseURL!, "Bo's account");
+    const page = await context.newPage();
+    await joinFromLink(page, { code: game.code, gameId: game.id, nickname });
+    await expect(
+      page.getByRole("button", { name: "Save this player to my account" }),
+    ).toHaveCount(signedIn ? 1 : 0);
+    await page.getByRole("tab", { name: "Team", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Join Team 3", exact: true })
+      .click();
+    await expect(page.getByTestId("player-identity")).toContainText(
+      `You are ${nickname} on Team 3`,
+    );
+    const participant = await db.gameUser.findFirstOrThrow({
+      where: { gameId: game.id, name: nickname },
+    });
+    players.push({ context, page, nickname, destination, participant });
+  }
+
+  await desk
+    .getByRole("button", { name: "Delete Team 3", exact: true })
+    .click();
+  await desk.getByRole("button", { name: "Delete team", exact: true }).click();
+  for (const { page, nickname, destination, participant } of players) {
+    await expect(page.getByTestId("player-identity")).toContainText(
+      `You are ${nickname} without a team yet`,
+    );
+    await expect(
+      page.getByRole("button", { name: "Join Team 3", exact: true }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: `Join ${destination}`, exact: true })
+      .click();
+    await expect(page.getByTestId("player-identity")).toContainText(
+      `You are ${nickname} on ${destination}`,
+    );
+    expect(
+      await db.gameUser.findUniqueOrThrow({ where: { id: participant.id } }),
+    ).toMatchObject({ token: participant.token, removedAt: null });
+    await page.getByRole("tab", { name: "Buzzer", exact: true }).click();
+  }
+
+  await desk.getByRole("tab", { name: "Play", exact: true }).click();
+  for (const { page } of players) {
+    await desk
+      .getByRole("button", { name: "Open buzzer", exact: true })
+      .click();
+    await expect(page.getByText("Buzzer open: press now!")).toBeVisible();
+    await page.getByRole("button", { name: "Buzz", exact: true }).click();
+    await expect(page.getByText("You buzzed in first!")).toBeVisible();
+    await desk
+      .getByRole("button", { name: "Next question", exact: true })
+      .click();
+  }
+
+  await desk.getByRole("tab", { name: "Players", exact: true }).click();
+  const switching = desk.getByRole("switch", { name: "Toggle team switching" });
+  await switching.click();
+  await expect(switching).toHaveAttribute("aria-checked", "false");
+  await desk
+    .getByRole("button", { name: "Delete Team 1", exact: true })
+    .click();
+  await desk.getByRole("button", { name: "Delete team", exact: true }).click();
+  const ada = players[0]!.page;
+  await expect(ada.getByTestId("player-identity")).toContainText(
+    "You are Ada without a team yet",
+  );
+  await ada.getByRole("tab", { name: "Team", exact: true }).click();
+  await expect(ada.getByText("Teams are locked for now.")).toBeVisible();
+  await expect(
+    ada.getByRole("button", { name: "Join Team 2", exact: true }),
+  ).toHaveCount(0);
+
+  await switching.click();
+  await expect(switching).toHaveAttribute("aria-checked", "true");
+  await ada.getByRole("button", { name: "Join Team 2", exact: true }).click();
+  await expect(ada.getByTestId("player-identity")).toContainText(
+    "You are Ada on Team 2",
+  );
+  expect(await db.gameUser.count({ where: { gameId: game.id } })).toBe(2);
+  await ada.getByRole("tab", { name: "Buzzer", exact: true }).click();
+  await desk.getByRole("tab", { name: "Play", exact: true }).click();
+  await desk.getByRole("button", { name: "Open buzzer", exact: true }).click();
+  await expect(ada.getByText("Buzzer open: press now!")).toBeVisible();
+  await ada.getByRole("button", { name: "Buzz", exact: true }).click();
+  await expect(ada.getByText("You buzzed in first!")).toBeVisible();
+
+  await Promise.all([
+    hostContext.close(),
+    ...players.map(({ context }) => context.close()),
+  ]);
+});
+
 test("staff rename and lock a name, remove a player, and recover a guest", async ({
   browser,
   baseURL,
