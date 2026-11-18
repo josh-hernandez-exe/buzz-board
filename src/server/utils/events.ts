@@ -1,214 +1,142 @@
-import { type RedisClientType } from "redis";
-
-import type { Game, GameUser } from "@prisma/client";
-import { ok, err } from "neverthrow";
-import type { Result } from "neverthrow";
-import { createClient } from "redis";
+import type { Game } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
+import { err, ok, type Result } from "neverthrow";
 
 import { db } from "@/server/db";
-import { getPublicGameState, getPrivateGameState } from "@/server/db/common";
+import {
+  GameNotFoundError,
+  getPublicGameState,
+  getPrivateGameState,
+} from "@/server/db/common";
+import { getBuzzWinner } from "@/server/buzzer/buzzerService";
+import { loadChatSummary, type ChatSummary } from "@/server/chat/chatLive";
+import { type GameChangeBus, gameChangeBus } from "@/server/live/gameChangeBus";
+import { GameFeed } from "@/server/live/gameFeed";
 import type { PublicGameState, PrivateGameState, WhoBuzzedIn } from "@/types";
-import { createRedisChannelAsyncIterator } from "@/server/utils/asyncGenerator";
 
-import { env } from "@/env";
-import { logger } from "@/logger";
+const gameGone = (error: Error) => error instanceof GameNotFoundError;
 
-// Initialize KeyDB client
-const redisClient = createClient({
-  url: env.KV_URL,
-});
+/** The error that ends a live stream whose game was deleted. */
+export const gameDeletedError = () =>
+  new TRPCError({
+    code: "NOT_FOUND",
+    message: "This game was deleted by its host.",
+  });
 
-redisClient.on("error", (err) => {
-  // You MUST listen to error events.
-  // If a client doesn't have at least one error listener registered and an error occurs,
-  // that error will be thrown and the Node.js process will exit.
-  logger.error("Redis Client Error", err);
-});
-
-await redisClient.connect();
-
-function cacheFactory<T>(prefix: string) {
-  return {
-    async set(gameId: Game["id"], data: T) {
-      const key = `${prefix}:${gameId}`;
-      await redisClient.set(key, JSON.stringify(data));
-    },
-    async get(gameId: Game["id"]): Promise<T | null> {
-      const key = `${prefix}:${gameId}`;
-      const data = await redisClient.get(key);
-      return data ? (JSON.parse(data) as T) : null;
-    },
-    async has(gameId: Game["id"]): Promise<boolean> {
-      const key = `${prefix}:${gameId}`;
-      return (await redisClient.exists(key)) > 0;
-    },
-  };
+/**
+ * Yields a live feed, turning "the game was deleted" into a clear error
+ * that ends the stream instead of leaving the page silently stale.
+ */
+export async function* endWhenGameDeleted<T>(
+  stream: AsyncIterable<T>,
+): AsyncGenerator<T, void, undefined> {
+  try {
+    yield* stream;
+  } catch (error) {
+    if (error instanceof GameNotFoundError) throw gameDeletedError();
+    throw error;
+  }
 }
 
-export const gameEventCache = {
-  publicGameStateUpdate: cacheFactory<PublicGameState>("publicGameStateUpdate"),
-  privateGameStateUpdate: cacheFactory<PrivateGameState>(
-    "privateGameStateUpdate",
-  ),
-  whoBuzzedIn: cacheFactory<WhoBuzzedIn | null>("whoBuzzedIn"),
-};
+/** Bus topic for chat changes, separate so chat never reloads game state. */
+export const chatTopic = (gameId: string) => `chat:${gameId}`;
 
-// NOTE: Important redis pub/sub docs
-//       https://redis.io/docs/manual/pubsub/
-
-function emitterFactory<T>(prefix: string) {
-  return {
-    async publish(gameId: Game["id"], state: T) {
-      const channel = `${prefix}:${gameId}`;
-
-      // NOTE: publishing does not take over the client
-      //       see subscription use
-      await redisClient.publish(channel, JSON.stringify(state));
-    },
-    subscribe({
-      gameId,
-      signal,
-    }: {
-      gameId: Game["id"];
-      signal?: AbortSignal;
-    }) {
-      const channel = `${prefix}:${gameId}`;
-
-      return createRedisChannelAsyncIterator<T>({
-        redisClient: redisClient as RedisClientType,
-        channel,
-        signal,
-      });
-    },
-  };
+/**
+ * Chat change signals. Reloads on chat changes and on game changes (names,
+ * teams, roles, finishing), coalesces bursts into one read, and re-checks
+ * every 5 seconds in case a notification was lost.
+ */
+export function createChatFeed(bus: () => GameChangeBus) {
+  return new GameFeed<ChatSummary>("chat", bus, loadChatSummary, {
+    topics: (gameId) => [gameId, chatTopic(gameId)],
+    coalesceMs: 100,
+    refreshEveryMs: 5_000,
+    isTerminal: gameGone,
+  });
 }
 
-export const gameEventEmitter = {
-  publicGameStateUpdate: emitterFactory<PublicGameState>(
-    "publicGameStateUpdate",
+/**
+ * Live state streams. Each yields an initial snapshot from PostgreSQL and a
+ * fresh snapshot after every change; Redis only carries "game changed"
+ * notifications (see GameChangeBus).
+ */
+export const liveFeeds = {
+  publicGameState: new GameFeed<PublicGameState>(
+    "public game state",
+    gameChangeBus,
+    (gameId) => getPublicGameState({ gameId }),
+    { isTerminal: gameGone },
   ),
-  privateGameStateUpdate: emitterFactory<PrivateGameState>(
-    "privateGameStateUpdate",
+  privateGameState: new GameFeed<PrivateGameState>(
+    "private game state",
+    gameChangeBus,
+    (gameId) => getPrivateGameState({ gameId }),
+    { isTerminal: gameGone },
   ),
-  whoBuzzedIn: emitterFactory<WhoBuzzedIn | null>("whoBuzzedIn"),
+  /** Kept for tabs opened before PR04; current pages use `buzzWinner`. */
+  whoBuzzedIn: new GameFeed<WhoBuzzedIn>(
+    "who buzzed in",
+    gameChangeBus,
+    (gameId) => getWhoBuzzedIn(gameId),
+  ),
+  chat: createChatFeed(gameChangeBus),
 };
 
+/**
+ * Announces a committed change to every live stream for the game, on every
+ * instance. Call after the transaction commits; a publish failure is logged,
+ * never reported as a failed save.
+ */
 export async function emitUpdatedGameState({
   gameId,
 }: {
   gameId: Game["id"];
 }): Promise<Result<void, Error>> {
-  const [publicResult, privateResult] = await Promise.all([
-    getPublicGameState({ gameId }),
-    getPrivateGameState({ gameId }),
-  ]);
-
-  if (publicResult.isErr()) {
-    return err(publicResult.error);
-  }
-  if (privateResult.isErr()) {
-    return err(privateResult.error);
-  }
-
-  // Set cache BEFORE publishing new state
-
-  await Promise.all([
-    gameEventCache.publicGameStateUpdate.set(gameId, publicResult.value),
-    gameEventCache.privateGameStateUpdate.set(gameId, privateResult.value),
-  ]);
-
-  await Promise.all([
-    gameEventEmitter.publicGameStateUpdate.publish(gameId, publicResult.value),
-    gameEventEmitter.privateGameStateUpdate.publish(
-      gameId,
-      privateResult.value,
-    ),
-  ]);
-
+  await gameChangeBus().notify(gameId);
   return ok();
 }
 
-export async function updateBuzzerListeningState({
-  gameId,
-}: {
-  gameId: Game["id"];
-}) {
+/**
+ * Announces a committed chat change (message, moderation, mute or channel
+ * setting). Carries no content; viewers re-fetch what they may see.
+ */
+export async function emitChatChanged(gameId: Game["id"]): Promise<void> {
+  await gameChangeBus().notify(chatTopic(gameId));
+}
+
+async function getWhoBuzzedIn(
+  gameId: Game["id"],
+): Promise<Result<WhoBuzzedIn, Error>> {
   const game = await db.game.findUnique({
-    select: {
-      id: true,
-      format: true,
-      isBuzzerListening: true,
-    },
-    where: {
-      id: gameId,
-    },
+    where: { id: gameId },
+    select: { id: true, format: true, isBuzzerListening: true },
   });
+  if (!game) return err(new Error("Game not found"));
 
-  const data: WhoBuzzedIn = {
-    game: game!,
-    gameUser: undefined,
-  };
+  const winner = await getBuzzWinner(gameId);
+  if (!winner?.gameUserId) return ok({ game, gameUser: undefined });
 
-  await Promise.all([
-    gameEventCache.whoBuzzedIn.set(gameId, data),
-    gameEventEmitter.whoBuzzedIn.publish(gameId, data),
+  const [gameUser, gameTeam] = await Promise.all([
+    db.gameUser.findUnique({
+      where: { id: winner.gameUserId },
+      include: { user: { select: { image: true } } },
+    }),
+    db.gameTeam.findUnique({
+      where: { id: winner.gameTeamId },
+      select: { id: true, name: true },
+    }),
   ]);
+  if (!gameUser) return ok({ game, gameUser: undefined });
 
-  return ok();
-}
-
-export async function emitWhoBuzzedIn({
-  gameUserId,
-}: {
-  gameUserId?: GameUser["id"];
-}): Promise<Result<void, Error>> {
-  const result = await db.gameUser.findUnique({
-    where: {
-      id: gameUserId,
-    },
-    include: {
-      gameTeam: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-      game: {
-        select: {
-          id: true,
-          format: true,
-          isBuzzerListening: true,
-        },
-      },
-      user: {
-        select: {
-          image: true,
-        },
-      },
-    },
-  });
-
-  if (!result) {
-    return err(new Error("User not found"));
-  }
-
-  const { gameTeam, game, ...gameUser } = result;
-
-  const data: WhoBuzzedIn = {
+  return ok({
     game,
     gameUser: {
       id: gameUser.id,
       name: gameUser.name,
       index: gameUser.index,
-      gameTeam: gameTeam!,
+      // The team the claim was made for, even if the player moved since.
+      gameTeam: gameTeam ?? { id: winner.gameTeamId, name: "Removed team" },
       image: gameUser.user?.image,
     },
-  };
-
-  await Promise.all([
-    gameEventCache.whoBuzzedIn.set(game.id, data),
-    gameEventEmitter.whoBuzzedIn.publish(game.id, data),
-  ]);
-
-  return ok();
+  });
 }

@@ -3,15 +3,68 @@
 import { useEffect, useRef, useCallback } from "react";
 import { BuzzerState } from "@prisma/client";
 
-import { api } from "@/trpc/react";
+import {
+  useLiveGameState,
+  usePublicLiveGameState,
+} from "@/app/_components/client/LiveGameState";
+import type { PublicGameModeView } from "@/utils/modes";
+import { modeSoundCues } from "@/utils/modeSounds";
+import { playCue } from "@/utils/synthSounds";
 
 export interface GameSoundEffectsProps {
   gameTeamId?: string;
 }
 
+type TeamBuzzerStates = Array<{ id: string; buzzerState: BuzzerState }>;
+
+/** Sound cues for member pages (admin, player, member scoreboard). */
 export function GameSoundEffects({ gameTeamId }: GameSoundEffectsProps) {
-  const gameState = api.gameGeneral.gameState.useSubscription();
-  const previousGameStateRef = useRef<typeof gameState.data>(undefined);
+  const { data } = useLiveGameState();
+  return <BuzzerSounds gameTeams={data?.gameTeams} gameTeamId={gameTeamId} />;
+}
+
+/**
+ * Sound cues for the anonymous audience display. Off until turned on, so only
+ * the one display that shares its audio with the meeting plays sounds.
+ */
+export function PublicGameSoundEffects({ enabled }: { enabled: boolean }) {
+  const { data } = usePublicLiveGameState();
+  return (
+    <>
+      <BuzzerSounds gameTeams={data?.gameTeams} muted={!enabled} />
+      <ModeSounds mode={data?.mode ?? null} enabled={enabled} />
+    </>
+  );
+}
+
+/** Chimes and buzzes for Ranked Answers and Category Grid boards. */
+function ModeSounds({
+  mode,
+  enabled,
+}: {
+  mode: PublicGameModeView | null;
+  enabled: boolean;
+}) {
+  const previous = useRef(mode);
+  useEffect(() => {
+    const cues = modeSoundCues(previous.current, mode);
+    previous.current = mode;
+    if (enabled)
+      cues.forEach((cue, i) => setTimeout(() => playCue(cue), i * 250));
+  }, [mode, enabled]);
+  return null;
+}
+
+function BuzzerSounds({
+  gameTeams,
+  gameTeamId,
+  muted = false,
+}: {
+  gameTeams: TeamBuzzerStates | undefined;
+  gameTeamId?: string;
+  muted?: boolean;
+}) {
+  const previousGameTeamsRef = useRef<TeamBuzzerStates | undefined>(undefined);
 
   // Audio references
   const buzzInAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -56,20 +109,19 @@ export function GameSoundEffects({ gameTeamId }: GameSoundEffectsProps) {
   }, []);
 
   useEffect(() => {
-    if (!gameState.data) return;
+    if (!gameTeams) return;
 
-    const currentGameState = gameState.data;
-    const previousGameState = previousGameStateRef.current;
+    const previousGameTeams = previousGameTeamsRef.current;
 
     // Update the ref for next comparison
-    previousGameStateRef.current = currentGameState;
+    previousGameTeamsRef.current = gameTeams;
 
     // Skip the first render when there's no previous state
-    if (!previousGameState) return;
+    if (!previousGameTeams) return;
 
     // Check each team for state changes
-    currentGameState.gameTeams.forEach((currentTeam) => {
-      const previousTeam = previousGameState.gameTeams.find(
+    gameTeams.forEach((currentTeam) => {
+      const previousTeam = previousGameTeams.find(
         (team) => team.id === currentTeam.id,
       );
 
@@ -83,7 +135,7 @@ export function GameSoundEffects({ gameTeamId }: GameSoundEffectsProps) {
         previousTeam.buzzerState === BuzzerState.available &&
         currentTeam.buzzerState === BuzzerState.selected
       ) {
-        playBuzzInSound();
+        if (!muted) playBuzzInSound();
       }
 
       // Check for wrong answer (selected -> rejected)
@@ -91,10 +143,10 @@ export function GameSoundEffects({ gameTeamId }: GameSoundEffectsProps) {
         previousTeam.buzzerState === BuzzerState.selected &&
         currentTeam.buzzerState === BuzzerState.rejected
       ) {
-        playWrongAnswerSound();
+        if (!muted) playWrongAnswerSound();
       }
     });
-  }, [gameState.data, gameTeamId, playBuzzInSound, playWrongAnswerSound]);
+  }, [gameTeams, gameTeamId, muted, playBuzzInSound, playWrongAnswerSound]);
 
   // This component doesn't render anything visible
   return null;

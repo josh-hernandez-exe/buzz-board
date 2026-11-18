@@ -1,34 +1,29 @@
-import React from "react";
+import type { ReactNode } from "react";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/app/_components/ui/card";
+import { Panel } from "@/app/_components/ui/page";
 
+/** Older call sites' card; renders as a Panel so every screen matches. */
 export function GenericCard({
   title,
   description,
   content,
   footer,
-  ...props
+  className,
 }: {
-  title?: React.ReactNode | string | undefined;
-  description?: string | undefined;
-  content?: React.ReactNode;
-  footer?: React.ReactNode;
+  title?: ReactNode;
+  description?: string;
+  content?: ReactNode;
+  footer?: ReactNode;
+  className?: string;
 }) {
   return (
-    <Card {...props}>
-      <CardHeader>
-        {title && <CardTitle>{title}</CardTitle>}
-        {description && <CardDescription>{description}</CardDescription>}
-      </CardHeader>
-      {content && <CardContent>{content}</CardContent>}
-      {footer && <CardFooter>{footer}</CardFooter>}
-    </Card>
+    <Panel title={title} description={description} className={className}>
+      {content}
+      {footer && (
+        <div className="border-border flex flex-wrap gap-2 border-t pt-3">
+          {footer}
+        </div>
+      )}
+    </Panel>
   );
 }

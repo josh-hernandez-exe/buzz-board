@@ -1,6 +1,7 @@
-import { api, HydrateClient } from "@/trpc/server";
+import { TRPCError } from "@trpc/server";
 
-import { logger } from "@/logger";
+import { MessagePage, PageShell } from "@/app/_components/ui/page";
+import { api, HydrateClient } from "@/trpc/server";
 
 import { PublicScoreboard } from "./PublicScoreboard";
 
@@ -13,35 +14,36 @@ export default async function GamePage({
 
   if (!gameId) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <h1 className="mb-4 text-2xl font-bold">Game Not Found</h1>
-          <p>No game identifier was given.</p>
-        </div>
-      </main>
+      <MessagePage title="Game not found">
+        <p className="text-muted-foreground">No game identifier was given.</p>
+      </MessagePage>
     );
   }
 
-  const currentGameState = await api.public.currentGameState({ gameId });
+  // Only a missing game is "not found"; anything else (database or Redis
+  // outages, bugs) must surface as a server error rather than a 404 page.
+  const currentGameState = await api.public
+    .currentGameState({ gameId })
+    .catch((error: unknown) => {
+      if (error instanceof TRPCError && error.code === "NOT_FOUND") return null;
+      throw error;
+    });
 
   if (!currentGameState) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <h1 className="mb-4 text-2xl font-bold">Game Not Found</h1>
-          <p>No game was found or not ready yet to be viewed.</p>
-        </div>
-      </main>
+      <MessagePage title="Game not found">
+        <p className="text-muted-foreground">
+          No game was found or not ready yet to be viewed.
+        </p>
+      </MessagePage>
     );
   }
 
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <PublicScoreboard gameState={currentGameState} />
-        </div>
-      </main>
+      <PageShell stage width="full">
+        <PublicScoreboard gameState={currentGameState} />
+      </PageShell>
     </HydrateClient>
   );
 }

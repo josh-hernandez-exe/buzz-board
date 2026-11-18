@@ -1,39 +1,60 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-
+import { signInPath } from "@/server/auth/devLoginGate";
+import { AppHeader } from "@/app/_components/server/AppHeader";
+import {
+  LinkButton,
+  PageShell,
+  Panel,
+  Wordmark,
+} from "@/app/_components/ui/page";
 import { auth } from "@/server/auth";
 import { HydrateClient } from "@/trpc/server";
 
+/** Join and Host are always offered, whether or not someone is signed in. */
 export default async function Home() {
   const session = await auth();
 
-  if (session) {
-    redirect("/dashboard");
-  }
-
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            Buzz-Board
+      <PageShell header={<AppHeader />} width="normal" center>
+        <section className="flex flex-col items-center gap-4 py-6 text-center">
+          <h1 className="text-5xl sm:text-6xl">
+            <Wordmark />
           </h1>
-          <div className="flex w-full max-w-xs flex-col items-center gap-2">
-            <Link
-              href="/join"
-              className="w-full rounded-full bg-white/10 px-10 py-3 text-center font-semibold no-underline transition hover:bg-white/20"
+          <p className="text-muted-foreground max-w-md text-lg">
+            Buzzers, a live scoreboard, and family-feud and jeopardy style
+            boards for trivia, quizzes and game nights.
+          </p>
+        </section>
+        <div className="grid gap-4 sm:grid-cols-2" aria-label="Get started">
+          <Panel
+            title="Playing?"
+            description="No account needed: just a code and a nickname."
+          >
+            <LinkButton href="/join" size="lg" className="w-full">
+              Join a game
+            </LinkButton>
+          </Panel>
+          <Panel
+            title="Hosting?"
+            description="Sign in to create games and run them from your desk."
+          >
+            <LinkButton
+              href={session ? "/dashboard" : signInPath("/dashboard")}
+              size="lg"
+              variant="secondary"
+              className="w-full"
             >
-              Join a Game
-            </Link>
-            <Link
-              href={session ? "/api/auth/signout" : "/api/auth/signin"}
-              className="w-full rounded-full bg-white/10 px-10 py-3 text-center font-semibold no-underline transition hover:bg-white/20"
-            >
-              {session ? "Sign out" : "Sign in"}
-            </Link>
-          </div>
+              {session ? "Go to my games" : "Host a game"}
+            </LinkButton>
+          </Panel>
         </div>
-      </main>
+        <p className="text-muted-foreground text-center text-sm">
+          New here?{" "}
+          <LinkButton href="/help" variant="ghost" size="sm">
+            Read the guides
+          </LinkButton>
+        </p>
+      </PageShell>
     </HydrateClient>
   );
 }

@@ -1,123 +1,124 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { api } from "@/trpc/react";
+import { useState } from "react";
 
-import { GameAdminTeamControl } from "@/app/_components/client/GameAdminTeamControl";
-import { GameTeamSummaryCard } from "@/app/_components/client/GameTeamSummaryCard";
-import { GameAdminBuzzerControl } from "@/app/_components/client/GameAdminBuzzerControl";
-import { GameAdminScoreboardAdvancedControl } from "@/app/_components/client/GameAdminScoreboardAdvancedControl";
-import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
+import { BuzzerPanel } from "@/app/_components/client/BuzzerPanel";
+import { CategoryGridPanel } from "@/app/_components/client/CategoryGridPanel";
+import { ChatPanel } from "@/app/_components/client/ChatPanel";
 import { GameBasicInfoCard } from "@/app/_components/client/GameBasicInfoCard";
-import { GamePlayerManagementTable } from "@/app/_components/client/GameAdminPlayerManagementTable";
 import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
-import { Skeleton } from "@/app/_components/ui/skeleton";
-
-import { useGameTokenData } from "@/app/_hooks/gameTokenData";
-
+import { HelpersPanel } from "@/app/_components/client/HelpersPanel";
+import { HostGameBar } from "@/app/_components/client/HostGameBar";
+import { HostRoomPanel } from "@/app/_components/client/HostRoomPanel";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
+import { RankedAnswersPanel } from "@/app/_components/client/RankedAnswersPanel";
+import { SequentialQuizPanel } from "@/app/_components/client/SequentialQuizPanel";
+import { RosterPanel } from "@/app/_components/client/RosterPanel";
+import { ScoresPanel } from "@/app/_components/client/ScoresPanel";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/app/_components/ui/tabs";
-
 import type { PrivateGameState } from "@/types";
+import { can, type StaffRoleName } from "@/utils/capabilities";
+import type { ModeKind } from "@/utils/modes";
 
+const MODE_TAB: Record<ModeKind, string> = {
+  rankedAnswers: "ranked-answers",
+  categoryGrid: "category-grid",
+  sequentialQuiz: "quiz",
+};
+
+/**
+ * The host desk. Play holds everything needed mid-question; the other tabs
+ * are for setting up and looking after the room.
+ */
 export function GameAdminInfo({
   gameState: initialGameState,
+  staffRole,
+  modeKind = null,
+  modeFirst = false,
 }: {
   gameState: PrivateGameState;
+  staffRole: StaffRoleName;
+  /** The game mode this game is set up for, if any. */
+  modeKind?: ModeKind | null;
+  /** Open on the mode's tab (the game was set up for it). */
+  modeFirst?: boolean;
 }) {
-  useGameTokenData();
-  const [activeTab, setActiveTab] = useState("quick-controls");
-  const [isPending, startTransition] = useTransition();
-
-  const handleTabChange = (value: string) => {
-    startTransition(() => {
-      setActiveTab(value);
-    });
-  };
-
-  const gameStateSub = api.gameGeneral.gameState.useSubscription();
-
-  const currentGameState: PrivateGameState =
-    gameStateSub.data ?? initialGameState;
-
-  if (!currentGameState) {
-    return undefined;
-  }
-
-  const { game, gameTeams } = currentGameState;
-
-  gameTeams?.sort((a, b) => a.index - b.index);
+  const runsGame = can(staffRole, "runGame");
+  // A game runs one mode: show its tab, or all of them while none is chosen.
+  const shows = (kind: ModeKind) =>
+    runsGame && (modeKind === null || modeKind === kind);
+  const showRanked = shows("rankedAnswers");
+  const showGrid = shows("categoryGrid");
+  const showQuiz = shows("sequentialQuiz");
+  const [activeTab, setActiveTab] = useState(
+    !runsGame ? "players" : modeFirst && modeKind ? MODE_TAB[modeKind] : "play",
+  );
+  const { data } = useLiveGameState();
+  const state = data ?? initialGameState;
 
   return (
-    <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-      {/* Game sound effects for all teams */}
+    <div className="flex w-full flex-col gap-4">
       <GameSoundEffects />
-
-      <Tabs
-        value={activeTab}
-        onValueChange={handleTabChange}
-        className="w-[700px]"
-      >
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="quick-controls">Game Controls</TabsTrigger>
-          <TabsTrigger value="team-management">Team Management</TabsTrigger>
-          <TabsTrigger value="player-management">Player Management</TabsTrigger>
-          <TabsTrigger value="information">Information</TabsTrigger>
+      <HostGameBar staffRole={staffRole} />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start">
+          {runsGame && <TabsTrigger value="play">Play</TabsTrigger>}
+          {showRanked && (
+            <TabsTrigger value="ranked-answers">Ranked Answers</TabsTrigger>
+          )}
+          {showGrid && (
+            <TabsTrigger value="category-grid">Category Grid</TabsTrigger>
+          )}
+          {showQuiz && <TabsTrigger value="quiz">Quiz</TabsTrigger>}
+          <TabsTrigger value="players">Players</TabsTrigger>
+          <TabsTrigger value="chat">Chat</TabsTrigger>
+          <TabsTrigger value="room">Room</TabsTrigger>
         </TabsList>
-        <TabsContent value="quick-controls">
-          {isPending ? (
-            <Skeleton className="h-[400px] w-[700px]" />
-          ) : (
-            <>
-              <GameWhoBuzzedIn />
-              <GameAdminBuzzerControl />
-              <GameAdminScoreboardAdvancedControl
-                gameTeams={gameTeams.map(
-                  ({ gameUsers: _gameUsers, ...gameTeam }) => gameTeam,
-                )}
+        {runsGame && (
+          <TabsContent value="play">
+            <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+              <BuzzerPanel />
+              <ScoresPanel />
+            </div>
+          </TabsContent>
+        )}
+        {showRanked && (
+          <TabsContent value="ranked-answers">
+            <RankedAnswersPanel gameId={initialGameState.game.id} />
+          </TabsContent>
+        )}
+        {showGrid && (
+          <TabsContent value="category-grid">
+            <CategoryGridPanel gameId={initialGameState.game.id} />
+          </TabsContent>
+        )}
+        {showQuiz && (
+          <TabsContent value="quiz">
+            <SequentialQuizPanel gameId={initialGameState.game.id} />
+          </TabsContent>
+        )}
+        <TabsContent value="players" className="flex flex-col gap-4">
+          <RosterPanel staffRole={staffRole} />
+        </TabsContent>
+        <TabsContent value="chat">
+          <ChatPanel as="staff" staffRole={staffRole} />
+        </TabsContent>
+        <TabsContent value="room">
+          <div className="grid items-start gap-4 lg:grid-cols-2">
+            <HostRoomPanel staffRole={staffRole} />
+            <div className="flex flex-col gap-4">
+              <HelpersPanel />
+              <GameBasicInfoCard
+                game={state.game}
+                hideFields={["qr", "code"]}
               />
-            </>
-          )}
-        </TabsContent>
-        <TabsContent value="team-management">
-          {isPending ? (
-            <Skeleton className="h-[400px] w-[700px]" />
-          ) : (
-            <>
-              <GameAdminTeamControl gameTeams={gameTeams} />
-              {gameTeams.map((gameTeam) => {
-                const users = gameTeam.gameUsers.map(
-                  (userId) => currentGameState.gameUsers[userId]!,
-                );
-                return (
-                  <GameTeamSummaryCard
-                    key={gameTeam.id}
-                    gameTeam={gameTeam}
-                    gameUsers={users}
-                    score={gameTeam.score}
-                  />
-                );
-              })}
-            </>
-          )}
-        </TabsContent>
-        <TabsContent value="player-management">
-          {isPending ? (
-            <Skeleton className="h-[400px] w-[700px]" />
-          ) : (
-            <GamePlayerManagementTable gameState={currentGameState} />
-          )}
-        </TabsContent>
-        <TabsContent value="information">
-          {isPending ? (
-            <Skeleton className="h-[400px] w-[700px]" />
-          ) : (
-            <GameBasicInfoCard game={game} />
-          )}
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

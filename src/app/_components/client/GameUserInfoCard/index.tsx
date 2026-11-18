@@ -1,15 +1,10 @@
 "use client";
 
+import { env } from "@/env";
+
 import type { Prisma } from "@prisma/client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/app/_components/ui/card";
+import { Panel } from "@/app/_components/ui/page";
 
 import { GameUserAvatar } from "@/app/_components/client/GameUserAvatar";
 import { GameUserEditSheet } from "@/app/_components/client/GameUserEditSheet";
@@ -38,24 +33,29 @@ export function GameUserInfoCard({
   const gameUser = initialGameUser ?? gameSelfInfo.data;
 
   if (!gameUser) {
-    return <div>Loading...</div>;
+    return null;
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Player Info</CardTitle>
-        <CardDescription>Player related information</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Panel
+      title="You"
+      description="How you appear in this game"
+      actions={<GameUserEditSheet />}
+    >
+      <div className="flex items-center gap-3">
         <GameUserAvatar image={gameUser?.user?.image} index={gameUser?.index} />
-        <p>Player Name: {gameUser?.name}</p>
-        <p>Player Index Number: {gameSelfInfo.data?.index}</p>
-        <p>Player Id: {gameSelfInfo.data?.id}</p>
-      </CardContent>
-      <CardFooter>
-        <GameUserEditSheet />
-      </CardFooter>
-    </Card>
+        <div>
+          <p className="text-lg font-bold">{gameUser?.name}</p>
+          <p className="text-muted-foreground text-sm">
+            Player {gameSelfInfo.data?.index ?? gameUser.index}
+          </p>
+          {env.NEXT_PUBLIC_SHOW_DEBUG_INFO && (
+            <p className="text-muted-foreground text-xs">
+              Player ID: {gameSelfInfo.data?.id}
+            </p>
+          )}
+        </div>
+      </div>
+    </Panel>
   );
 }

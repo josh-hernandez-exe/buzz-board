@@ -1,11 +1,23 @@
-import type { Game, GameTeam } from "@prisma/client";
+import type { Game } from "@prisma/client";
 import { db } from "@/server/db";
 import type { Result } from "neverthrow";
+
+import { parseScoreMap } from "@/server/scores/scoreMath";
+import { getBuzzQueue, getBuzzWinner } from "@/server/buzzer/buzzerService";
+import { publicGameModeView } from "@/utils/modes";
+import { bankSchema } from "@/utils/categoryGrid/content";
+import { questionKey, type QuizState } from "@/utils/sequentialQuiz/engine";
+import type { AnswerProgress } from "@/utils/sequentialQuiz/projection";
 import { err, ok } from "neverthrow";
 
 import type { PublicGameState, PrivateGameState, GameSettings } from "@/types";
 
-type ScoreMap = Record<GameTeam["id"], number>;
+/** The game no longer exists (for example its owner deleted it). */
+export class GameNotFoundError extends Error {
+  constructor(readonly gameId: string) {
+    super("Game not found");
+  }
+}
 
 export async function getPublicGameState({
   gameId,
@@ -18,6 +30,19 @@ export async function getPublicGameState({
       name: true,
       format: true,
       isBuzzerListening: true,
+      buzzerMode: true,
+      status: true,
+      code: true,
+      joiningOpen: true,
+      gameMode: {
+        select: {
+          kind: true,
+          status: true,
+          content: true,
+          state: true,
+          step: true,
+        },
+      },
       gameTeams: {
         select: {
           id: true,
@@ -26,7 +51,7 @@ export async function getPublicGameState({
           buzzerState: true,
           _count: {
             select: {
-              gameUsers: true,
+              gameUsers: { where: { removedAt: null } },
             },
           },
         },
@@ -47,13 +72,10 @@ export async function getPublicGameState({
   });
 
   if (!game) {
-    return err(new Error("Game not found"));
+    return err(new GameNotFoundError(gameId));
   }
 
-  const scoreboardState = game.scoreboard?.currentState?.state as Record<
-    GameTeam["id"],
-    number
-  >;
+  const scoreboardState = parseScoreMap(game.scoreboard?.currentState?.state);
 
   const data: PublicGameState = {
     game: {
@@ -61,6 +83,10 @@ export async function getPublicGameState({
       name: game.name,
       format: game.format,
       isBuzzerListening: game.isBuzzerListening,
+      buzzerMode: game.buzzerMode,
+      status: game.status,
+      joinCode:
+        game.joiningOpen && game.status !== "finished" ? game.code : null,
     },
     gameTeams: game.gameTeams.map((gameTeam) => ({
       id: gameTeam.id,
@@ -70,6 +96,15 @@ export async function getPublicGameState({
       numPlayers: gameTeam._count.gameUsers,
       score: scoreboardState[gameTeam.id] ?? 0,
     })),
+    buzzQueue: (await getBuzzQueue(gameId)).map((e) => ({
+      position: e.position,
+      gameTeamId: e.gameTeamId,
+      status: e.status,
+    })),
+    mode: publicGameModeView(
+      game.gameMode,
+      await answeredTeams(gameId, game.gameMode),
+    ),
   };
 
   data.gameTeams.sort((a, b) => a.index - b.index);
@@ -85,14 +120,37 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
       format: true,
       code: true,
       isBuzzerListening: true,
+      buzzerMode: true,
       settings: true,
+      status: true,
+      finishedAt: true,
+      joiningOpen: true,
+      gameMode: {
+        select: {
+          kind: true,
+          status: true,
+          content: true,
+          state: true,
+          step: true,
+        },
+      },
+      teamAssignment: true,
+      chatEnabled: true,
+      captainsOnly: true,
       gameTeams: {
         select: {
           id: true,
           name: true,
           index: true,
           buzzerState: true,
+          allowMemberRename: true,
+          nameVersion: true,
+          captainId: true,
           gameUsers: {
+            where: { removedAt: null },
+            // By player number: the live stream's team lists are rebuilt
+            // in this order on the page (src/utils/liveRoster.ts).
+            orderBy: [{ index: "asc" }, { id: "asc" }],
             select: {
               id: true,
             },
@@ -100,11 +158,14 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
         },
       },
       gameUsers: {
+        where: { removedAt: null },
         select: {
           id: true,
           name: true,
           index: true,
           gameTeamId: true,
+          allowSelfRename: true,
+          nameVersion: true,
           user: {
             select: {
               id: true,
@@ -129,28 +190,43 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
   });
 
   if (!game) {
-    return err(new Error("Game not found"));
+    return err(new GameNotFoundError(gameId));
   }
 
-  const scoreboardState = game.scoreboard?.currentState?.state as Record<
-    GameTeam["id"],
-    number
-  >;
+  const scoreboardState = parseScoreMap(game.scoreboard?.currentState?.state);
+
+  const buzzWinner = await getBuzzWinner(gameId);
 
   const data: PrivateGameState = {
+    buzzWinner,
+    buzzQueue: await getBuzzQueue(gameId),
+    mode: publicGameModeView(
+      game.gameMode,
+      await answeredTeams(gameId, game.gameMode),
+    ),
     game: {
       id: game.id,
       name: game.name,
       code: game.code,
       format: game.format,
       isBuzzerListening: game.isBuzzerListening,
+      buzzerMode: game.buzzerMode,
       settings: game.settings as GameSettings,
+      status: game.status,
+      finishedAt: game.finishedAt,
+      joiningOpen: game.joiningOpen,
+      teamAssignment: game.teamAssignment,
+      chatEnabled: game.chatEnabled,
+      captainsOnly: game.captainsOnly,
     },
     gameTeams: game.gameTeams.map((gameTeam) => ({
       id: gameTeam.id,
       name: gameTeam.name,
       index: gameTeam.index,
       buzzerState: gameTeam.buzzerState,
+      allowMemberRename: gameTeam.allowMemberRename,
+      nameVersion: gameTeam.nameVersion,
+      captainId: gameTeam.captainId,
       gameUsers: gameTeam.gameUsers.map((gameUser) => gameUser.id),
       score: scoreboardState[gameTeam.id] ?? 0,
     })),
@@ -161,6 +237,8 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
           name: gameUser.name,
           index: gameUser.index,
           gameTeamId: gameUser.gameTeamId,
+          allowSelfRename: gameUser.allowSelfRename,
+          nameVersion: gameUser.nameVersion,
           image: gameUser.user?.image,
         };
         return acc;
@@ -186,48 +264,40 @@ export async function getPrivateGameState({ gameId }: { gameId: Game["id"] }) {
   return ok(data);
 }
 
-export async function checkTeamsAndGetCurrentScores({
-  gameId,
-  gameTeamIds,
-}: {
-  gameId: Game["id"];
-  gameTeamIds: GameTeam["id"][];
-}) {
-  const gameTeams = await db.gameTeam.findMany({
-    where: {
-      gameId,
-      id: {
-        in: gameTeamIds,
-      },
-    },
-  });
-
-  if (gameTeams.length !== gameTeamIds.length) {
-    return err(new Error("Game teams not found"));
+/**
+ * Sequential Quiz: the teams that have saved an answer to the open
+ * question (only which teams, never what they typed).
+ */
+async function answeredTeams(
+  gameId: string,
+  mode: {
+    kind: string;
+    status: string;
+    content: unknown;
+    state: unknown;
+  } | null,
+): Promise<AnswerProgress | undefined> {
+  if (mode?.kind !== "sequentialQuiz" || mode.status !== "running") {
+    return undefined;
   }
+  const bank = bankSchema.safeParse(mode.content);
+  const state = mode.state as QuizState | null;
+  if (!bank.success || !state) return undefined;
+  return answerProgress(gameId, questionKey(bank.data, state));
+}
 
-  const scoreboard = await db.scoreboard.findUnique({
-    where: {
-      gameId,
-    },
-    include: {
-      currentState: true,
-    },
+/** Which teams answered the question with this key; see `AnswerProgress`. */
+export async function answerProgress(
+  gameId: string,
+  key: string | null,
+): Promise<AnswerProgress> {
+  if (!key) return { teams: [], version: 0 };
+  const rows = await db.teamAnswer.findMany({
+    where: { gameId, questionKey: key },
+    select: { gameTeamId: true, revision: true },
   });
-
-  if (!scoreboard) {
-    return err(new Error("Scoreboard not found"));
-  }
-  if (!scoreboard.currentState) {
-    return err(new Error("Scoreboard does not have a current state"));
-  }
-
-  const oldScoreboardState = scoreboard?.currentState;
-
-  const currentScores: ScoreMap = (oldScoreboardState?.state as ScoreMap) ?? {};
-
-  return ok({
-    scoreboard,
-    currentScores,
-  });
+  return {
+    teams: rows.map((r) => r.gameTeamId),
+    version: rows.reduce((sum, r) => sum + r.revision, 0),
+  };
 }

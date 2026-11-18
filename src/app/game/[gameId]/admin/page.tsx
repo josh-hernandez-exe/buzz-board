@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { api, HydrateClient } from "@/trpc/server";
+import { gameApi, HydrateClient } from "@/trpc/server";
 import { headers } from "next/headers";
 
 import { auth, gameAuth } from "@/server/auth";
@@ -8,6 +7,12 @@ import { auth, gameAuth } from "@/server/auth";
 import { GameAdminInfo } from "./GameAdminInfo";
 
 import { logger } from "@/logger";
+import { GameScope } from "@/app/_components/client/GameScope";
+import { AppHeader } from "@/app/_components/server/AppHeader";
+import { PageShell } from "@/app/_components/ui/page";
+import { staffRoleFor } from "@/server/staff/staffService";
+import { db } from "@/server/db";
+import { isModeKind } from "@/utils/modes";
 
 export default async function GameAdminPage({
   params,
@@ -19,39 +24,56 @@ export default async function GameAdminPage({
   const gameSession = await gameAuth({
     headers: await headers(),
     user: session?.user,
+    gameId,
   });
 
-  if (!gameSession?.gameAdmin || gameSession.gameAdmin.gameId !== gameId) {
+  const staffRole =
+    gameSession && "createdById" in gameSession
+      ? staffRoleFor({
+          createdById: gameSession.createdById,
+          gameAdmin:
+            gameSession.gameAdmin?.gameId === gameId
+              ? gameSession.gameAdmin
+              : null,
+          userId: session?.user?.id,
+        })
+      : null;
+  if (!staffRole) {
     logger.error("Game admin not found for this game.");
     redirect("/dashboard");
   }
 
-  const currentGameState = await api.gameGeneral.currentGameState();
+  const currentGameState = await (
+    await gameApi(gameId)
+  ).gameGeneral.currentGameState();
+  // Games set up for a game mode open on its tab until it's over.
+  const mode = await db.gameMode.findUnique({
+    where: { gameId },
+    select: { status: true, kind: true },
+  });
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <p className="text-center text-2xl text-white">
-            {session && <span>Logged in as {session.user?.name}</span>}
-          </p>
-          <Link
-            href={session ? "/api/auth/signout" : "/api/auth/signin"}
-            className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
-          >
-            {session ? "Sign out" : "Sign in"}
-          </Link>
-        </div>
-
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <Link
-            href={`/game/${gameId}/scoreboard`}
-            className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
-          >
-            Scoreboard
-          </Link>
-          <GameAdminInfo gameState={currentGameState} />
-        </div>
-      </main>
+      <GameScope gameId={gameId} initialState={currentGameState}>
+        <PageShell
+          header={
+            <AppHeader
+              extra={[
+                { href: `/game/${gameId}/scoreboard`, label: "Scoreboard" },
+              ]}
+            />
+          }
+          width="wide"
+        >
+          <GameAdminInfo
+            gameState={currentGameState}
+            staffRole={staffRole}
+            modeKind={mode && isModeKind(mode.kind) ? mode.kind : null}
+            modeFirst={
+              !!mode && isModeKind(mode.kind) && mode.status !== "ended"
+            }
+          />
+        </PageShell>
+      </GameScope>
     </HydrateClient>
   );
 }

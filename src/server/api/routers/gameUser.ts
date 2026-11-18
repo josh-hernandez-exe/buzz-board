@@ -1,4 +1,5 @@
-import { GameFormat, BuzzerState, type Prisma } from "@prisma/client";
+import { setCaptain } from "@/server/roster/captains";
+import { GameFormat } from "@prisma/client";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
@@ -9,14 +10,16 @@ import {
   protectedGameUserProcedure,
 } from "@/server/api/trpc";
 
-import { emitUpdatedGameState, emitWhoBuzzedIn } from "@/server/utils/events";
-import type {
-  GameUserWithRelations,
-  GameTeamWithRelations,
-  GameSettings,
-  GameUserBasicInfo,
-  GameTeamBasicInfo,
-} from "@/types";
+import { emitUpdatedGameState } from "@/server/utils/events";
+import { buzzIn } from "@/server/buzzer/buzzerService";
+import { toTRPCError } from "@/server/api/errors";
+import {
+  movePlayer,
+  renamePlayer,
+  renameTeam,
+} from "@/server/roster/rosterService";
+import { linkPlayerToAccount } from "@/server/identity/identityService";
+import type { GameUserWithRelations, GameTeamWithRelations } from "@/types";
 
 export const gameUserRouter = createTRPCRouter({
   ping: protectedGameUserProcedure.query(({ ctx }) => {
@@ -88,13 +91,8 @@ export const gameUserRouter = createTRPCRouter({
             id: true,
             name: true,
             index: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                image: true,
-              },
-            },
+            // Only the avatar: teammates never see each other's account.
+            user: { select: { image: true } },
           },
         },
       },
@@ -115,132 +113,81 @@ export const gameUserRouter = createTRPCRouter({
   changeName: protectedGameUserProcedure
     .input(
       z.object({
-        name: z.string().min(1).max(32),
+        name: z.string().max(400),
+        /** The name version the editor loaded; a newer name is not overwritten. */
+        expectedNameVersion: z.number().int().nonnegative().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const { gameUser } = ctx.gameSession;
-      const result: GameUserBasicInfo = {
+      const result = await renamePlayer({
+        gameId: ctx.gameSession.id,
+        gameUserId: gameUser.id,
+        name: input.name,
+        expectedNameVersion: input.expectedNameVersion,
+        actor: { kind: "player", gameUserId: gameUser.id },
+      });
+      if (result.isErr()) throw toTRPCError(result.error);
+      if (result.value.changed) {
+        await emitUpdatedGameState({ gameId: ctx.gameSession.id });
+      }
+      return {
         id: gameUser.id,
-        name: gameUser.name,
+        name: result.value.name,
+        nameVersion: result.value.nameVersion,
         index: gameUser.index,
         gameId: gameUser.gameId,
         gameTeamId: gameUser.gameTeamId,
         userId: gameUser.userId,
       };
-
-      if (gameUser.name === input.name) {
-        // name is already the same and do not do anything
-        return result;
-      }
-
-      const nameChangePromises: Prisma.PrismaPromise<unknown>[] = [
-        ctx.db.gameUser.update({
-          where: {
-            id: gameUser.id,
-          },
-          data: {
-            name: input.name,
-          },
-        }),
-      ];
-
-      if (
-        gameUser.gameTeamId &&
-        ctx.gameSession.format === GameFormat.individual
-      ) {
-        nameChangePromises.push(
-          ctx.db.gameTeam.update({
-            where: {
-              id: gameUser.gameTeamId,
-            },
-            data: {
-              name: input.name,
-            },
-          }),
-        );
-      }
-
-      await ctx.db.$transaction(nameChangePromises);
-
-      return {
-        ...result,
-        name: input.name,
-      };
     }),
   changeTeamName: protectedGameUserProcedure
     .input(
       z.object({
-        name: z.string().min(1).max(32),
+        name: z.string().max(400),
+        expectedNameVersion: z.number().int().nonnegative().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const { gameUser } = ctx.gameSession;
-
       if (!gameUser.gameTeamId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "GameUser is not on a team.",
         });
       }
-
-      const gameTeam = await ctx.db.gameTeam.findUnique({
-        where: {
-          id: gameUser.gameTeamId,
-        },
-      });
-
-      if (!gameTeam) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "No team found.",
-        });
-      }
-
-      const result: GameTeamBasicInfo = {
-        id: gameTeam.id,
-        name: gameTeam.name,
-        index: gameTeam.index,
-        gameId: gameTeam.gameId,
-      };
-
-      if (gameTeam.name === input.name) {
-        // name is already the same and do not do anything
-        return result;
-      }
-
-      const nameChangePromises: Prisma.PrismaPromise<unknown>[] = [
-        ctx.db.gameTeam.update({
-          where: {
-            id: gameUser.gameTeamId,
-          },
-          data: {
-            name: input.name,
-          },
-        }),
-      ];
-
-      if (ctx.gameSession.format === GameFormat.individual) {
-        nameChangePromises.push(
-          ctx.db.gameUser.update({
-            where: {
-              id: gameUser.id,
-            },
-            data: {
-              name: input.name,
-            },
-          }),
-        );
-      }
-
-      await ctx.db.$transaction(nameChangePromises);
-
-      await emitUpdatedGameState({ gameId: ctx.gameSession.id });
-
-      return {
-        ...result,
+      const result = await renameTeam({
+        gameId: ctx.gameSession.id,
+        gameTeamId: gameUser.gameTeamId,
         name: input.name,
+        expectedNameVersion: input.expectedNameVersion,
+        actor: { kind: "player", gameUserId: gameUser.id },
+      });
+      if (result.isErr()) throw toTRPCError(result.error);
+      if (result.value.changed) {
+        await emitUpdatedGameState({ gameId: ctx.gameSession.id });
+      }
+      return {
+        id: gameUser.gameTeamId,
+        name: result.value.name,
+        nameVersion: result.value.nameVersion,
+        gameId: gameUser.gameId,
       };
+    }),
+  /** The team's captain hands the role to a teammate. */
+  handCaptaincy: protectedGameUserProcedure
+    .input(z.object({ gameUserId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await setCaptain({
+        gameId: ctx.gameSession.id,
+        gameUserId: input.gameUserId,
+        actor: { kind: "player", gameUserId: ctx.gameSession.gameUser.id },
+      });
+      if (result.isErr()) throw toTRPCError(result.error);
+      if (result.value.changed) {
+        await emitUpdatedGameState({ gameId: ctx.gameSession.id });
+      }
+      return result.value;
     }),
   changeTeams: protectedGameUserProcedure
     .input(
@@ -249,163 +196,73 @@ export const gameUserRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const gameUser = ctx.gameSession.gameUser;
-      const settings = ctx.gameSession.settings as GameSettings;
-
-      if (ctx.gameSession.format === GameFormat.individual) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Game format does not support teams",
-        });
-      }
-
-      if (gameUser.gameTeamId === input.gameTeamId) {
-        // same team do nothing
-        return {
-          id: gameUser.id,
-          name: gameUser.name,
-          index: gameUser.index,
-          gameId: gameUser.gameId,
-          gameTeamId: gameUser.gameTeamId,
-          userId: gameUser.userId,
-        } as GameUserBasicInfo;
-      }
-
-      if (settings?.freezeTeams) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Team switching is currently disabled",
-        });
-      }
-
-      const gameTeam = await ctx.db.gameTeam.findUnique({
-        where: {
-          id: input.gameTeamId,
-        },
+      const { gameUser } = ctx.gameSession;
+      const result = await movePlayer({
+        gameId: ctx.gameSession.id,
+        gameUserId: gameUser.id,
+        targetGameTeamId: input.gameTeamId,
+        actor: { kind: "player", gameUserId: gameUser.id },
       });
-
-      if (!gameTeam) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Game team not found",
-        });
+      if (result.isErr()) throw toTRPCError(result.error);
+      if (result.value.changed) {
+        await emitUpdatedGameState({ gameId: ctx.gameSession.id });
       }
-      if (gameTeam.gameId !== gameUser.gameId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Game team is not part of this game.",
-        });
-      }
-
-      const gameUserUpdated = await ctx.db.gameUser.update({
-        where: {
-          id: gameUser.id,
-        },
-        data: {
-          gameTeamId: input.gameTeamId,
-        },
-      });
-
-      await emitUpdatedGameState({
-        gameId: gameUser.gameId,
-      });
-
       return {
-        id: gameUserUpdated.id,
-        name: gameUserUpdated.name,
-        index: gameUserUpdated.index,
-        gameId: gameUserUpdated.gameId,
-        gameTeamId: gameUserUpdated.gameTeamId,
-        userId: gameUserUpdated.userId,
-      } as GameUserBasicInfo;
-    }),
-  buzzIn: protectedGameUserProcedure.mutation(async ({ ctx }) => {
-    const { gameUser, isBuzzerListening } = ctx.gameSession;
-    const { gameTeamId } = gameUser;
-
-    if (!gameTeamId) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Game user is not part of a team",
-      });
-    }
-
-    if (!isBuzzerListening) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "Game is not listening for buzzers",
-      });
-    }
-
-    const gameTeam = await ctx.db.gameTeam.findUnique({
-      select: {
-        id: true,
-        buzzerState: true,
-      },
-      where: {
-        id: gameTeamId,
-      },
-    });
-
-    if (gameTeam?.buzzerState === BuzzerState.rejected) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "Game team has already buzzed in.",
-      });
-    }
-
-    if (gameTeam?.buzzerState === BuzzerState.selected) {
-      return;
-    }
-
-    await ctx.db.$transaction(async (trx) => {
-      // Note1: to act as a psuedo mutex we only write with the expected buzzer state
-      //        only if both updates are successful will this take.
-      //        furthermore, if someone else made the query at the exact same time
-      //        the where clause will hopefully be enough to deal with that.
-      // Note2: This end point is likely getting hit with high bursts.
-      //        So we select to reduce the amount of data grabbed for it to be successful.
-      const [updatedTeam, updatedGame] = await Promise.all([
-        trx.gameTeam.update({
-          select: {
-            id: true,
-          },
-          where: {
-            id: gameTeamId,
-            buzzerState: BuzzerState.available,
-          },
-          data: {
-            buzzerState: BuzzerState.selected,
-          },
-        }),
-        trx.game.update({
-          select: {
-            id: true,
-          },
-          where: {
-            id: gameUser.gameId,
-            isBuzzerListening: true,
-          },
-          data: {
-            isBuzzerListening: false,
-          },
-        }),
-      ]);
-      if (!updatedTeam || !updatedGame) {
-        // throw and rollback
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "Invalid buzzer state.",
-        });
-      }
-    });
-
-    // only emit above query is successful.
-    await Promise.all([
-      emitWhoBuzzedIn({ gameUserId: gameUser.id }),
-      emitUpdatedGameState({
+        id: gameUser.id,
+        name: gameUser.name,
+        index: gameUser.index,
         gameId: gameUser.gameId,
-      }),
-    ]);
+        gameTeamId: input.gameTeamId,
+        userId: gameUser.userId,
+      };
+    }),
+  /**
+   * Saves this guest player to the signed-in account, so signing in on
+   * another device gets back to the same player.
+   */
+  linkAccount: protectedGameUserProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session?.user?.id;
+    if (!userId) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Sign in first to save your player to an account.",
+      });
+    }
+    const result = await linkPlayerToAccount({
+      gameId: ctx.gameSession.id,
+      gameUserId: ctx.gameSession.gameUser.id,
+      userId,
+    });
+    if (result.isErr()) throw toTRPCError(result.error);
+    return result.value;
   }),
+  buzzIn: protectedGameUserProcedure
+    .input(
+      z
+        .object({
+          requestId: z
+            .string()
+            .min(8)
+            .max(64)
+            .regex(/^[A-Za-z0-9_-]+$/),
+        })
+        .optional(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { gameUser } = ctx.gameSession;
+
+      const result = await buzzIn({
+        gameId: gameUser.gameId,
+        gameUserId: gameUser.id,
+        requestId: input?.requestId,
+      });
+      if (result.isErr()) {
+        throw toTRPCError(result.error);
+      }
+
+      if (!result.value.replayed) {
+        await emitUpdatedGameState({ gameId: gameUser.gameId });
+      }
+      return result.value;
+    }),
 });

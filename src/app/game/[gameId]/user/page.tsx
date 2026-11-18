@@ -1,24 +1,28 @@
+import { MessagePage, PageShell, SiteHeader } from "@/app/_components/ui/page";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { GameFormat } from "@prisma/client";
 
 import { auth, gameAuth } from "@/server/auth";
 
-import { api, HydrateClient } from "@/trpc/server";
+import { gameApi, HydrateClient } from "@/trpc/server";
 import { GameBuzzerTab } from "@/app/_components/client/GameBuzzerTab";
-import { TeamSwitcherTab } from "@/app/_components/client/TeamSwitcherTab";
+import {
+  TeamCaptainCard,
+  TeamSwitcherTab,
+} from "@/app/_components/client/TeamSwitcherTab";
 import { GameWhoBuzzedIn } from "@/app/_components/client/GameWhoBuzzedIn";
 import { GameSoundEffects } from "@/app/_components/client/GameSoundEffects";
 
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/app/_components/ui/tabs";
-
 import { logger } from "@/logger";
 import { InformationTab } from "./InformationTab";
+import { GameScope } from "@/app/_components/client/GameScope";
+import { PlayerHeader } from "@/app/_components/client/PlayerStatus";
+import { PlayerTabs } from "@/app/_components/client/PlayerTabs";
+import { LiveRankedAnswersBoard } from "@/app/_components/client/RankedAnswersBoard";
+import { LiveCategoryGrid } from "@/app/_components/client/CategoryGridBoard";
+import { LiveSequentialQuiz } from "@/app/_components/client/SequentialQuizBoard";
+import { LiveFinalStandings } from "@/app/_components/client/FinalStandings";
 
 export default async function GameUserPage({
   params,
@@ -30,35 +34,33 @@ export default async function GameUserPage({
   const gameSession = await gameAuth({
     headers: await headers(),
     user: session?.user,
+    gameId,
   });
 
-  if (!gameSession?.gameUser || gameSession.gameUser.gameId !== gameId) {
+  if (gameSession?.gameUser?.gameId !== gameId) {
     logger.error("Game user not found for this game.");
     redirect("/join");
   }
 
   if (!gameId) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <h1 className="mb-4 text-2xl font-bold">Game Not Found</h1>
-          <p>No game identifier was given.</p>
-        </div>
-      </main>
+      <MessagePage title="Game not found">
+        <p className="text-muted-foreground">No game identifier was given.</p>
+      </MessagePage>
     );
   }
 
+  const api = await gameApi(gameId);
   const gameUser = await api.gameUser.getSelfInfo();
   const currentGameState = await api.gameGeneral.currentGameState();
 
   if (!gameUser) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <h1 className="mb-4 text-2xl font-bold">Unauthorized</h1>
-          <p>Game user not exist or you are not authorized.</p>
-        </div>
-      </main>
+      <MessagePage title="You're not in this game">
+        <p className="text-muted-foreground">
+          Join the game again with its code, or ask the host for help.
+        </p>
+      </MessagePage>
     );
   }
 
@@ -66,56 +68,60 @@ export default async function GameUserPage({
   const isTeamGame = game.format === GameFormat.team;
   const hasTeamAssigned = gameUser.gameTeamId !== null;
 
-  // Determine default tab:
-  // - For team games: default to team switcher if user has no team, otherwise buzzer
-  // - For individual games: default to buzzer
+  // Players without a team start on the team picker.
   const defaultTab =
     isTeamGame && !hasTeamAssigned ? "team-switcher" : "buzzer";
 
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        {/* Game sound effects for the user's team */}
-        <GameSoundEffects gameTeamId={gameUser.gameTeamId ?? undefined} />
-
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <Tabs defaultValue={defaultTab} className="w-[400px]">
-            <TabsList
-              className={`grid w-full ${isTeamGame ? "grid-cols-3" : "grid-cols-2"}`}
-            >
-              <TabsTrigger value="buzzer">Buzzer</TabsTrigger>
-              {isTeamGame && (
-                <TabsTrigger value="team-switcher">Team Switcher</TabsTrigger>
-              )}
-              <TabsTrigger value="information">Information</TabsTrigger>
-            </TabsList>
-            <TabsContent value="buzzer">
-              <GameWhoBuzzedIn gameUserId={gameUser.id} />
-              <GameBuzzerTab
-                game={game}
-                gameTeam={gameTeams.find(
-                  (gameTeam) => gameTeam.id === gameUser.gameTeamId,
-                )}
+      <GameScope gameId={gameId} initialState={currentGameState}>
+        <PageShell
+          header={<SiteHeader links={[{ href: "/help", label: "Help" }]} />}
+          width="wide"
+        >
+          {/* Game sound effects for the user's team */}
+          <GameSoundEffects gameTeamId={gameUser.gameTeamId ?? undefined} />
+          <PlayerTabs
+            defaultTab={defaultTab}
+            header={
+              <PlayerHeader
+                gameId={gameId}
+                gameUserId={gameUser.id}
+                signedIn={!!session?.user}
+                linked={!!gameUser.user}
               />
-            </TabsContent>
-            {isTeamGame && (
-              <TabsContent value="team-switcher">
-                <TeamSwitcherTab
-                  game={game}
-                  gameTeams={gameTeams}
-                  initialGameTeamId={gameUser.gameTeamId}
-                />
-              </TabsContent>
-            )}
-            <TabsContent value="information">
+            }
+            buzzer={
+              <>
+                <LiveFinalStandings gameUserId={gameUser.id} />
+                <LiveRankedAnswersBoard />
+                <LiveCategoryGrid />
+                <LiveSequentialQuiz />
+                <GameBuzzerTab gameUserId={gameUser.id} />
+                <GameWhoBuzzedIn gameUserId={gameUser.id} />
+              </>
+            }
+            team={
+              isTeamGame ? (
+                <>
+                  <TeamCaptainCard gameUserId={gameUser.id} />
+                  <TeamSwitcherTab
+                    game={game}
+                    gameTeams={gameTeams}
+                    initialGameTeamId={gameUser.gameTeamId}
+                  />
+                </>
+              ) : undefined
+            }
+            info={
               <InformationTab
                 gameState={currentGameState}
                 gameUser={gameUser}
               />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
+            }
+          />
+        </PageShell>
+      </GameScope>
     </HydrateClient>
   );
 }

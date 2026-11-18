@@ -22,14 +22,13 @@ The [T3 Stack](https://create.t3.gg/) is a modular and type-safe full-stack deve
 
 ## Usage
 
-### Authenticated Users
-- Create and manage games as an admin.
-- Use the admin interface to control game settings, manage teams, and oversee gameplay.
+Players join with a code or link and a nickname; no account is needed. Hosts sign in to create games, share them, run the buzzer and scores, and finish, reopen, duplicate or delete them.
 
-### Game Participants
-- Join a game using a unique game code.
-- Use the buzzer to interact during gameplay.
+Current features include [first-buzz and queued buzzing with undo/redo](./docs/buzzer-queue-and-history.md), [Ranked Answers](./docs/ranked-answers-mode.md), [Category Grid](./docs/category-grid-mode.md), [Sequential Quiz with typed answers](./docs/sequential-quiz-mode.md), and optional [team captains](./docs/team-captains.md). Hosts have quick per-team scoring and advanced score tools, helper roles, roster controls, chat and an audience display.
 
+Instructions for players and hosts live in the app's public **Help** at `/help`. Its source is in [`src/help`](./src/help), so it is versioned with the features it describes. Contributors: see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+Owners and co-hosts can [randomly assign all current participants to balanced teams](./src/help/articles/teams-and-names.md#can-hosts-randomly-assign-teams), with confirmation and an optional player-switching lock applied atomically.
 
 ## Development Setup
 
@@ -57,6 +56,42 @@ Redirects:
   - NOTE: you need http and https
   - Avoid wildcard since you can have a persistant code space.
 
+Running on another port (for example `bun dev --port 5555` with `NEXTAUTH_URL=http://localhost:5555`)? Register that port's callback URL too, or Google answers "Access blocked: This app's request is invalid". Discord only checks the callback after you log in.
+
+
+#### Test logins during development
+
+You don't need Discord or Google to try hosting locally. Put this in **`.env.development.local`** (git-ignored, and read only by `bun dev`):
+
+```bash
+DEV_LOGIN=1
+```
+
+and start the server so it listens only on this machine (the test sign-in refuses to run while other machines can connect):
+
+```bash
+bun dev --hostname 127.0.0.1
+```
+
+Then **Host a game** (or any sign-in link) opens `/dev-login`, where you sign in as a ready-made account with one click:
+
+| Account | Use it for |
+| --- | --- |
+| Dev Host | Creating and running games |
+| Dev Co-host | Invite it as a co-host from a game's Room tab |
+| Dev Moderator | Invite it as a moderator |
+| Dev Host 2 | A second host with games of its own |
+
+Accounts are created on first use, with emails at `dev-login.buzz-board.invalid`. Use a separate browser profile or private window per account to be several people at once. Players never need accounts. The page also links to the real Discord/Google sign-in.
+
+**It can't reach production.** Each of these is enough on its own:
+- **Not in builds.** The page and route are `page.dev.tsx` / `route.dev.ts`, which only `next dev` serves (`next.config.js`). Production builds don't contain them.
+- **The build checks itself.** `bun run build` (also used by CI and Vercel) runs `scripts/build/assert-no-dev-login.mjs`, which fails the build if a dev-login route or any of its code is in the output.
+- **Refuses to run.** `next build` and `next start` stop with an error if `DEV_LOGIN` is set. That's why it belongs in `.env.development.local`, not `.env` or `.env.local`.
+- **Switched off in code.** It's off whenever `NODE_ENV` is `production` or on Vercel, even with `DEV_LOGIN=1`.
+- **Local and same-site only.** It only answers `localhost` and only accepts this site's own sign-in form. A client can claim both, so it also stays off while the dev server accepts connections from other machines (`next dev` listens on every network address unless started with `--hostname 127.0.0.1`). Don't forward the port through a public tunnel while it's on.
+
+Details: [devLoginGate.ts](./src/server/auth/devLoginGate.ts). Automated tests sign hosts in by writing a session straight to the test database (`tests/e2e/support.ts`), so they need neither.
 
 ### Getting Started
 1. Clone the repository.
@@ -67,9 +102,10 @@ Redirects:
 4. Start the development environment:
    ```bash
    docker compose --file ./docker-compose.db.yml up --detach
-   bun db:push
+   bun db:migrate:deploy
    bun dev
    ```
+   - A development database created earlier with `bun db:push` must be baselined once before migrations will apply: `bun db:baseline`.
 
 ### Common Commands
 - Start the database and backend services:
@@ -78,8 +114,13 @@ Redirects:
   ```
 - Apply database migrations:
   ```bash
-  bun db:push
+  bun db:migrate:deploy
   ```
+- Change the schema: edit `prisma/schema.prisma`, then create a reviewed migration (this applies it to the development database):
+  ```bash
+  bun db:migrate --name describe_the_change
+  ```
+  Migrations must be additive and keep existing games, scores and history working. `tests/integration/migrations.test.ts` fails if the schema and migrations drift apart and rehearses an upgrade of a populated legacy database.
 - Start the development server:
   ```bash
   bun dev
@@ -96,16 +137,39 @@ Redirects:
   ```bash
   bun db:studio
   ```
+- Lint and typecheck:
+  ```bash
+  bun run check
+  ```
+
+### Testing
+
+Vitest runs unit, component and integration tests; Playwright runs browser tests. Integration and browser tests use disposable PostgreSQL and Redis containers that are separate from the development database:
+
+```bash
+bun run test                 # unit + component, no services needed
+bun run test:services:up     # disposable PostgreSQL :55432 and Redis :56379
+bun run test:integration     # real tRPC routers against those services
+bun run test:e2e             # Playwright smoke tests (first run: bunx playwright install chromium)
+bun run test:services:down
+```
+
+Unit and component tests live in `tests/unit/`, mirroring the `src/` folder structure. See [docs/testing.md](./docs/testing.md) for the full layout, commands, and conventions, including how known defects are tracked with `it.fails`.
+
+Load testing uses real bots over the app's HTTP and live streams, locally only: `bun run load -- --profile smoke-10 --dry-run` shows the plan first. See [docs/operations.md](./docs/operations.md#load-runner) for profiles, safety interlocks and how to read the report.
 
 
 ## Deployment
 
 Buzz Board is designed to be deployed on Vercel for a seamless and scalable hosting experience. Follow the [Vercel Deployment Guide](https://create.t3.gg/en/deployment/vercel) for detailed instructions on deploying T3 Stack applications.
 
-```bash
-git checkout production
-git merge --ff-only development
-```
+For an existing deployment, follow the [Vercel migration and fallback plan](./docs/vercel-migration-plan.md): verify the release branch, rehearse restoring a database backup, apply reviewed migrations, and promote a staged production build. Make sure the intended feature changes have reached `development` before promoting them to `production`; merging an unchanged branch does not release them.
+
+**Merging into `development` does not apply database migrations.** CI migrates only disposable test databases; neither installation nor the build migrates the hosted database. Follow the [development migration gate](./docs/vercel-migration-plan.md#development-deployment-gate) before enabling the new deployment.
+
+### Scheduled cleanup
+
+Run `bun run ops:cleanup` on a schedule (for example hourly) with the production environment. It is safe to repeat. It removes chat text older than 7 days and expired mutes, strips moderation reasons older than 30 days, and lists (never deletes) unfinished games idle for 7 days. It prints a JSON summary and exits non-zero on failure so the scheduler can alert. Reads already hide expired chat text if a run is missed. What to alert on is in the [operations runbook](./docs/operations.md#scheduled-cleanup).
 
 ### Steps to Deploy on Vercel
 1. **Connect Your Repository**:
@@ -144,11 +208,17 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
      ```
 
 3. **Apply Database Migrations**:
-   - Run Prisma migrations to set up the database schema:
+   - Never run `prisma migrate reset`, `prisma migrate dev` or `db push --force-reset` against a deployed database: they can delete every game, score and account.
+   - Back up the database first (for example with your provider's snapshot or `pg_dump`), outside of a live event.
+   - **One time only**, for a populated database created with `db push` before migrations existed, first verify that its schema matches `0_init`, then mark the baseline as already applied. This changes no application tables and does not verify the schema for you. Skip this for empty or already-baselined databases:
      ```bash
-     bun --env-file=.env.production prisma migrate reset
-     bun --env-file=.env.production db:push
+     bun --env-file=.env.production run db:baseline
      ```
+   - Apply pending migrations:
+     ```bash
+     bun prod:db:migrate
+     ```
+   - Vercel rollback restores the application, not the database. Additive migrations alone do not guarantee that old code can safely handle new data. Rehearse application compatibility and the separate backup-restore fallback in the [migration plan](./docs/vercel-migration-plan.md#5-fallback-procedures).
 
 4. **Verify Connections**:
    - Ensure that your application can connect to the managed PostgreSQL and Redis instances by testing locally or deploying to Vercel.
@@ -157,77 +227,20 @@ Buzz Board leverages Vercel's managed services for PostgreSQL and Redis to simpl
 - Vercel's managed PostgreSQL and Redis services are optimized for production use and include features like automatic backups and monitoring.
 - For advanced configurations, refer to the [Vercel PostgreSQL Documentation](https://vercel.com/docs/postgres) and [Vercel Storage (redis-like) Documentation](https://vercel.com/docs/storage).
 
-## TODO
+## Future development
 
-- refactor game state.
-  - make game state smaller by removing uses.
-    - bascially the public game state.
-  - create new team subscriptions for teams and the users names.
-    - replace usages of game state for displaying user names with this instead
-    - test to see if an admin endpoint can "union" these subscriptions into one.
-      - otherwise the web UI will dynamically need to "sub" to all of these
-- Maybe admin should be able to edit team names.
-- Admin must be able to turn off team switching
-- Update scoreboard visuals:
-  - scoreboard game content is too narrow. It can take more width of the screen
-- admin should be able to kick a user
-- admin should be able to turn off users joining
-- Team swtiching toggle appears for individual games. It should not be there.
-- there should be admin settings for quick score buttons
-  - this requires a new UI to create these settings. Maybe as crude as json text block.
-  - should look into seeing a UI element that have dynamic user created list elements. kinda like a todo list.
-- game user buzzer should change color to green if they are they (or their team) have buzzed in.
-- game user buzzer should change color to red if their team is rejected from the buzzer
-- admin user needs to actually be able to delete games.
-- Split score control into a quick score control and an advanced score control:
-  - Quick score control:
-    - Team format:
-      - Have a list of all the teams and an increment and decrement button.
-      - There should also be a box near the top to indicate how much.
-        - This box should be a dropdown to be able to change the amount.
-    - Single format:
-      - Similar to team format, but instead of the teams, just all who is rejected and "all" selected.
-      - This feature will likely need a refactor to treat buzzers like scoreboards.
-  - Quick score control will have a list of all the teams.
-- Add more login providers:
-  - Ideally just: Apple / Google / Discord.
-    - But will have to see how easy it is to switch over to JWT (or use multiple token types).
-- Migrate from "(Classic) React Query Integration" to pure TanStack React Query
-  - https://trpc.io/docs/client/tanstack-react-query/setup
-  - need to figure out how to replace subscriptions with the pure tanstack version.
-- Consider swtiching from prisma cloud to something else
-  - prisma prices per request ask 100k
-  - supabase free teir caps at 5 GB of bandwidth
-  - neon prices in compute hours after 190
-    - $0.16 per hour over
-    - [compute hours] = [compute size] x [hours your compute runs]
-    - https://neon.tech/pricing#compute-hour
-    - with autoscaling the computer size can decrese
-      - https://neon.tech/docs/introduction/autoscaling
-      - Autoscaling currently supports a range of 1/4 (.25) to 16 vCPUs
-      - free tier
-        - 0.25 CPU would last the whole month
-        - max size is 2 CPU
-        - they offer scaling to zero
+These are ideas, not implemented features or release commitments:
 
+- Extend typed submissions beyond Sequential Quiz, starting with [Ranked Answers all-play or secret answers](./docs/typed-answers-exploration.md).
+- Add saved quick-score presets; the current panel lets the host change **Points per tap**.
+- Offer games without a visible scoreboard, or optional automatic scoring for buzzer judgments. Basic buzzer outcomes and manual score changes are currently separate.
+- Add Apple sign-in alongside the existing Google and Discord providers.
+- Evaluate the [tRPC TanStack React Query integration](https://trpc.io/docs/client/tanstack-react-query/setup), including how to preserve live subscriptions.
+- Reassess database hosting against measured usage and current provider pricing. Do not combine a provider move with an untested application release.
 
+### Historical diagnostic to recheck
 
-
-### Errors to Investigate
-
-- ❌ tRPC failed on gameGeneral.whoBuzzedIn: Aborted
-- ⨯ [Error [InvariantError]: Invariant: Cannot call waitUntil() on an AwaiterOnce that was already awaited. This is a bug in Next.js.]
-
-
-
-## Future Features
-
-- Buzzed in queue. So everyone can buzz in, but the sequence who has buzzed is remembered.
-  - this would need a "Next" button to move from the current "selected" to next in line and make previous rejected until whoever has something correct.
-- Have an option to not use the score mechanism.
-* In the future, the `null` team will auto select the teams who buzzed in and apply score changes to them.
-	* Teams with the state `BUZZER_PRESSED_FAILED` will have their score removed from them.
-	* The team with the state `BUZZER_PRESSED` will have their score increased.
+`Invariant: Cannot call waitUntil() on an AwaiterOnce that was already awaited` was previously observed from Next.js. Its reproduction status on the current version is not recorded.
 
 ## External Sources
 

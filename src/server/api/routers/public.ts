@@ -1,98 +1,124 @@
-import { GameFormat } from "@prisma/client";
-import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-
-import { logger } from "@/logger";
-
-import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
-
-import { getPublicGameState } from "@/server/db/common";
-import { generateToken } from "@/server/utils/codeGeneration";
+import { z } from "zod";
 
 import {
-  gameEventEmitter,
+  createTRPCRouter,
+  protectedUserProcedure,
+  publicProcedure,
+} from "@/server/api/trpc";
+import {
+  linkedPlayers,
+  previewRecovery,
+  redeemRecovery,
+  resumeLinkedPlayer,
+} from "@/server/identity/identityService";
+import {
+  clientAddress,
+  takeRateLimit,
+  type RateLimitName,
+} from "@/server/utils/rateLimit";
+
+import { getPublicGameState } from "@/server/db/common";
+import { joinGame, resumePreview } from "@/server/games/gameService";
+import { toTRPCError } from "@/server/api/errors";
+
+import {
   emitUpdatedGameState,
-  gameEventCache,
+  endWhenGameDeleted,
+  liveFeeds,
 } from "@/server/utils/events";
+
+async function enforceRateLimit(name: RateLimitName, address: string) {
+  const { allowed, retryAfterSeconds } = await takeRateLimit(name, address);
+  if (!allowed) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: `Too many attempts from this network. Wait ${retryAfterSeconds} seconds and try again.`,
+    });
+  }
+}
 
 export const publicRouter = createTRPCRouter({
   joinGame: publicProcedure
     .input(
       z.object({
-        gameCode: z.string().toUpperCase(),
-        token: z.string().optional(),
+        gameCode: z.string().trim().toUpperCase().max(6),
+        token: z.string().max(200).optional(),
+        /** Omitted by pre-PR05 clients; those players get "Player N". */
+        nickname: z.string().max(400).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const user = ctx?.session?.user;
-
-      const game = await ctx.db.game.findUnique({
-        where: { code: input.gameCode },
-        include: { gameTeams: true },
+      const address = clientAddress(ctx.headers);
+      await enforceRateLimit("join", address);
+      const result = await joinGame({
+        gameCode: input.gameCode,
+        token: input.token,
+        nickname: input.nickname,
       });
-
-      if (!game) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Game not found",
-        });
-      }
-      if (
-        ctx.gameSession.gameUser?.token === input.token &&
-        ctx.gameSession.gameUser?.gameId === game.id
-      ) {
-        logger.info("Game User already authenticated");
-        return {
-          gameUser: ctx.gameSession.gameUser,
-          token: input.token,
-          gameId: ctx.gameSession.id,
-        };
-      }
-
-      const curMaxPlayerIndex = await ctx.db.gameUser.aggregate({
-        _max: {
-          index: true,
-        },
-        where: { gameId: game.id },
-      });
-      const curIndex = (curMaxPlayerIndex._max.index ?? 0) + 1;
-
-      const gameUser = await ctx.db.$transaction(async (tx) => {
-        const gUser = await tx.gameUser.create({
-          data: {
-            gameId: game.id,
-            name: user?.name ?? `Player ${curIndex}`,
-            index: curIndex,
-            token: generateToken(),
-            // if a user is authed, then link
-            userId: user?.id,
-          },
-        });
-
-        if (game.format === GameFormat.individual) {
-          await tx.gameTeam.create({
-            data: {
-              gameId: game.id,
-              name: gUser.name,
-              index: curIndex,
-              gameUsers: {
-                connect: {
-                  id: gUser.id,
-                },
-              },
-            },
-          });
+      if (result.isErr()) {
+        if (result.error.kind === "gameNotFound") {
+          await enforceRateLimit("unknownCode", address);
         }
-        return gUser;
-      });
-
-      if (game.format === GameFormat.individual) {
-        // only emit event when a new team is made
-        await emitUpdatedGameState({ gameId: game.id });
+        throw toTRPCError(result.error);
       }
 
-      return { gameUser, token: gameUser.token, gameId: game.id };
+      if (!result.value.resumed) {
+        await emitUpdatedGameState({ gameId: result.value.gameId });
+      }
+      return result.value;
     }),
+  /** Players in this game saved to the signed-in account. */
+  linkedPlayers: publicProcedure
+    .input(z.object({ gameCode: z.string().trim().toUpperCase().max(6) }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session?.user?.id;
+      if (!userId) return [];
+      return linkedPlayers({ gameCode: input.gameCode, userId });
+    }),
+  /** Gets back in as a player saved to the signed-in account. */
+  resumeLinked: protectedUserProcedure
+    .input(
+      z.object({
+        gameCode: z.string().trim().toUpperCase().max(6),
+        gameUserId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await resumeLinkedPlayer({
+        ...input,
+        userId: ctx.session.user.id,
+      });
+      if (result.isErr()) throw toTRPCError(result.error);
+      return { ...result.value, resumed: true };
+    }),
+  /** What a recovery link restores, without using it. */
+  recoveryPreview: publicProcedure
+    .input(z.object({ token: z.string().min(16).max(200) }))
+    .query(async ({ input }) => previewRecovery({ token: input.token })),
+  /** Uses a recovery link once and returns the player's new credential. */
+  redeemRecovery: publicProcedure
+    .input(z.object({ token: z.string().min(16).max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      await enforceRateLimit("redeemLink", clientAddress(ctx.headers));
+      const result = await redeemRecovery({ token: input.token });
+      if (result.isErr()) throw toTRPCError(result.error);
+      // Ends live streams still open with the replaced credential.
+      await emitUpdatedGameState({ gameId: result.value.gameId });
+      return { ...result.value, resumed: true };
+    }),
+  /**
+   * Who a stored credential would resume as, so the join screen can offer
+   * "Resume as …" explicitly. Only the credential's holder can ask.
+   */
+  resumePreview: publicProcedure
+    .input(
+      z.object({
+        gameCode: z.string().trim().toUpperCase().max(6),
+        token: z.string().max(200),
+      }),
+    )
+    .query(async ({ input }) => resumePreview(input)),
   currentGameState: publicProcedure
     .input(z.object({ gameId: z.string() }))
     .query(async ({ ctx: _, input }) => {
@@ -100,31 +126,16 @@ export const publicRouter = createTRPCRouter({
 
       const result = await getPublicGameState({ gameId });
       if (result.isErr()) {
-        throw result.error;
+        throw new TRPCError({ code: "NOT_FOUND", message: "Game not found" });
       }
       return result.value;
     }),
 
   gameState: publicProcedure
     .input(z.object({ gameId: z.string() }))
-    .subscription(async function* ({ ctx: _, input, signal }) {
-      const { gameId } = input;
-
-      let gameState = await gameEventCache.publicGameStateUpdate.get(gameId);
-      if (!gameState) {
-        const result = await getPublicGameState({ gameId });
-        if (result.isErr()) {
-          throw result.error;
-        }
-        gameState = result.value;
-      }
-
-      yield gameState;
-
-      for await (const gameState of gameEventEmitter.publicGameStateUpdate.subscribe(
-        { gameId, signal },
-      )) {
-        yield gameState;
-      }
+    .subscription(async function* ({ input, signal }) {
+      yield* endWhenGameDeleted(
+        liveFeeds.publicGameState.subscribe(input.gameId, signal),
+      );
     }),
 });

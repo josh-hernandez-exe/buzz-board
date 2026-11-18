@@ -9,22 +9,37 @@ import { updateExtraHeaders } from "@/trpc/react";
 import { logger } from "@/logger";
 
 type GameTokenData = {
+  /** Most recently used credential (pre-PR05 storage; kept for old tabs). */
   token: string | null;
   gameId: string | null;
+  /** Credentials by join code, used to offer "Resume" on the join screen. */
   tokenStorage: Record<string, string>;
+  /** Credentials by game ID, so each tab sends its own game's credential. */
+  tokensByGame?: Record<string, string>;
 };
 
-export function useGameTokenData() {
-  const { getCookie, setCookie } = useCookiesNext();
+/** Per-game cookie read by server-rendered pages (see `gameAuth`). */
+export const gameTokenCookieName = (gameId: string) =>
+  `buzz-board-game-user-token.${gameId}`;
+
+const COOKIE_MAX_AGE = 86400;
+
+/**
+ * @param scopeGameId - The game this page renders (its route param). Every tab
+ *   shares localStorage and cookies, so without it a reload would scope this
+ *   tab's requests to whichever game was opened most recently in any tab.
+ */
+export function useGameTokenData({
+  scopeGameId,
+}: { scopeGameId?: string } = {}) {
+  const { getCookie, setCookie, deleteCookie } = useCookiesNext();
   const [isFirstLoad, setIsFirstLoad] = useState(true);
-  const [gameTokenData, setGameTokenDataInLocalStorage] = useLocalStorage(
-    "buzz-board-game-token-storage",
-    {
+  const [gameTokenData, setGameTokenDataInLocalStorage] =
+    useLocalStorage<GameTokenData>("buzz-board-game-token-storage", {
       token: null,
       gameId: null,
       tokenStorage: {},
-    } as GameTokenData,
-  );
+    });
 
   const setHeadersFromToken = (gtd: GameTokenData) => {
     const { token, gameId } = gtd;
@@ -38,7 +53,7 @@ export function useGameTokenData() {
           gameId,
         );
         setCookie("buzz-board-game-id", gameId, {
-          maxAge: 86400, // 1 day expiration
+          maxAge: COOKIE_MAX_AGE,
         });
       }
     }
@@ -51,7 +66,12 @@ export function useGameTokenData() {
           token,
         );
         setCookie("buzz-board-game-user-token", token, {
-          maxAge: 86400, // 1 day expiration
+          maxAge: COOKIE_MAX_AGE,
+        });
+      }
+      if (gameId && token !== getCookie(gameTokenCookieName(gameId))) {
+        setCookie(gameTokenCookieName(gameId), token, {
+          maxAge: COOKIE_MAX_AGE,
         });
       }
     }
@@ -94,16 +114,64 @@ export function useGameTokenData() {
         gameId: gameId,
       };
     }
+    if (gameId && token) {
+      updatedTokenData = {
+        ...updatedTokenData,
+        tokensByGame: { ...updatedTokenData.tokensByGame, [gameId]: token },
+      };
+    }
     setGameTokenDataInLocalStorage(updatedTokenData);
     setHeadersFromToken(updatedTokenData);
+  };
+
+  /**
+   * "Leave this room on this device": forgets this browser's credential for
+   * one game. The player's profile, team and scores stay on the server.
+   */
+  const leaveGame = ({ gameId, code }: { gameId: string; code?: string }) => {
+    const leftToken = gameTokenData.tokensByGame?.[gameId];
+    const { [gameId]: _removed, ...tokensByGame } =
+      gameTokenData.tokensByGame ?? {};
+    const tokenStorage = Object.fromEntries(
+      Object.entries(gameTokenData.tokenStorage).filter(
+        ([storedCode, token]) =>
+          storedCode !== code?.toUpperCase() && token !== leftToken,
+      ),
+    );
+    const isCurrent = gameTokenData.gameId === gameId;
+    setGameTokenDataInLocalStorage({
+      token: isCurrent ? null : gameTokenData.token,
+      gameId: isCurrent ? null : gameTokenData.gameId,
+      tokenStorage,
+      tokensByGame,
+    });
+    deleteCookie(gameTokenCookieName(gameId));
+    if (isCurrent || getCookie("buzz-board-game-id") === gameId) {
+      deleteCookie("buzz-board-game-id");
+      deleteCookie("buzz-board-game-user-token");
+    }
+    updateExtraHeaders({ gameId: null, gameUserToken: null });
   };
 
   if (isFirstLoad) {
     logger.debug(`useGameTokenData: setting token on first load.`);
 
-    setHeadersFromToken(gameTokenData);
+    setHeadersFromToken(
+      scopeGameId
+        ? {
+            ...gameTokenData,
+            gameId: scopeGameId,
+            // Only this game's credential; never another game's.
+            token:
+              gameTokenData.tokensByGame?.[scopeGameId] ??
+              (gameTokenData.gameId === scopeGameId
+                ? gameTokenData.token
+                : null),
+          }
+        : gameTokenData,
+    );
     setIsFirstLoad(false);
   }
 
-  return [gameTokenData, setGameTokenData] as const;
+  return [gameTokenData, setGameTokenData, leaveGame] as const;
 }

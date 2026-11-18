@@ -1,3 +1,4 @@
+import { cn } from "@/app/_lib/utils";
 import {
   flexRender,
   getCoreRowModel,
@@ -15,19 +16,27 @@ import {
 
 import { type GameViewDataTableRow, columnGenerator } from "./gameViewColumns";
 
+// Secondary columns are hidden on phones; the Game cell repeats status and
+// code there instead.
+const WIDE_ONLY = new Set(["status", "code", "myRole", "createdAt"]);
+const wideOnly = (columnId: string) =>
+  WIDE_ONLY.has(columnId) ? "hidden md:table-cell" : undefined;
+
 export function GameTeamUserTable({
   data,
   onSelectClick,
+  deleteGame,
 }: {
   data: GameViewDataTableRow[];
   onSelectClick: (gameId: string) => void;
+  deleteGame: Parameters<typeof columnGenerator>[0]["deleteGame"];
 }) {
-  const columns = columnGenerator({ onSelectClick });
+  const columns = columnGenerator({ onSelectClick, deleteGame });
   const table = useReactTable({
     data,
-    columns: columnGenerator({ onSelectClick }),
+    columns,
     getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => row.gameId,
+    getRowId: (row) => row.id,
   });
 
   return (
@@ -38,7 +47,13 @@ export function GameTeamUserTable({
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
                 return (
-                  <TableHead key={header.id} className="text-white">
+                  <TableHead
+                    key={header.id}
+                    className={cn(
+                      "text-foreground",
+                      wideOnly(header.column.id),
+                    )}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -59,7 +74,7 @@ export function GameTeamUserTable({
                 data-state={row.getIsSelected() && "selected"}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                  <TableCell key={cell.id} className={wideOnly(cell.column.id)}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
@@ -68,7 +83,7 @@ export function GameTeamUserTable({
           ) : (
             <TableRow>
               <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results.
+                No games yet. Create one above.
               </TableCell>
             </TableRow>
           )}

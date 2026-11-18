@@ -60,19 +60,19 @@ export const columns: ColumnDef<GameTeamDataTableRow>[] = [
       if (row.getValue("buzzerState") === BuzzerState.selected) {
         return (
           <div className="flex items-center justify-center">
-            <Check className="h-4 w-4 text-green-500" />
+            <Check className="text-success h-4 w-4" />
           </div>
         );
       } else if (row.getValue("buzzerState") === BuzzerState.rejected) {
         return (
           <div className="flex items-center justify-center">
-            <X className="h-4 w-4 text-red-500" />
+            <X className="text-destructive h-4 w-4" />
           </div>
         );
       } else if (row.getValue("buzzerState") === BuzzerState.available) {
         return (
           <div className="flex items-center justify-center">
-            <SquareDashed className="h-4 w-4 text-gray-500" />
+            <SquareDashed className="text-muted-foreground h-4 w-4" />
           </div>
         );
       }

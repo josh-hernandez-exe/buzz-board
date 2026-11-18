@@ -71,18 +71,15 @@ export function DataTable({ columns, data, onChange }: DataTableProps) {
 
   return (
     <div className="rounded-md border">
-      <Button
-        onClick={handleSelectByBuzzerSelected}
-        className="mb-4 rounded bg-blue-500 px-4 py-2 text-white"
-      >
-        Buzzer Selected
-      </Button>
-      <Button
-        onClick={handleSelectByBuzzerRejected}
-        className="mb-4 rounded bg-blue-500 px-4 py-2 text-white"
-      >
-        Buzzer Rejected
-      </Button>
+      <div className="flex flex-wrap items-center gap-2 p-2">
+        <span className="text-muted-foreground text-sm">Select teams:</span>
+        <Button onClick={handleSelectByBuzzerSelected} variant="secondary">
+          Buzzer Selected
+        </Button>
+        <Button onClick={handleSelectByBuzzerRejected} variant="secondary">
+          Buzzer Rejected
+        </Button>
+      </div>
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (

@@ -1,4 +1,4 @@
-import type { Game, GameAdmin, GameUser, User } from "@prisma/client";
+import type { Game, GameAdmin, GameUser } from "@prisma/client";
 import { cookies } from "next/headers";
 
 import { db } from "@/server/db";
@@ -19,11 +19,9 @@ import { logger } from "@/logger";
 async function gameUserAuth({
   gameId,
   gameUserToken,
-  user,
 }: {
   gameId: string | undefined;
   gameUserToken: string | undefined;
-  user?: Pick<User, "id"> | undefined;
 }): Promise<{ gameUser: GameUser | undefined | null }> {
   let gameUser;
 
@@ -43,23 +41,13 @@ async function gameUserAuth({
     gameUser = null;
   }
 
-  if (
-    typeof user?.id === "string" &&
-    gameUser &&
-    gameUser?.userId !== user.id
-  ) {
-    // user is authed and game user is authed and not linked
-    // link them
-    gameUser = await db.gameUser.update({
-      where: {
-        id: gameUser.id,
-      },
-      data: {
-        userId: user.id,
-      },
-    });
+  if (gameUser?.removedAt) {
+    logger.warn("Game User was removed from this game.");
+    gameUser = null;
   }
 
+  // Signing in never links a guest player to the account; the player links
+  // explicitly (identityService.linkPlayerToAccount).
   return {
     gameUser,
   };
@@ -84,32 +72,11 @@ async function gameAdminAuth({
   gameId: string | undefined;
   user?: { id: string };
 }): Promise<{ gameAdmin: GameAdmin | undefined | null }> {
-  let gameAdmin;
-
-  if (user?.id && gameId) {
-    gameAdmin = await db.gameAdmin.findUnique({
-      where: {
-        // @@unique([userId, gameId])
-        userId_gameId: {
-          gameId,
-          userId: user.id,
-        },
-      },
-      include: { game: true },
-    });
-  }
-
-  if (
-    !(
-      gameAdmin !== null &&
-      gameAdmin !== undefined &&
-      gameAdmin?.gameId === gameId &&
-      gameAdmin?.userId === user?.id
-    )
-  ) {
-    logger.warn("Game Admin found is not for the current game.");
-    gameAdmin = undefined;
-  }
+  if (!user?.id || !gameId) return { gameAdmin: undefined };
+  // Most requests come from players, who have no staff row: that's normal.
+  const gameAdmin = await db.gameAdmin.findUnique({
+    where: { userId_gameId: { gameId, userId: user.id } },
+  });
 
   return {
     gameAdmin,
@@ -136,35 +103,45 @@ type GameAuthReturn = Game & {
 export async function gameAuth({
   headers,
   user,
+  gameId: explicitGameId,
 }: {
   headers: Headers;
   user?: { id: string };
+  /** The game a server page is rendering (its route param). Always wins. */
+  gameId?: string;
 }): Promise<GameAuthReturn | Record<string, never>> {
-  let gameUserToken;
-  let gameId;
   const cookieStore = await cookies();
 
-  // check cookie for server side request processing
-  // or check headers for client side request
-
-  gameUserToken ??= cookieStore.get("buzz-board-game-user-token")?.value;
-  gameUserToken ??= headers.get("x-buzz-board-game-user-token") as
-    | string
-    | undefined;
-
-  gameId ??= cookieStore.get("buzz-board-game-id")?.value;
-  gameId ??= headers.get("x-buzz-board-game-id") as string | undefined;
+  // Scope precedence: explicit route game, then the per-tab headers sent by the
+  // tRPC client, then the shared cookies. Cookies are last because every tab
+  // shares them, so they only describe the most recently opened game.
+  const gameId =
+    explicitGameId ??
+    headers.get("x-buzz-board-game-id") ??
+    cookieStore.get("buzz-board-game-id")?.value;
+  // A per-game cookie lets a server-rendered page find this game's player
+  // credential even after the browser joined another game in another tab.
+  const gameUserToken =
+    headers.get("x-buzz-board-game-user-token") ??
+    cookieStore.get(`buzz-board-game-user-token.${gameId}`)?.value ??
+    cookieStore.get("buzz-board-game-user-token")?.value;
 
   if (!gameId) {
     logger.debug("No game ID found during auth.");
     return {};
   }
 
+  const game = await db.game.findUnique({ where: { id: gameId } });
+
+  if (!game) {
+    logger.warn("Game not found during auth.");
+    return {};
+  }
+
   const [{ gameUser }, { gameAdmin }] = await Promise.all([
     gameUserAuth({
       gameId,
-      gameUserToken,
-      user,
+      gameUserToken: gameUserToken ?? undefined,
     }),
     gameAdminAuth({
       gameId,
@@ -172,16 +149,9 @@ export async function gameAuth({
     }),
   ]);
 
-  const game = await db.game.findUnique({ where: { id: gameId } });
-
-  if (game === undefined) {
-    logger.warn("Game not found during auth.");
-    return {};
-  }
-
   return {
     ...game,
     gameAdmin,
     gameUser,
-  } as GameAuthReturn;
+  };
 }

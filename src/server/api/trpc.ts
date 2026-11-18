@@ -11,6 +11,10 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { HelpfulTRPCError } from "@/server/api/errors";
+import { staffRoleFor } from "@/server/staff/staffService";
+import { can, ROLE_LABEL, type Capability } from "@/utils/capabilities";
+
 import { auth, gameAuth } from "@/server/auth";
 import { db } from "@/server/db";
 import { logger } from "@/logger";
@@ -58,6 +62,8 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
         ...shape.data,
         zodError:
           error.cause instanceof ZodError ? error.cause.flatten() : null,
+        /** Help article path for expected errors, shown under the message. */
+        help: error instanceof HelpfulTRPCError ? error.help : null,
       },
     };
   },
@@ -101,10 +107,11 @@ export const createTRPCRouter = t.router;
  * You can remove this if you don't like it, but it can help catch unwanted waterfalls by simulating
  * network latency that would occur in production but not in local development.
  */
-const timingMiddleware = t.middleware(async ({ next, path }) => {
+const timingMiddleware = t.middleware(async ({ next, path, type }) => {
   const start = Date.now();
 
-  if (t._config.isDev) {
+  // tRPC's `isDev` is also true for NODE_ENV=test; only add latency in `next dev`.
+  if (t._config.isDev && process.env.NODE_ENV === "development") {
     // artificial delay in dev
     const waitMs = Math.floor(Math.random() * 400) + 100;
     await new Promise((resolve) => setTimeout(resolve, waitMs));
@@ -112,8 +119,14 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 
   const result = await next();
 
-  const end = Date.now();
-  logger.info(`[TRPC] ${path} took ${end - start}ms to execute`);
+  const took = Date.now() - start;
+  // Every call at debug; only slow ones at info, so production logs stay
+  // useful (and cheap) under load. Subscriptions report their whole life.
+  if (took > 1_000 && type !== "subscription") {
+    logger.info(`[TRPC] slow: ${path} took ${took}ms`);
+  } else {
+    logger.debug(`[TRPC] ${path} took ${took}ms`);
+  }
 
   return result;
 });
@@ -179,26 +192,41 @@ export const protectedGameUserProcedure = t.procedure
           data: ctx.gameSession.data,
           settings: ctx.gameSession.settings,
           format: ctx.gameSession.format,
+          status: ctx.gameSession.status,
+          finishedAt: ctx.gameSession.finishedAt,
+          joiningOpen: ctx.gameSession.joiningOpen,
+          teamAssignment: ctx.gameSession.teamAssignment,
+          createdById: ctx.gameSession.createdById,
           gameUser: ctx.gameSession.gameUser,
         },
       },
     });
   });
 
-export const protectedGameAdminProcedure = t.procedure
+/**
+ * Any staff member of the game in scope: its owner, a co-host or a moderator.
+ * The role is re-derived on every request from current membership, so a
+ * removed or demoted helper loses access immediately. `ctx.staffRole` tells
+ * procedures which role it is; use `staffProcedure(capability)` to require a
+ * capability.
+ */
+export const protectedGameStaffProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
-    if (
-      !(
-        typeof ctx?.gameSession?.id === "string" &&
-        typeof ctx?.gameSession?.gameAdmin?.gameId === "string" &&
-        typeof ctx.session?.user?.id === "string" &&
-        // does the game id match game of the gameAdmin
-        ctx.gameSession.id === ctx.gameSession.gameAdmin.gameId &&
-        // does the gameAdmin associated with the authed in user
-        ctx.gameSession.gameAdmin.userId === ctx.session.user.id
-      )
-    ) {
+    const userId = ctx.session?.user?.id;
+    const gameId = ctx.gameSession?.id;
+    const staffRole =
+      typeof gameId === "string" && typeof userId === "string"
+        ? staffRoleFor({
+            createdById: ctx.gameSession.createdById,
+            gameAdmin:
+              ctx.gameSession.gameAdmin?.gameId === gameId
+                ? ctx.gameSession.gameAdmin
+                : null,
+            userId,
+          })
+        : null;
+    if (!staffRole || !ctx.session?.user || typeof gameId !== "string") {
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Not a valid game admin user for this game.",
@@ -207,21 +235,44 @@ export const protectedGameAdminProcedure = t.procedure
     return next({
       ctx: {
         ...ctx,
+        staffRole,
+        session: { ...ctx.session, user: ctx.session.user },
         gameSession: {
           ...ctx.gameSession,
           // infers the properties of game and gameUser as non-nullable
-          id: ctx.gameSession.id,
+          id: gameId,
           name: ctx.gameSession.name,
           code: ctx.gameSession.code,
           isBuzzerListening: ctx.gameSession.isBuzzerListening,
           data: ctx.gameSession.data,
           settings: ctx.gameSession.settings,
           format: ctx.gameSession.format,
+          status: ctx.gameSession.status,
+          finishedAt: ctx.gameSession.finishedAt,
+          joiningOpen: ctx.gameSession.joiningOpen,
+          teamAssignment: ctx.gameSession.teamAssignment,
+          createdById: ctx.gameSession.createdById,
           gameAdmin: ctx.gameSession.gameAdmin,
         },
       },
     });
   });
+
+/** Staff with a specific capability from the fixed capability table. */
+export function staffProcedure(capability: Capability) {
+  return protectedGameStaffProcedure.use(({ ctx, next }) => {
+    if (!can(ctx.staffRole, capability)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Your role (${ROLE_LABEL[ctx.staffRole]}) can't do that.`,
+      });
+    }
+    return next();
+  });
+}
+
+/** Owner or co-host: everything needed to run the game. */
+export const protectedGameAdminProcedure = staffProcedure("runGame");
 
 export const protectedGameGeneralProcedure = t.procedure
   .use(timingMiddleware)
@@ -246,6 +297,11 @@ export const protectedGameGeneralProcedure = t.procedure
           data: ctx.gameSession.data,
           settings: ctx.gameSession.settings,
           format: ctx.gameSession.format,
+          status: ctx.gameSession.status,
+          finishedAt: ctx.gameSession.finishedAt,
+          joiningOpen: ctx.gameSession.joiningOpen,
+          teamAssignment: ctx.gameSession.teamAssignment,
+          createdById: ctx.gameSession.createdById,
         },
       },
     });

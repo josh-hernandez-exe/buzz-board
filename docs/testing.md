@@ -1,0 +1,101 @@
+# Testing
+
+## Folder structure
+
+Keep automated tests under [`tests/`](../tests), not alongside application code in `src/`. Unit and component tests mirror the path below `src/` directly under `tests/unit/`; do not add another `src/` directory:
+
+```text
+tests/
+  unit/
+    app/_components/.../       React components and their helpers
+    help/                      Help content and link checks
+    server/.../                Server helpers that need no services
+    utils/.../                 Shared utilities and game engines
+    *.test.ts                  Repository-wide and non-src checks
+  integration/                 Real routers, PostgreSQL and Redis
+  e2e/                         Browser journeys (*.spec.ts)
+  support/                     Shared setup, callers and test helpers
+  fixtures/                    Synthetic data and reference models
+  spike/                       Opt-in measurements, not CI pass/fail gates
+```
+
+For example:
+
+| Source                                                                                                    | Test                                                                                                                                          |
+| --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`src/utils/displayName.ts`](../src/utils/displayName.ts)                                                 | [`tests/unit/utils/displayName.test.ts`](../tests/unit/utils/displayName.test.ts)                                                             |
+| [`src/server/scores/scoreMath.ts`](../src/server/scores/scoreMath.ts)                                     | [`tests/unit/server/scores/scoreMath.test.ts`](../tests/unit/server/scores/scoreMath.test.ts)                                                 |
+| [`src/app/_components/client/ThemeToggle/index.tsx`](../src/app/_components/client/ThemeToggle/index.tsx) | [`tests/unit/app/_components/client/ThemeToggle/ThemeToggle.test.tsx`](../tests/unit/app/_components/client/ThemeToggle/ThemeToggle.test.tsx) |
+
+- Preserve the source directory hierarchy and use `<module>.test.ts`. For components exported by `index.tsx`, use `<Component>.test.tsx` in the matching component directory.
+- Import application code with the existing `@/` alias, which always points to `src/`. Use relative imports for shared test helpers and fixtures.
+- `.test.ts` files run in Vitest's **unit** project (Node). `.test.tsx` files run in its **component** project (React Testing Library and jsdom). Both live in `tests/unit/` and run with `bun run test`; neither requires database or Redis services.
+- Tests that require real services belong in `tests/integration/`, regardless of which source module they exercise. Browser journeys belong in `tests/e2e/`. Organize those suites by feature or scenario rather than mirroring every source file.
+- Tests with no single source-module location can stay at the root of `tests/unit/`: the existing load-runner and restore-tool tests, test-environment safety checks, design-token scan and Ranked Answers reference-spec checks. Shared helpers and synthetic data belong in `tests/support/` and `tests/fixtures/`, not among the runnable tests.
+- Keep testing guidance in this document under `docs/`, rather than maintaining a second guide in `tests/`.
+
+## Running tests
+
+| Layer                                              | Command                    | Needs services | Location                   |
+| -------------------------------------------------- | -------------------------- | -------------- | -------------------------- |
+| Unit (Node)                                        | `bun run test`             | No             | `tests/unit/**/*.test.ts`  |
+| Component (React Testing Library, jsdom)           | `bun run test`             | No             | `tests/unit/**/*.test.tsx` |
+| Integration (real tRPC routers, PostgreSQL, Redis) | `bun run test:integration` | Yes            | `tests/integration/`       |
+| Browser (Playwright, `next dev` on port 3100)      | `bun run test:e2e`         | Yes            | `tests/e2e/`               |
+
+Run a focused unit or component file from the repository root:
+
+```bash
+bun run test tests/unit/utils/displayName.test.ts
+bun run test tests/unit/app/_components/client/ThemeToggle/ThemeToggle.test.tsx
+```
+
+For suites that need services:
+
+```bash
+bun run test:services:up     # disposable PostgreSQL :55432 and Redis :56379 (tmpfs, loopback only)
+bun run test:integration
+bunx playwright install chromium   # first time only
+bun run test:e2e
+bun run test:services:down
+```
+
+Override the service URLs with `TEST_DATABASE_URL` and `TEST_KV_URL`. Integration and browser runs **reset the test database**, so [testEnv.ts](../tests/support/testEnv.ts) refuses any database that is not on localhost or whose name does not contain `test`, and integration runs refuse a Redis that is not on localhost. Never point these at a development or production database or Redis.
+
+## How the integration tests reach the app
+
+[integration.ts](../tests/support/integration.ts) calls the real `appRouter` with the real `gameAuth` scoping. Only `next/headers` is stubbed, because there is no Next request scope; callers authenticate with the same `x-buzz-board-*` headers the browser client sends, plus an explicit NextAuth session for hosts. `requestCaller` resolves a new context on every call, like a separate HTTP request.
+
+The browser tests sign a host in by seeding a NextAuth database session and cookie ([e2e/support.ts](../tests/e2e/support.ts)). No OAuth provider or credential is used.
+
+### Guest and account players
+
+[Lifecycle integration tests](../tests/integration/lifecycle.test.ts) exercise both guest and signed-in players in team and individual games: joining, buzzing, scoring, resuming after joining closes, and continuing play without duplicate participants or host permissions. [Identity tests](../tests/integration/rosterIdentity.test.ts) cover explicit account linking and playing after resuming on another device.
+
+The [basic browser loop](../tests/e2e/basicLoop.spec.ts) runs for guests and signed-in players, including reload/resume and continued play after an account session expires. The [quiz browser journey](../tests/e2e/sequentialQuiz.spec.ts) has signed-in and guest teammates save and replace their shared answer.
+
+These account tests use real database-backed sessions, not the Google/Discord authorization flow. Before enabling a deployment, separately smoke-test real provider sign-in and callback handling at that deployment's URL; passing these tests does not verify provider credentials or redirect configuration.
+
+## Known defects: `it.fails`
+
+Characterization tests describe today's behavior. A known defect is written with the **correct** expectation and marked `it.fails("KNOWN DEFECT: ...")`, so the suite stays green while the defect exists. When a fix lands, Vitest reports the unexpected pass; change it to a normal `it` in the same PR. Tests named `CURRENT BEHAVIOR: ...` pin behavior a later PR may change deliberately. There are no current `it.fails` cases.
+
+## Running the browser tests against a production build
+
+`next dev` is what CI runs, but a production build is faster and can expose timing assumptions in tests. Build with the test services' settings (`DATABASE_URL`, `KV_URL`, `AUTH_SECRET` from `tests/support/testEnv.ts`, and `NEXTAUTH_URL`/`NEXT_PUBLIC_QRCODE_BASE_URL` set to `http://localhost:3100`), start it with `bunx next start --port 3100` (without `DEV_LOGIN`), then run `E2E_PORT=3100 bunx playwright test`. Playwright reuses the running server.
+
+Two tests are expected to differ there, by design: the development sign-in page doesn't exist in production, so `devLogin.spec.ts` fails and `auth.spec.ts`'s first test is sent straight to the real Discord/Google sign-in page instead of `/dev-login`. Everything else should pass.
+
+## Spikes
+
+`tests/spike/` holds measurements, not pass/fail tests: stream counts per page (`RUN_SPIKES=1 bunx playwright test tests/spike`) and a two-instance fan-out run (`bun tests/spike/twoInstance.ts`, after a production build). Their reports go to `test-results/`; current scaling findings are summarized in [load-scaling](./load-scaling.md).
+
+`tests/spike/editorResponsiveness.spec.ts` times the Category Grid editor with a synthetic bank at the current content limits (200 questions, near 1 MiB, an 8 × 10 grid, and four images per clue). Measure a production build: build, run `next start --port 3100` with the test services' environment, then `E2E_PORT=3100 RUN_SPIKES=1 bunx playwright test tests/spike/editorResponsiveness`. The report is written to `test-results/editor-responsiveness.json`.
+
+Storybook is not part of this stack; the test organization above is the project's testing strategy.
+
+## Screenshots and hydration warnings
+
+A Playwright screenshot taken right after `page.goto`, before React has finished hydrating, can log "A tree hydrated but some attributes of the server rendered HTML didn't match" for an `<input>`. Playwright briefly changes inline styles while capturing (it hides text carets), and React sees the changed attribute. Real browsers never do this. Wait for something on the page (for example `await expect(page.getByRole("tab")).toBeVisible()`) before taking a screenshot.
+
+Under `next dev` only, a fresh page load in Playwright occasionally logs the same warning with every `useId` value different (for example a menu's `aria-controls`). That's the development server's streaming, not the app: the same pages loaded repeatedly against a production build (`next build` then `next start` on the e2e port, which Playwright then reuses) logged no hydration warnings at all.

@@ -31,10 +31,14 @@
     "forwardPorts": [
         3000,
         5555,
+        5432,
+        6379,
+        55432,
+        56379,
     ],
 
     // Use 'postCreateCommand' to run commands after the container is created.
-    "postCreateCommand": "bun install && bun db:push",
+    "postCreateCommand": "bun install && bun db:migrate:deploy",
 
     // Configure tool-specific properties.
     "customizations": {
@@ -42,7 +46,6 @@
             "extensions": [
                 "Prisma.prisma",
                 "esbenp.prettier-vscode",
-                "k6.k6",
                 "eamodio.gitlens"
             ]
         }

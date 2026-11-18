@@ -1,173 +1,228 @@
 "use client";
 
-import { type GameTeam } from "@prisma/client";
 import { useState } from "react";
 
-import { api } from "@/trpc/react";
-
-import { X } from "lucide-react";
-
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/app/_components/ui/select";
-
+import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
+import { useLiveGameState } from "@/app/_components/client/LiveGameState";
+import { Button } from "@/app/_components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/app/_components/ui/dialog";
-
-import { Button } from "@/app/_components/ui/button";
 import { Switch } from "@/app/_components/ui/switch";
-import { GenericCard } from "@/app/_components/GenericCard";
-
+import { api } from "@/trpc/react";
 import type { GameSettings } from "@/types";
+import { newRequestId } from "@/utils/requestId";
 
-type BasicGameTeamInfo = Pick<GameTeam, "id" | "name" | "index">;
+/*
+ * Team setup for hosts (owner and co-hosts), used inside the roster's Teams
+ * panel: adding teams, whether players may switch, and deleting a team.
+ */
 
-export function GameAdminTeamControl({
-  gameTeams: initialGameTeams,
-}: {
-  gameTeams?: BasicGameTeamInfo[] | undefined;
-}) {
-  const [selectRootKey, setSelectRootKey] = useState(0);
-  const [teamIdToDelete, setTeamIdToDelete] = useState<string | undefined>();
-  const addTeamMutation = api.gameAdmin.addTeam.useMutation();
-  const removeTeamMutation = api.gameAdmin.removeTeam.useMutation();
-  const toggleFreezeTeamsMutation =
-    api.gameAdmin.toggleFreezeTeams.useMutation();
-  const gameStateSub = api.gameGeneral.gameState.useSubscription();
+export function AddTeamButton() {
+  const { data } = useLiveGameState();
+  const addTeam = api.gameAdmin.addTeam.useMutation();
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button
+        onClick={() => addTeam.mutate()}
+        disabled={addTeam.isPending || data?.game.status === "finished"}
+      >
+        Add team
+      </Button>
+      <ErrorNotice error={addTeam.error} />
+    </div>
+  );
+}
 
-  const gameTeamsFromState = gameStateSub.data?.gameTeams as
-    | BasicGameTeamInfo[]
-    | undefined;
+export function TeamSwitchingToggle() {
+  const { data } = useLiveGameState();
+  const freeze = api.gameAdmin.toggleFreezeTeams.useMutation();
+  const settings = data?.game.settings as GameSettings | undefined;
+  const frozen = settings?.freezeTeams ?? false;
+  return (
+    <div className="bg-surface-sunken flex flex-col gap-1 rounded-lg p-3">
+      <div className="flex items-center justify-between gap-4">
+        <label htmlFor="team-switching" className="flex flex-col">
+          <span className="font-semibold">Players can switch teams</span>
+          <span className="text-muted-foreground text-sm">
+            {frozen
+              ? "Teams are locked. Hosts and moderators can still move players."
+              : "Players pick and change their own team."}
+          </span>
+        </label>
+        <Switch
+          id="team-switching"
+          checked={!frozen}
+          onCheckedChange={(checked: boolean) =>
+            freeze.mutate({ freeze: !checked })
+          }
+          disabled={freeze.isPending || data?.game.status === "finished"}
+          aria-label="Toggle team switching"
+        />
+      </div>
+      <ErrorNotice error={freeze.error} />
+    </div>
+  );
+}
 
-  const gameFromState = gameStateSub.data?.game;
-  const settings = gameFromState?.settings as GameSettings | undefined;
-  const isTeamsFrozen = settings?.freezeTeams ?? false;
-
-  const gameTeams = gameTeamsFromState ?? initialGameTeams;
-
-  gameTeams?.sort((a, b) => a.index - b.index);
+export function RandomizeTeamsControl() {
+  const { data } = useLiveGameState();
+  const [open, setOpen] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [lockTeams, setLockTeams] = useState(true);
+  const [requestId, setRequestId] = useState(newRequestId);
+  const assign = api.gameAdmin.randomizeTeams.useMutation({
+    onSuccess: () => setOpen(false),
+  });
+  const players = Object.keys(data?.gameUsers ?? {}).length;
+  const teams = data?.gameTeams.length ?? 0;
+  const blocked =
+    data?.game.status === "finished"
+      ? "This game has finished."
+      : !teams
+        ? "Add a team first."
+        : !players
+          ? "Wait for players to join."
+          : data?.game.isBuzzerListening ||
+              data?.gameTeams.some(
+                (team) => team.buzzerState !== "available",
+              ) ||
+              data?.mode?.status === "running"
+            ? "Close and reset the buzzer with Next question, and end any running game mode first."
+            : undefined;
 
   return (
-    <GenericCard
-      title="Admin Team Control"
-      description="Control team creation"
-      content={
-        <div className="space-y-4">
-          {/* Freeze Teams Control */}
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div>
-              <h4 className="font-medium">Team Switching</h4>
-              <p className="text-sm text-gray-600">
-                {isTeamsFrozen
-                  ? "Team switching is currently disabled"
-                  : "Players can switch teams freely"}
-              </p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <span className="text-sm font-medium text-gray-600">
-                {isTeamsFrozen ? "Off" : "On"}
-              </span>
-              <Switch
-                checked={!isTeamsFrozen}
-                onCheckedChange={(checked: boolean) => {
-                  toggleFreezeTeamsMutation.mutate({ freeze: !checked });
-                }}
-                disabled={toggleFreezeTeamsMutation.isPending}
-                aria-label="Toggle team switching"
-              />
-            </div>
-          </div>
-
-          {/* Add Team Control */}
-          <div>
+    <div className="flex flex-col items-start gap-2 py-3">
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (assign.isPending) return;
+          setOpen(next);
+          if (next) {
+            assign.reset();
+            setConfirmed(false);
+            setLockTeams(true);
+            setRequestId(newRequestId());
+          }
+        }}
+      >
+        <DialogTrigger asChild>
+          <Button variant="secondary" disabled={!!blocked || assign.isPending}>
+            Randomly assign teams
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Randomly assign all players?</DialogTitle>
+            <DialogDescription>
+              Randomly distribute all {players} current players across {teams}{" "}
+              existing teams, with team sizes differing by at most one. This
+              includes players without a team. Scores and history stay with
+              their teams. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={lockTeams}
+              disabled={assign.isPending}
+              onChange={(event) => setLockTeams(event.target.checked)}
+            />
+            Lock player team switching after assignment
+          </label>
+          <p className="text-muted-foreground text-sm">
+            Unchecked keeps the current switching setting. You can change
+            Players can switch teams beside this action afterwards. Host assigns
+            still takes precedence.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              disabled={assign.isPending}
+              onChange={(event) => setConfirmed(event.target.checked)}
+            />
+            I understand this replaces everyone&apos;s current team.
+          </label>
+          <ErrorNotice error={assign.error} />
+          {blocked && <p role="status">{blocked}</p>}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="secondary" disabled={assign.isPending}>
+                Cancel
+              </Button>
+            </DialogClose>
             <Button
-              onClick={() => addTeamMutation.mutate()}
-              disabled={addTeamMutation.isPending}
-              className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+              disabled={!confirmed || !!blocked || assign.isPending}
+              onClick={() => assign.mutate({ requestId, lockTeams })}
             >
-              Add Team
+              {assign.isPending ? "Assigning..." : "Assign randomly"}
             </Button>
-          </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {blocked && <p className="text-muted-foreground text-sm">{blocked}</p>}
+      {assign.isSuccess && <p role="status">Teams assigned randomly.</p>}
+    </div>
+  );
+}
 
-          {/* Delete Team Control */}
-          <div className="inline-flex items-center justify-between">
-            <Select
-              key={selectRootKey}
-              value={teamIdToDelete ?? ""}
-              onValueChange={setTeamIdToDelete}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select a team to delete" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Team</SelectLabel>
-                  {gameTeams?.map((team) => (
-                    <SelectItem key={team.id} value={team.id}>
-                      {team.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                setTeamIdToDelete(undefined);
-                // Increament key of the root select to force a re-render
-                // This is a workaround for to deselect the select value
-                setSelectRootKey((prev) => prev + 1);
-              }}
-            >
-              <X />
-            </Button>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button className="bg-red-500" disabled={!teamIdToDelete}>
-                  Delete Team
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Are you absolutely sure?</DialogTitle>
-                  <DialogDescription>
-                    This action cannot be undone. This will permanently delete
-                    the team and remove all players off that team.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button
-                    onClick={() => {
-                      if (!teamIdToDelete) return;
-
-                      return removeTeamMutation.mutate({
-                        gameTeamId: teamIdToDelete,
-                      });
-                    }}
-                    disabled={removeTeamMutation.isPending || !teamIdToDelete}
-                    className="rounded bg-red-500 px-4 py-2 text-white hover:bg-blue-600"
-                  >
-                    Delete Team
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-      }
-    />
+export function DeleteTeamButton({
+  team,
+  players,
+}: {
+  team: { id: string; name: string };
+  players: number;
+}) {
+  const { data } = useLiveGameState();
+  const removeTeam = api.gameAdmin.removeTeam.useMutation();
+  return (
+    <>
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive"
+            disabled={removeTeam.isPending || data?.game.status === "finished"}
+            aria-label={`Delete ${team.name}`}
+          >
+            Delete…
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {team.name}?</DialogTitle>
+            <DialogDescription>
+              {players > 0
+                ? `Its ${players} ${players === 1 ? "player is" : "players are"} left without a team and its score is lost. `
+                : "Its score is lost. "}
+              This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="secondary">Keep team</Button>
+            </DialogClose>
+            <DialogClose asChild>
+              <Button
+                variant="destructive"
+                onClick={() => removeTeam.mutate({ gameTeamId: team.id })}
+              >
+                Delete team
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <ErrorNotice error={removeTeam.error} />
+    </>
   );
 }

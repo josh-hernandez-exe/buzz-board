@@ -1,3 +1,5 @@
+import type { BuzzQueueStatus } from "@prisma/client";
+import type { PublicGameModeView } from "@/utils/modes";
 import type { Prisma } from "@prisma/client";
 import type { Game, GameTeam, GameUser, User } from "@prisma/client";
 
@@ -16,33 +18,20 @@ export type BasicGameInfo = Prisma.GameGetPayload<{
   };
 }>;
 
-export type GameWithRelations = Prisma.GameGetPayload<{
-  include: {
-    gameUsers: true;
-    gameTeams: true;
-    gameAdmins: true;
-  };
-}>;
-
-export type GameUserBasicInfo = Prisma.GameUserGetPayload<{
-  select: {
-    id: true;
-    name: true;
-    index: true;
-    gameId: true;
-    gameTeamId: true;
-    userId: true;
-  };
-}>;
-
-export type GameTeamBasicInfo = Prisma.GameTeamGetPayload<{
-  select: {
-    id: true;
-    name: true;
-    index: true;
-    gameId: true;
-  };
-}>;
+/** A row on the host dashboard: counts only, never player credentials. */
+export type DashboardGame = {
+  id: Game["id"];
+  name: Game["name"];
+  code: Game["code"];
+  format: Game["format"];
+  status: Game["status"];
+  createdAt: Game["createdAt"];
+  finishedAt: Game["finishedAt"];
+  numTeams: number;
+  numPlayers: number;
+  /** The caller's role: only the owner can delete. */
+  myRole: "owner" | "cohost" | "moderator";
+};
 
 export type GameUserWithRelations = Prisma.GameUserGetPayload<{
   select: {
@@ -80,13 +69,7 @@ export type GameTeamWithRelations = Prisma.GameTeamGetPayload<{
         id: true;
         name: true;
         index: true;
-        user: {
-          select: {
-            id: true;
-            name: true;
-            image: true;
-          };
-        };
+        user: { select: { image: true } };
       };
     };
   };
@@ -101,6 +84,10 @@ export type PublicGameState = {
     name: Game["name"];
     format: Game["format"];
     isBuzzerListening: Game["isBuzzerListening"];
+    buzzerMode: Game["buzzerMode"];
+    status: Game["status"];
+    /** Only while new players may join; null otherwise. */
+    joinCode: Game["code"] | null;
   };
   gameTeams: Array<{
     id: GameTeam["id"];
@@ -110,6 +97,14 @@ export type PublicGameState = {
     numPlayers: number;
     score: number;
   }>;
+  /** Queue mode: the current question's queue, in order (teams only). */
+  buzzQueue: {
+    position: number;
+    gameTeamId: string;
+    status: BuzzQueueStatus;
+  }[];
+  /** The running game mode's board, never including hidden answers. */
+  mode: PublicGameModeView | null;
 };
 
 export type GameTeamFromPublicState = PublicGameState["gameTeams"][number];
@@ -122,13 +117,25 @@ export type PrivateGameState = {
     code: Game["code"];
     format: Game["format"];
     isBuzzerListening: Game["isBuzzerListening"];
+    buzzerMode: Game["buzzerMode"];
     settings: Game["settings"] & GameSettings;
+    status: Game["status"];
+    finishedAt: Game["finishedAt"];
+    joiningOpen: Game["joiningOpen"];
+    teamAssignment: Game["teamAssignment"];
+    chatEnabled: Game["chatEnabled"];
+    /** Team games: only each team's captain buzzes and saves answers. */
+    captainsOnly: Game["captainsOnly"];
   };
   gameTeams: Array<{
     id: GameTeam["id"];
     name: GameTeam["name"];
     index: GameTeam["index"];
     buzzerState: GameTeam["buzzerState"];
+    allowMemberRename: GameTeam["allowMemberRename"];
+    nameVersion: GameTeam["nameVersion"];
+    /** Kept filled whenever the team has members (see captains.ts). */
+    captainId: GameTeam["captainId"];
     gameUsers: Array<GameUser["id"]>;
     score: number;
   }>;
@@ -139,9 +146,30 @@ export type PrivateGameState = {
       name: GameUser["name"];
       index: GameUser["index"];
       gameTeamId: GameUser["gameTeamId"];
+      allowSelfRename: GameUser["allowSelfRename"];
+      nameVersion: GameUser["nameVersion"];
       image: User["image"] | undefined;
     }
   >;
+  /**
+   * The current buzzer window's winner, from the durable claim. The team is
+   * the one the claim was made for. `gameUserId` is null only for a team
+   * selected before claims were recorded.
+   */
+  buzzWinner: {
+    gameUserId: GameUser["id"] | null;
+    gameTeamId: GameTeam["id"];
+  } | null;
+  /** Queue mode: the current question's queue, in order. */
+  buzzQueue: {
+    id: string;
+    position: number;
+    gameTeamId: string;
+    gameUserId: string;
+    status: BuzzQueueStatus;
+  }[];
+  /** The running game mode's board, never including hidden answers. */
+  mode: PublicGameModeView | null;
 };
 
 export type GameTeamFromPrivateState = PrivateGameState["gameTeams"][number];

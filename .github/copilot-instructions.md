@@ -77,8 +77,11 @@
 
 ## Testing and Debugging
 1. **Testing**:
-   - Use Storybook for component testing (`*.stories.tsx` files).
+   - Use Vitest for unit tests and React Testing Library with jsdom for component tests.
    - Write unit tests for critical utilities and components.
+   - Keep unit and component tests in `/tests/unit`, mirroring paths below `/src`; do not colocate tests in `/src`.
+   - Keep service-backed tests in `/tests/integration`, browser journeys in `/tests/e2e`, shared helpers in `/tests/support`, and synthetic data in `/tests/fixtures`.
+   - See [docs/testing.md](../docs/testing.md) for naming, repository-wide test exceptions, commands, and safety requirements.
 
 2. **Debugging**:
    - Use `tslog` for logging (`/src/utils/logger.ts`).

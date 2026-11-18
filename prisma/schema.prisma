@@ -29,6 +29,7 @@ model Account {
   refresh_token_expires_in Int?
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -37,6 +38,8 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model User {
@@ -49,11 +52,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  games     Game[]
-  accounts  Account[]
-  sessions  Session[]
-  gameUsers GameUser[]
-  gameAdmin GameAdmin[]
+  games          Game[]
+  accounts       Account[]
+  sessions       Session[]
+  gameUsers      GameUser[]
+  gameAdmin      GameAdmin[]
+  gameOperations GameOperation[]
+  issuedInvites  GameInvite[]    @relation("IssuedInvites")
+  usedInvites    GameInvite[]    @relation("UsedInvites")
 }
 
 model VerificationToken {
@@ -69,14 +75,50 @@ enum GameFormat {
   team
 }
 
+enum GameStatus {
+  /// Created, not yet played. Opening the buzzer starts the game.
+  lobby
+  running
+  /// Joining and play are closed; can be reopened for 24 hours.
+  finished
+}
+
+/// How a new player in a team game gets a team.
+enum TeamAssignment {
+  /// Placed on the team with the fewest players.
+  auto
+  /// The player picks a team.
+  choose
+  /// Staff assign players to teams.
+  staff
+}
+
 model Game {
-  id                String     @id @default(cuid())
+  id                String         @id @default(cuid())
   name              String
-  code              String     @unique @db.VarChar(6)
-  isBuzzerListening Boolean    @default(false)
-  data              Json       @default("{}")
-  settings          Json       @default("{}")
-  format            GameFormat @default(team)
+  code              String         @unique @db.VarChar(6)
+  isBuzzerListening Boolean        @default(false)
+  /// Incremented each time the buzzer opens or is reset; a BuzzClaim belongs
+  /// to one window, so each window has at most one winner.
+  buzzerWindow      Int            @default(0)
+  /// The highest window number ever used. New windows are numbered above it,
+  /// so undoing buzzer actions never makes a number come round twice.
+  buzzerWindowHigh  Int            @default(0)
+  /// "first": the first buzz wins (default). "queue": every buzz queues.
+  buzzerMode        BuzzerMode     @default(first)
+  data              Json           @default("{}")
+  settings          Json           @default("{}")
+  format            GameFormat     @default(team)
+  status            GameStatus     @default(lobby)
+  finishedAt        DateTime?
+  joiningOpen       Boolean        @default(true)
+  teamAssignment    TeamAssignment @default(auto)
+  /// Chat is off unless a host turns it on.
+  chatEnabled       Boolean        @default(false)
+  /// Team games: only each team's captain can buzz and save answers.
+  captainsOnly      Boolean        @default(false)
+  /// Client-supplied ID that makes a retried "create game" return the same game.
+  creationRequestId String?        @db.VarChar(64)
 
   createdBy   User   @relation(fields: [createdById], references: [id])
   createdById String
@@ -89,24 +131,63 @@ model Game {
   gameAdmins       GameAdmin[]
   scoreboard       Scoreboard?
   scoreboardStates ScoreboardState[]
+  operations       GameOperation[]
+  scoreEffects     ScoreEffect[]
+  buzzClaims       BuzzClaim[]
+  invites          GameInvite[]
+  chatChannels     ChatChannel[]
+  chatMessages     ChatMessage[]
+  chatMutes        ChatMute[]
+  gameMode         GameMode?
+  buzzQueue        BuzzQueueEntry[]
+  buzzerHistory    BuzzerHistory?
+  teamAnswers      TeamAnswer[]
+
+  @@unique([createdById, creationRequestId])
 }
 
 model GameUser {
-  id         String  @id @default(cuid())
-  name       String
-  index      Int
-  gameId     String
-  gameTeamId String?
-  userId     String?
-  token      String  @unique
-  data       Json    @default("{}")
+  id              String    @id @default(cuid())
+  name            String
+  index           Int
+  gameId          String
+  gameTeamId      String?
+  userId          String?
+  token           String    @unique
+  data            Json      @default("{}")
+  /// Staff can lock a player's own renaming; staff can still rename them.
+  allowSelfRename Boolean   @default(true)
+  /// Increments on every rename, so an older edit can be refused.
+  nameVersion     Int       @default(0)
+  /// Set when staff remove the player. Their credential no longer works.
+  removedAt       DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User?     @relation(fields: [userId], references: [id])
-  game     Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameTeam GameTeam? @relation(fields: [gameTeamId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id])
+  game      Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameTeam  GameTeam? @relation("TeamMembers", fields: [gameTeamId], references: [id], onDelete: Cascade)
+  /// The team this player captains, if any.
+  captainOf GameTeam? @relation("TeamCaptain")
+
+  /// Rosters, team member lists and "my games" read players by these.
+  @@index([gameId])
+  @@index([gameTeamId])
+  @@index([userId])
+}
+
+enum BuzzerMode {
+  first
+  queue
+}
+
+enum BuzzQueueStatus {
+  waiting
+  answering
+  correct
+  wrong
+  skipped
 }
 
 enum BuzzerState {
@@ -116,27 +197,46 @@ enum BuzzerState {
 }
 
 model GameTeam {
-  id          String      @id @default(cuid())
-  index       Int
-  name        String
-  gameId      String
-  buzzerState BuzzerState @default(available)
-  data        Json        @default("{}")
+  id                String      @id @default(cuid())
+  index             Int
+  name              String
+  gameId            String
+  buzzerState       BuzzerState @default(available)
+  data              Json        @default("{}")
+  /// Staff can lock renaming by team members; staff can still rename it.
+  allowMemberRename Boolean     @default(true)
+  nameVersion       Int         @default(0)
+  /// The member who buzzes and answers for the team when the game is
+  /// captains-only. Kept filled whenever the team has members: the
+  /// earliest-joined member until staff or the captain choose another.
+  captainId         String?     @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
-  game      Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameUsers GameUser[]
+  game         Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameUsers    GameUser[]    @relation("TeamMembers")
+  captain      GameUser?     @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: SetNull)
+  chatChannels ChatChannel[]
 
   @@unique([gameId, index])
 }
 
+/// A helper's role in one game. The owner is the game's creator
+/// (`Game.createdById`), never a stored role.
+enum StaffRole {
+  /// Shown as "Co-host": runs the game like the owner.
+  admin
+  /// Moves players and (later) moderates names and chat; no gameplay controls.
+  moderator
+}
+
 model GameAdmin {
-  id       String @id @default(cuid())
+  id       String    @id @default(cuid())
   userId   String
   gameId   String
-  settings Json   @default("{}")
+  role     StaffRole @default(admin)
+  settings Json      @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -145,6 +245,7 @@ model GameAdmin {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, gameId])
+  @@index([gameId])
 }
 
 model ScoreboardState {
@@ -159,6 +260,10 @@ model ScoreboardState {
   scoreboard       Scoreboard  @relation("AllScoreboardStates", fields: [scoreboardId], references: [id], onDelete: Cascade)
   activeScoreboard Scoreboard?
   game             Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  /// Only for cascades when a game is deleted; lookups use the ID.
+  @@index([gameId])
+  @@index([scoreboardId])
 }
 
 model Scoreboard {
@@ -175,4 +280,264 @@ model Scoreboard {
   game         Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
   allStates    ScoreboardState[] @relation("AllScoreboardStates")
   currentState ScoreboardState?  @relation(fields: [currentStateId], references: [id])
+}
+
+/// Receipt for one committed game command. A retry with the same requestId by
+/// the same actor and payload returns `result` instead of applying it again.
+/// This is audit/idempotency storage, not an event log or a second score total.
+model GameOperation {
+  id          String   @id @default(cuid())
+  gameId      String
+  requestId   String   @db.VarChar(64)
+  action      String   @db.VarChar(64)
+  actorUserId String?
+  /// SHA-256 of the canonical command payload.
+  payloadHash String   @db.VarChar(64)
+  /// Small committed-result summary returned to retries; never bodies or tokens.
+  result      Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  game         Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  actorUser    User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  scoreEffects ScoreEffect[]
+
+  @@unique([gameId, requestId])
+  @@index([gameId, createdAt])
+}
+
+/// Immutable evidence of the score change an operation actually applied to one
+/// scoring unit. Current scores still come only from the Scoreboard's current
+/// state; these rows are never summed to produce a total.
+model ScoreEffect {
+  id                String   @id @default(cuid())
+  gameId            String
+  operationId       String
+  /// The scoring unit (team, or an individual's backing team). Intentionally
+  /// not a foreign key: evidence must survive the team being removed.
+  gameTeamId        String
+  /// Float (double precision) so legacy fractional balances are recorded
+  /// exactly; new inputs are bounded integers, which doubles represent exactly.
+  delta             Float
+  scoreBefore       Float
+  scoreAfter        Float
+  /// The scoreboard state that was current after the operation.
+  scoreboardStateId String
+  createdAt         DateTime @default(now())
+
+  game      Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  operation GameOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+
+  @@unique([operationId, gameTeamId])
+  @@index([gameId, gameTeamId, createdAt])
+}
+
+/// The durable record of who won a buzzer window. Written in the same
+/// transaction that closes listening; Redis is never the only winner record.
+/// Participant and team IDs are the ones at claim time and are not foreign
+/// keys, so the record survives later moves or removals.
+model BuzzClaim {
+  id         String   @id @default(cuid())
+  gameId     String
+  window     Int
+  gameUserId String
+  gameTeamId String
+  requestId  String?  @db.VarChar(64)
+  createdAt  DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, window])
+  @@unique([gameId, requestId])
+}
+
+enum InvitePurpose {
+  /// Grants a staff role to the signed-in account that accepts it.
+  staff
+  /// Reissues a lost guest's access (organizer-assisted recovery).
+  guestRecovery
+}
+
+/// A single-use bearer link. Only a SHA-256 hash of the token is stored.
+model GameInvite {
+  id               String        @id @default(cuid())
+  gameId           String
+  tokenHash        String        @unique @db.VarChar(64)
+  purpose          InvitePurpose
+  /// The role a staff invitation grants.
+  role             StaffRole?
+  /// The participant a recovery link restores.
+  targetGameUserId String?
+  issuedById       String?
+  createdAt        DateTime      @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  usedAt           DateTime?
+  usedById         String?
+
+  game     Game  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  issuedBy User? @relation("IssuedInvites", fields: [issuedById], references: [id], onDelete: SetNull)
+  usedBy   User? @relation("UsedInvites", fields: [usedById], references: [id], onDelete: SetNull)
+
+  @@index([gameId, purpose])
+}
+
+/// One game-wide channel, and one per team in team games.
+model ChatChannel {
+  id                     String   @id @default(cuid())
+  gameId                 String
+  /// "game", or "team:<gameTeamId>". Unique per game.
+  key                    String   @db.VarChar(64)
+  gameTeamId             String?
+  /// Only staff can post (for example to keep guesses quiet during a round).
+  staffOnly              Boolean  @default(false)
+  /// Minimum seconds between one person's messages; 0 is off.
+  slowModeSeconds        Int      @default(0)
+  pinnedMessageId        String?
+  /// Sequence of the newest message.
+  lastSequence           Int      @default(0)
+  /// Messages up to this sequence are hidden by "clear history".
+  clearedThroughSequence Int      @default(0)
+  /// Changes whenever anything visible in the channel changes.
+  revision               Int      @default(0)
+  /// The revision of the last change other than a new message (removal,
+  /// pin, clear, settings, retention cleanup). A viewer holding a view at
+  /// least this recent only needs the messages after its newest one.
+  modifiedRevision       Int      @default(0)
+  createdAt              DateTime @default(now())
+
+  game     Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameTeam GameTeam?     @relation(fields: [gameTeamId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@unique([gameId, key])
+  @@index([gameTeamId])
+}
+
+/// A chat message. Removal and expiry clear the body; there is no restore.
+model ChatMessage {
+  id          String    @id @default(cuid())
+  gameId      String
+  channelId   String
+  sequence    Int
+  /// "player:<gameUserId>" or "staff:<userId>", derived by the server.
+  actorKey    String    @db.VarChar(64)
+  /// Client-chosen ID; a retry returns the same message.
+  requestId   String    @db.VarChar(64)
+  /// SHA-256 of the body, so a reused request ID can't change the text.
+  bodyHash    String    @db.VarChar(64)
+  body        String?
+  createdAt   DateTime  @default(now())
+  removedAt   DateTime?
+  removedById String?
+  /// Set when cleanup removed the body after the retention period.
+  expiredAt   DateTime?
+
+  game    Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  channel ChatChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, sequence])
+  @@unique([gameId, actorKey, requestId])
+  @@index([gameId, createdAt])
+}
+
+/// A game-wide chat mute. No row means not muted; a null `until` lasts until
+/// unmuted. Muting never affects buzzing or scores.
+model ChatMute {
+  id          String    @id @default(cuid())
+  gameId      String
+  actorKey    String    @db.VarChar(64)
+  until       DateTime?
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, actorKey])
+}
+
+/// An optional integrated game mode (for example Ranked Answers) for one
+/// game. The draft is edited freely; starting freezes it into `content`, and
+/// play advances `state`. Ending hands the room back to basic controls for
+/// good; scores, roster and chat are unaffected.
+model GameMode {
+  id            String    @id @default(cuid())
+  gameId        String    @unique
+  /// "rankedAnswers".
+  kind          String    @db.VarChar(32)
+  /// "draft", "running" or "ended".
+  status        String    @default("draft") @db.VarChar(16)
+  draft         Json
+  /// Bumped on every draft save, so two editors can't overwrite each other.
+  draftRevision Int       @default(0)
+  /// The draft as frozen at start.
+  content       Json?
+  state         Json?
+  /// Earlier states with the points each step awarded, for "undo last".
+  history       Json      @default("[]")
+  /// Bumped on every change while running; actions name the step they saw.
+  step          Int       @default(0)
+  startedAt     DateTime?
+  endedAt       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+}
+
+/// One team's place in the buzz queue for one question (queue mode). Rows
+/// are never deleted, so buzzer history can restore any status.
+model BuzzQueueEntry {
+  id         String          @id @default(cuid())
+  gameId     String
+  /// The question (Game.buzzerWindow) this buzz belongs to.
+  window     Int
+  position   Int
+  gameTeamId String
+  gameUserId String
+  status     BuzzQueueStatus
+  requestId  String?         @db.VarChar(64)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, window, position])
+  @@unique([gameId, requestId])
+  @@index([gameId, window])
+}
+
+/// Undo and redo stacks of host buzzer actions, kept off the Game row.
+model BuzzerHistory {
+  gameId    String   @id
+  past      Json     @default("[]")
+  future    Json     @default("[]")
+  updatedAt DateTime @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+}
+
+/// Sequential Quiz: one team's (or individual's) typed answer to one
+/// question. Replaced in place until the host locks answers; each team's
+/// row is separate, so teams never wait for each other. Private to the
+/// team and to owners and co-hosts.
+model TeamAnswer {
+  id          String   @id @default(cuid())
+  gameId      String
+  /// The question as played: "<position>:<questionId>", so a question
+  /// that appears twice gets two separate answers.
+  questionKey String   @db.VarChar(140)
+  /// The scoring unit. Not a foreign key: the answer stays as evidence if
+  /// the team is deleted.
+  gameTeamId  String
+  text        String   @db.VarChar(500)
+  /// Bumped on every save; a stale save from a teammate is refused.
+  revision    Int      @default(1)
+  /// Who saved it last (a player ID; not a foreign key, like the team).
+  savedById   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, questionKey, gameTeamId])
 }
