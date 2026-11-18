@@ -12,7 +12,7 @@ test.afterAll(async () => {
   await db.$disconnect();
 });
 
-test("a host runs a quiz question with typed team answers", async ({
+test("a host runs a quiz with signed-in and guest teammates answering", async ({
   browser,
   baseURL,
 }) => {
@@ -45,6 +45,9 @@ test("a host runs a quiz question with typed team answers", async ({
     ["Cal", 0],
   ] as const) {
     const context = await browser.newContext();
+    if (nickname === "Ana") {
+      await signInAsNewHost(context, baseURL!, "Ana's Account");
+    }
     const page = await context.newPage();
     await joinFromLink(page, { code: game.code, gameId: game.id, nickname });
     await db.gameUser.updateMany({
@@ -55,6 +58,12 @@ test("a host runs a quiz question with typed team answers", async ({
     players.push(page);
   }
   const [ana, ben, cal] = players as [Page, Page, Page];
+  await expect(
+    ana.getByRole("button", { name: "Save this player to my account" }),
+  ).toBeVisible();
+  await expect(
+    cal.getByRole("button", { name: "Save this player to my account" }),
+  ).toHaveCount(0);
   const display = await browser.newPage();
   await display.goto(`/game/${game.id}/scoreboard/public`);
 
@@ -84,6 +93,15 @@ test("a host runs a quiz question with typed team answers", async ({
   await expect(
     cal.getByRole("button", { name: "Replace answer" }),
   ).toBeVisible();
+  await cal.getByRole("textbox", { name: "Team answer" }).fill("6 sides!");
+  await cal.getByRole("button", { name: "Replace answer" }).click();
+  await expect(ana.getByTestId("quiz-answer-state")).toContainText(
+    "Saved by Cal",
+  );
+  await cal.reload();
+  await expect(cal.getByRole("textbox", { name: "Team answer" })).toHaveValue(
+    "6 sides!",
+  );
   await expect(display.getByTestId("quiz-status")).toHaveText(
     "Answer on your phones! 1 of 2 answered",
   );
@@ -96,7 +114,9 @@ test("a host runs a quiz question with typed team answers", async ({
   const responses = desk.getByTestId("quiz-responses");
   await expect(responses).toContainText("6 sides");
   await responses.getByRole("button", { name: "Mark Team 1 correct" }).click();
-  await responses.getByRole("button", { name: "Mark the rest wrong (1)" }).click();
+  await responses
+    .getByRole("button", { name: "Mark the rest wrong (1)" })
+    .click();
   await desk
     .getByRole("button", { name: "Reveal answer", exact: true })
     .click();

@@ -406,7 +406,7 @@ describe("removing players", () => {
 
 describe("account linking", () => {
   it("saves a guest to an account only when asked, and resumes it elsewhere", async () => {
-    const { game, guest } = await teamGameWithPlayer();
+    const { game, guest, admin, gameTeams } = await teamGameWithPlayer();
     const account = await createUser("Ada's account");
     const signedInPlayer = requestCaller({
       gameId: game.id,
@@ -433,8 +433,21 @@ describe("account linking", () => {
       gameUserId: guest.gameUser.id,
     });
     expect(resumed.gameUser.id).toBe(guest.gameUser.id);
-    // The first device keeps working.
-    await expect(guest.player.gameUser.ping()).resolves.toBe("pong");
+    const resumedPlayer = requestCaller({
+      gameId: game.id,
+      gameUserToken: resumed.token,
+      user: account,
+    });
+    await admin.gameAdmin.startBuzzer();
+    await resumedPlayer.gameUser.buzzIn();
+    await admin.gameAdmin.addScore({ [gameTeams[0]!.id]: 5 });
+
+    // The first device still plays without an account session.
+    await admin.gameAdmin.resetBuzzer();
+    await admin.gameAdmin.startBuzzer();
+    await guest.player.gameUser.buzzIn();
+    expect((await currentScores(game.id))[gameTeams[0]!.id]).toBe(5);
+    expect(await db.gameUser.count({ where: { gameId: game.id } })).toBe(1);
   });
 
   it("never gives another account's player", async () => {

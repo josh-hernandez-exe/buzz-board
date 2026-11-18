@@ -199,6 +199,70 @@ describe("join and resume", () => {
   });
 });
 
+describe.each(["guest", "signed-in"] as const)("%s gameplay", (identity) => {
+  it.each(["team", "individual"] as const)(
+    "joins, buzzes and resumes a %s game without losing identity or scores",
+    async (format) => {
+      const { game, admin } = await createGame({
+        format,
+        teamAssignment: "auto",
+      });
+      const user =
+        identity === "signed-in" ? await createUser("Account Name") : undefined;
+      const joined = await requestCaller({ user }).public.joinGame({
+        gameCode: game.code,
+        nickname: "Player Ada",
+      });
+      const teamId = joined.gameUser.gameTeamId;
+      if (!teamId)
+        throw new Error("The player was not assigned a scoring team");
+      const credentials = {
+        gameId: game.id,
+        gameUserToken: joined.token,
+        user,
+      };
+      const player = requestCaller(credentials);
+      expect(await player.gameUser.getSelfInfo()).toMatchObject({
+        id: joined.gameUser.id,
+        name: "Player Ada",
+        gameTeamId: teamId,
+      });
+      await expect(player.gameAdmin.startBuzzer()).rejects.toMatchObject({
+        code: "UNAUTHORIZED",
+      });
+
+      await admin.gameAdmin.startBuzzer();
+      await player.gameUser.buzzIn();
+      await admin.gameAdmin.addScore({ [teamId]: 5 });
+      await admin.gameAdmin.setJoiningOpen({ open: false });
+
+      const resumed = await requestCaller({ user }).public.joinGame({
+        gameCode: game.code,
+        token: joined.token,
+      });
+      expect(resumed).toMatchObject({
+        resumed: true,
+        gameUser: { id: joined.gameUser.id, gameTeamId: teamId },
+      });
+      const reconnected = requestCaller({
+        ...credentials,
+        gameUserToken: resumed.token,
+      });
+      const state = await reconnected.gameGeneral.currentGameState();
+      expect(state.gameTeams.find((team) => team.id === teamId)?.score).toBe(5);
+      expect(state.buzzWinner?.gameUserId).toBe(joined.gameUser.id);
+      expect(await db.gameUser.count({ where: { gameId: game.id } })).toBe(1);
+
+      await admin.gameAdmin.resetBuzzer();
+      await admin.gameAdmin.startBuzzer();
+      await reconnected.gameUser.buzzIn();
+      expect(
+        (await reconnected.gameGeneral.currentGameState()).buzzWinner,
+      ).toMatchObject({ gameUserId: joined.gameUser.id, gameTeamId: teamId });
+    },
+  );
+});
+
 describe("team assignment", () => {
   it("balances concurrent joins across teams with distinct player numbers", async () => {
     const { game } = await createGame({ teams: 3, teamAssignment: "auto" });

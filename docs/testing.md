@@ -68,6 +68,14 @@ Override the service URLs with `TEST_DATABASE_URL` and `TEST_KV_URL`. Integratio
 
 The browser tests sign a host in by seeding a NextAuth database session and cookie ([e2e/support.ts](../tests/e2e/support.ts)). No OAuth provider or credential is used.
 
+### Guest and account players
+
+[Lifecycle integration tests](../tests/integration/lifecycle.test.ts) exercise both guest and signed-in players in team and individual games: joining, buzzing, scoring, resuming after joining closes, and continuing play without duplicate participants or host permissions. [Identity tests](../tests/integration/rosterIdentity.test.ts) cover explicit account linking and playing after resuming on another device.
+
+The [basic browser loop](../tests/e2e/basicLoop.spec.ts) runs for guests and signed-in players, including reload/resume and continued play after an account session expires. The [quiz browser journey](../tests/e2e/sequentialQuiz.spec.ts) has signed-in and guest teammates save and replace their shared answer.
+
+These account tests use real database-backed sessions, not the Google/Discord authorization flow. Before enabling a deployment, separately smoke-test real provider sign-in and callback handling at that deployment's URL; passing these tests does not verify provider credentials or redirect configuration.
+
 ## Known defects: `it.fails`
 
 Characterization tests describe today's behavior. A known defect is written with the **correct** expectation and marked `it.fails("KNOWN DEFECT: ...")`, so the suite stays green while the defect exists. When a fix lands, Vitest reports the unexpected pass; change it to a normal `it` in the same PR. Tests named `CURRENT BEHAVIOR: ...` pin behavior a later PR may change deliberately. There are no current `it.fails` cases.
