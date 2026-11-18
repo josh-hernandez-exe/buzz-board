@@ -9,6 +9,8 @@
  *
  *   bun scripts/load/probe.ts <origin> <gameId>
  */
+import { probeOnce } from "./probeRequest";
+
 const [origin, gameId] = process.argv.slice(2);
 if (!origin || !gameId) {
   console.error("usage: probe.ts <origin> <gameId>");
@@ -21,15 +23,7 @@ let expected = performance.now() + 500;
 for (;;) {
   const start = performance.now();
   const lag = Math.max(0, start - expected);
-  let ok = true;
-  try {
-    const res = await fetch(url);
-    await res.arrayBuffer();
-    ok = res.ok;
-  } catch {
-    ok = false;
-  }
-  const ms = performance.now() - start;
+  const { ms, ok } = await probeOnce(url);
   process.stdout.write(
     `${JSON.stringify({ ms: Math.round(ms * 10) / 10, lag: Math.round(lag), ok })}\n`,
   );

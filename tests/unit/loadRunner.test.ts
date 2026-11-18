@@ -2,7 +2,10 @@
  * T15 (PR12): load runner interlocks, workload arithmetic and statistics.
  * The runner itself is exercised by `bun run load` (see docs/operations.md).
  */
-import { describe, expect, it } from "vitest";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
+
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   ceilingsFor,
@@ -17,6 +20,7 @@ import {
   PROFILES,
   withHoldScale,
 } from "../../scripts/load/profiles";
+import { probeOnce } from "../../scripts/load/probeRequest";
 import {
   parseSyntheticTag,
   seededRandom,
@@ -185,4 +189,38 @@ describe("stats", () => {
     expect(parseSyntheticTag(body)).toBe("L|ab12|7|31|");
     expect(parseSyntheticTag("hello")).toBeNull();
   });
+});
+
+describe("latency probe", () => {
+  let server: Server;
+  let origin: string;
+
+  beforeAll(async () => {
+    // "/stall-headers" never answers; "/stall-body" answers but never ends.
+    server = createServer((req, res) => {
+      if (req.url === "/stall-body") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.write("{");
+      }
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+
+  afterAll(() => {
+    server.closeAllConnections();
+    server.close();
+  });
+
+  it.each(["/stall-headers", "/stall-body"])(
+    "records %s as a failed sample once the deadline passes",
+    async (path) => {
+      const sample = await probeOnce(`${origin}${path}`, 200);
+      expect(sample.ok).toBe(false);
+      expect(sample.ms).toBeGreaterThanOrEqual(150);
+      expect(sample.ms).toBeLessThan(2_000);
+    },
+  );
 });

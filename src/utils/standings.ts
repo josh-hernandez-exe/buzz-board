@@ -13,8 +13,10 @@ export type Standing = {
 export function standings(
   teams: { id: string; name: string; score: number }[],
 ): Standing[] {
+  // A fixed locale (the page's "en"): server and browser defaults can differ,
+  // which would reorder tied teams between rendering and hydration.
   const sorted = [...teams].sort(
-    (a, b) => b.score - a.score || a.name.localeCompare(b.name),
+    (a, b) => b.score - a.score || a.name.localeCompare(b.name, "en"),
   );
   return sorted.map((t) => {
     const place = sorted.findIndex((x) => x.score === t.score) + 1;

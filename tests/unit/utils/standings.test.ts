@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ordinal, standings, winnerLine } from "@/utils/standings";
 
@@ -27,6 +27,30 @@ describe("standings", () => {
     ]);
     expect(winnerLine(table)).toBe("Bears, Foxes and Owls tie for first!");
     expect(winnerLine([])).toBeNull();
+  });
+
+  it("breaks ties the same way whatever the runtime's default locale", () => {
+    // Swedish sorts "Ä" after "Z"; server and browser defaults can differ.
+    const spy = vi
+      .spyOn(String.prototype, "localeCompare")
+      .mockImplementation(function (
+        this: string,
+        that: string,
+        locales?: Intl.LocalesArgument,
+        options?: Intl.CollatorOptions,
+      ) {
+        return new Intl.Collator(locales ?? "sv", options).compare(this, that);
+      });
+    try {
+      const table = standings([
+        { id: "a", name: "Zebras", score: 5 },
+        { id: "b", name: "Älg", score: 5 },
+      ]);
+      expect(table.map((t) => t.name)).toEqual(["Älg", "Zebras"]);
+      expect(winnerLine(table)).toBe("Älg and Zebras tie for first!");
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("writes ordinals", () => {
