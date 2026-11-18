@@ -24,6 +24,7 @@ import {
   removePlayer,
   renamePlayer,
   renameTeam,
+  randomizeTeams,
 } from "@/server/roster/rosterService";
 import { createRecoveryLink } from "@/server/identity/identityService";
 
@@ -144,6 +145,17 @@ async function gameControl(
 }
 
 export const gameAdminRouter = createTRPCRouter({
+  randomizeTeams: protectedGameAdminProcedure
+    .input(z.object({ requestId: requestIdSchema, lockTeams: z.boolean() }))
+    .mutation(({ ctx, input }) =>
+      gameControl(ctx.gameSession.id, (gameId) =>
+        randomizeTeams({
+          gameId,
+          actorUserId: ctx.session.user.id,
+          ...input,
+        }),
+      ),
+    ),
   addTeam: protectedGameAdminProcedure.mutation(async ({ ctx }) => {
     const {
       id: gameId,

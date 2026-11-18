@@ -28,6 +28,8 @@ Current features include [first-buzz and queued buzzing with undo/redo](./docs/b
 
 Instructions for players and hosts live in the app's public **Help** at `/help`. Its source is in [`src/help`](./src/help), so it is versioned with the features it describes. Contributors: see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
+Owners and co-hosts can [randomly assign all current participants to balanced teams](./src/help/articles/teams-and-names.md#can-hosts-randomly-assign-teams), with confirmation and an optional player-switching lock applied atomically.
+
 ## Development Setup
 
 ### Prerequisites

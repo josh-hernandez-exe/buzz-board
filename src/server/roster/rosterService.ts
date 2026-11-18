@@ -1,4 +1,11 @@
-import { GameFormat, GameStatus, TeamAssignment } from "@prisma/client";
+import { createHash, randomInt } from "node:crypto";
+
+import {
+  BuzzerState,
+  GameFormat,
+  GameStatus,
+  TeamAssignment,
+} from "@prisma/client";
 import { err, ok, type Result } from "neverthrow";
 
 import {
@@ -14,8 +21,7 @@ import type { GameSettings } from "@/types";
 
 /** Who is making a roster change. Staff authority is checked by the router. */
 export type RosterActor =
-  | { kind: "player"; gameUserId: string }
-  | { kind: "staff" };
+  { kind: "player"; gameUserId: string } | { kind: "staff" };
 
 export type RosterError =
   | GameTransactionError
@@ -30,7 +36,12 @@ export type RosterError =
   | { kind: "notTeamMember" }
   | { kind: "buzzerOpen" }
   | { kind: "teamSwitchingOff" }
-  | { kind: "hostAssignsTeams" };
+  | { kind: "hostAssignsTeams" }
+  | { kind: "requestIdReused"; requestId: string }
+  | {
+      kind: "shuffleUnavailable";
+      reason: "noTeams" | "noPlayers" | "activePlay";
+    };
 
 type Changed = { changed: boolean };
 
@@ -48,6 +59,120 @@ async function activePlayer(tx: GameTx, gameId: string, gameUserId: string) {
   return tx.gameUser.findFirst({
     where: { id: gameUserId, gameId, removedAt: null },
   });
+}
+
+/** One confirmed shuffle and its optional switching lock commit together. */
+export async function randomizeTeams({
+  gameId,
+  actorUserId,
+  requestId,
+  lockTeams,
+}: {
+  gameId: string;
+  actorUserId: string;
+  requestId: string;
+  lockTeams: boolean;
+}): Promise<Result<Changed, RosterError>> {
+  return flatten(
+    await withGameLock(
+      gameId,
+      async (tx): Promise<Result<Changed, RosterError>> => {
+        const hash = createHash("sha256")
+          .update(JSON.stringify({ lockTeams }))
+          .digest("hex");
+        const action = "roster.randomizeTeams";
+        const existing = await tx.gameOperation.findUnique({
+          where: { gameId_requestId: { gameId, requestId } },
+        });
+        if (existing) {
+          if (
+            existing.action !== action ||
+            existing.actorUserId !== actorUserId ||
+            existing.payloadHash !== hash
+          ) {
+            return err({ kind: "requestIdReused", requestId });
+          }
+          return ok({ changed: false });
+        }
+
+        const game = await loadGame(tx, gameId);
+        if (game.format !== GameFormat.team)
+          return err({ kind: "teamsNotSupported" });
+        if (game.status === GameStatus.finished)
+          return err({ kind: "gameFinished" });
+        const teams = await tx.gameTeam.findMany({
+          where: { gameId },
+          orderBy: { index: "asc" },
+          select: { id: true, buzzerState: true },
+        });
+        if (!teams.length)
+          return err({ kind: "shuffleUnavailable", reason: "noTeams" });
+        const mode = await tx.gameMode.findUnique({
+          where: { gameId },
+          select: { status: true },
+        });
+        if (
+          game.isBuzzerListening ||
+          teams.some((team) => team.buzzerState !== BuzzerState.available) ||
+          mode?.status === "running"
+        ) {
+          return err({ kind: "shuffleUnavailable", reason: "activePlay" });
+        }
+        const players = await tx.gameUser.findMany({
+          where: { gameId, removedAt: null },
+          orderBy: { index: "asc" },
+          select: { id: true },
+        });
+        if (!players.length)
+          return err({ kind: "shuffleUnavailable", reason: "noPlayers" });
+
+        // Shuffle teams too, so the same team does not always get the extra player.
+        for (const items of [players, teams]) {
+          for (let i = items.length - 1; i > 0; i--) {
+            const j = randomInt(i + 1);
+            [items[i], items[j]] = [items[j]!, items[i]!];
+          }
+        }
+        for (const [index, team] of teams.entries()) {
+          const ids = players
+            .filter((_, i) => i % teams.length === index)
+            .map((p) => p.id);
+          if (ids.length) {
+            await tx.gameUser.updateMany({
+              where: { gameId, id: { in: ids }, removedAt: null },
+              data: { gameTeamId: team.id },
+            });
+          }
+        }
+        await repairCaptains(tx, gameId);
+        await tx.game.update({
+          where: { id: gameId },
+          data: {
+            updatedAt: new Date(),
+            ...(lockTeams
+              ? {
+                  settings: {
+                    ...(game.settings as GameSettings),
+                    freezeTeams: true,
+                  },
+                }
+              : {}),
+          },
+        });
+        await tx.gameOperation.create({
+          data: {
+            gameId,
+            actorUserId,
+            requestId,
+            action,
+            payloadHash: hash,
+            result: {},
+          },
+        });
+        return ok({ changed: true });
+      },
+    ),
+  );
 }
 
 /**

@@ -71,6 +71,10 @@ const ERROR_HELP: Partial<Record<ServiceError["kind"], string>> = {
   buzzerOpen: helpHref("teams-and-names", "can-i-switch-teams"),
   teamSwitchingOff: helpHref("teams-and-names", "can-i-switch-teams"),
   hostAssignsTeams: helpHref("teams-and-names", "can-i-switch-teams"),
+  shuffleUnavailable: helpHref(
+    "teams-and-names",
+    "can-hosts-randomly-assign-teams",
+  ),
   playerLinked: helpHref(
     "join-and-resume",
     "i-lost-my-device-or-cleared-my-browser-can-i-get-my-player-back",
@@ -164,6 +168,17 @@ export function toTRPCError(error: ServiceError): TRPCError {
 
 function baseError(error: ServiceError): TRPCError {
   switch (error.kind) {
+    case "shuffleUnavailable":
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: {
+          noTeams: "Add at least one team before randomly assigning players.",
+          noPlayers:
+            "Wait for players to join before randomly assigning teams.",
+          activePlay:
+            "Close and reset the buzzer with Next question, and end any running game mode before randomly assigning teams.",
+        }[error.reason],
+      });
     case "gameNotFound":
       return new TRPCError({
         code: "NOT_FOUND",

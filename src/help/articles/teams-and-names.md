@@ -29,6 +29,16 @@ If switching is locked or the host assigns teams, ask a host or moderator to mov
 
 Deleting a team removes its score. Its points don't follow players to their next team.
 
+## Can hosts randomly assign teams?
+
+Owners and co-hosts can choose **Players → Randomly assign teams**. It redistributes every current participant, including unassigned guests and signed-in players, across the existing teams with sizes differing by at most one. Removed players and staff who haven't joined as participants aren't included. Captains are repaired automatically.
+
+The confirmation explains that current memberships are replaced and scores and history stay with their teams. Tick the acknowledgement, then **Assign randomly**. Cancel changes nothing. The assignment cannot be undone; a new confirmed shuffle makes a new draw.
+
+**Lock player team switching after assignment** is checked by default and takes effect in the same operation as the shuffle. Unchecking it preserves the current switching setting. The **Players can switch teams** control is immediately beside the action, so hosts can unlock it later. **Host assigns** still prevents players choosing for themselves.
+
+Use this before starting a game mode or between basic buzzer questions. Close/reset the buzzer with **Next question**, and end any running mode first. Finished games cannot be shuffled. Team scores, chat/history, player credentials and account links are preserved; players may see their new team's existing chat. Players joining later follow the game's existing assignment policy.
+
 ## What are team captains?
 
 By default **everyone on a team can buzz and answer**. A host can instead choose **Only team captains can buzz and answer**, either when creating a team game or later on the host desk's **Room** tab. Then each team's captain is the only one who can:

@@ -9,6 +9,7 @@ import {
   AddTeamButton,
   DeleteTeamButton,
   TeamSwitchingToggle,
+  RandomizeTeamsControl,
 } from "@/app/_components/client/GameAdminTeamControl";
 import { Panel } from "@/app/_components/ui/page";
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
@@ -216,7 +217,12 @@ export function RosterPanel({ staffRole }: { staffRole: StaffRoleName }) {
           }
           actions={runsGame ? <AddTeamButton /> : undefined}
         >
-          {runsGame && <TeamSwitchingToggle />}
+          {runsGame && (
+            <>
+              <TeamSwitchingToggle />
+              <RandomizeTeamsControl />
+            </>
+          )}
           {teams.length === 0 ? (
             <p className="text-muted-foreground text-sm">No teams yet.</p>
           ) : (

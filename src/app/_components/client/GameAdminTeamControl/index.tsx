@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { ErrorNotice } from "@/app/_components/client/ErrorNotice";
 import { useLiveGameState } from "@/app/_components/client/LiveGameState";
 import { Button } from "@/app/_components/ui/button";
@@ -16,6 +18,7 @@ import {
 import { Switch } from "@/app/_components/ui/switch";
 import { api } from "@/trpc/react";
 import type { GameSettings } from "@/types";
+import { newRequestId } from "@/utils/requestId";
 
 /*
  * Team setup for hosts (owner and co-hosts), used inside the roster's Teams
@@ -65,6 +68,108 @@ export function TeamSwitchingToggle() {
         />
       </div>
       <ErrorNotice error={freeze.error} />
+    </div>
+  );
+}
+
+export function RandomizeTeamsControl() {
+  const { data } = useLiveGameState();
+  const [open, setOpen] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [lockTeams, setLockTeams] = useState(true);
+  const [requestId, setRequestId] = useState(newRequestId);
+  const assign = api.gameAdmin.randomizeTeams.useMutation({
+    onSuccess: () => setOpen(false),
+  });
+  const players = Object.keys(data?.gameUsers ?? {}).length;
+  const teams = data?.gameTeams.length ?? 0;
+  const blocked =
+    data?.game.status === "finished"
+      ? "This game has finished."
+      : !teams
+        ? "Add a team first."
+        : !players
+          ? "Wait for players to join."
+          : data?.game.isBuzzerListening ||
+              data?.gameTeams.some(
+                (team) => team.buzzerState !== "available",
+              ) ||
+              data?.mode?.status === "running"
+            ? "Close and reset the buzzer with Next question, and end any running game mode first."
+            : undefined;
+
+  return (
+    <div className="flex flex-col items-start gap-2 py-3">
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (assign.isPending) return;
+          setOpen(next);
+          if (next) {
+            assign.reset();
+            setConfirmed(false);
+            setLockTeams(true);
+            setRequestId(newRequestId());
+          }
+        }}
+      >
+        <DialogTrigger asChild>
+          <Button variant="secondary" disabled={!!blocked || assign.isPending}>
+            Randomly assign teams
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Randomly assign all players?</DialogTitle>
+            <DialogDescription>
+              Randomly distribute all {players} current players across {teams}{" "}
+              existing teams, with team sizes differing by at most one. This
+              includes players without a team. Scores and history stay with
+              their teams. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={lockTeams}
+              disabled={assign.isPending}
+              onChange={(event) => setLockTeams(event.target.checked)}
+            />
+            Lock player team switching after assignment
+          </label>
+          <p className="text-muted-foreground text-sm">
+            Unchecked keeps the current switching setting. You can change
+            Players can switch teams beside this action afterwards. Host assigns
+            still takes precedence.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              disabled={assign.isPending}
+              onChange={(event) => setConfirmed(event.target.checked)}
+            />
+            I understand this replaces everyone&apos;s current team.
+          </label>
+          <ErrorNotice error={assign.error} />
+          {blocked && <p role="status">{blocked}</p>}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="secondary" disabled={assign.isPending}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              disabled={!confirmed || !!blocked || assign.isPending}
+              onClick={() => assign.mutate({ requestId, lockTeams })}
+            >
+              {assign.isPending ? "Assigning..." : "Assign randomly"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {blocked && <p className="text-muted-foreground text-sm">{blocked}</p>}
+      {assign.isSuccess && <p role="status">Teams assigned randomly.</p>}
     </div>
   );
 }
