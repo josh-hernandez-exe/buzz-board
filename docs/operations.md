@@ -13,6 +13,8 @@ Run `bun run ops:cleanup` on a schedule, hourly is plenty, with the production e
 | Strips moderation reasons older than 30 days; keeps the action, target and time     | Retention of staff explanations                                |
 | Lists unfinished games idle for 7 days as `staleUnfinishedGames`, **never deletes** | The operator decides whether to contact the host or close them |
 
+Team creation, renames and captain changes count as game activity.
+
 It prints one JSON line and exits non-zero on failure. **Alert on**:
 
 - a non-zero exit, or no successful run for 3 hours;

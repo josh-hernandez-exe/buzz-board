@@ -369,6 +369,10 @@ export async function renameTeam({
             allowMemberRename: lockChange ? allowMemberRename : undefined,
           },
         });
+        await tx.game.update({
+          where: { id: gameId },
+          data: { updatedAt: new Date() },
+        });
         return ok({
           changed: true,
           name: updated.name,

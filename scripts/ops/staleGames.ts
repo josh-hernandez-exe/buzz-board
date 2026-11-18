@@ -9,6 +9,7 @@ export const STALE_GAME_DAYS = 7;
  * Buzzes, answers, chat, score commands, mode actions and roster changes
  * write their own tables without touching the Game row, so every one of
  * those must be quiet too, not just `Game.updatedAt`.
+ * Team names and captain changes explicitly touch the Game row.
  */
 export function findStaleUnfinishedGames({
   now = new Date(),
@@ -26,6 +27,7 @@ export function findStaleUnfinishedGames({
       teamAnswers: { none: { updatedAt: recent } },
       chatMessages: { none: { createdAt: recent } },
       gameUsers: { none: { updatedAt: recent } },
+      gameTeams: { none: { updatedAt: recent } },
       gameMode: { isNot: { updatedAt: recent } },
       buzzerHistory: { isNot: { updatedAt: recent } },
     },

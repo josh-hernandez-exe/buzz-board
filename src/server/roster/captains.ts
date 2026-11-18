@@ -111,6 +111,10 @@ export async function setCaptain({
         where: { id: team.id },
         data: { captainId: gameUserId },
       });
+      await tx.game.update({
+        where: { id: gameId },
+        data: { updatedAt: new Date() },
+      });
       return ok({ changed: true });
     },
   );

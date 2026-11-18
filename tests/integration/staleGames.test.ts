@@ -8,6 +8,9 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { GameStatus } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 
+import { setCaptain } from "@/server/roster/captains";
+import { renameTeam } from "@/server/roster/rosterService";
+
 import { findStaleUnfinishedGames } from "../../scripts/ops/staleGames";
 import { createUser, db } from "../support/integration";
 
@@ -15,9 +18,14 @@ import { createUser, db } from "../support/integration";
 // first in the report's oldest-first, capped list.
 const LONG_AGO = new Date("2000-01-01T00:00:00Z");
 
-type Fixture = { gameId: string; teamId: string; playerId: string };
+type Fixture = {
+  gameId: string;
+  teamId: string;
+  playerId: string;
+  teammateId: string;
+};
 
-/** A game with one team and one player, none touched since LONG_AGO. */
+/** A game with one team and two players, none touched since LONG_AGO. */
 async function idleGame(status: GameStatus = GameStatus.running) {
   const host = await createUser();
   const game = await db.game.create({
@@ -40,9 +48,27 @@ async function idleGame(status: GameStatus = GameStatus.running) {
       token: randomUUID(),
     },
   });
+  const teammate = await db.gameUser.create({
+    data: {
+      gameId: game.id,
+      gameTeamId: team.id,
+      name: "Player 2",
+      index: 1,
+      token: randomUUID(),
+    },
+  });
+  await db.gameTeam.update({
+    where: { id: team.id },
+    data: { captainId: player.id, updatedAt: LONG_AGO },
+  });
   await db.$executeRaw`UPDATE "GameUser" SET "updatedAt" = ${LONG_AGO} WHERE "gameId" = ${game.id}`;
   await db.$executeRaw`UPDATE "Game" SET "updatedAt" = ${LONG_AGO} WHERE id = ${game.id}`;
-  return { gameId: game.id, teamId: team.id, playerId: player.id };
+  return {
+    gameId: game.id,
+    teamId: team.id,
+    playerId: player.id,
+    teammateId: teammate.id,
+  };
 }
 
 const staleIds = async () =>
@@ -104,6 +130,27 @@ const activity: Record<string, (fixture: Fixture) => Promise<unknown>> = {
       where: { id: playerId },
       data: { name: "Renamed" },
     }),
+  "a new team": ({ gameId }) =>
+    db.gameTeam.create({
+      data: { gameId, index: 1, name: "Team 2" },
+    }),
+  "a team rename": async ({ gameId, teamId }) => {
+    const result = await renameTeam({
+      gameId,
+      gameTeamId: teamId,
+      name: "Renamed team",
+      actor: { kind: "staff" },
+    });
+    expect(result.isOk()).toBe(true);
+  },
+  "a captain change": async ({ gameId, teammateId }) => {
+    const result = await setCaptain({
+      gameId,
+      gameUserId: teammateId,
+      actor: { kind: "staff" },
+    });
+    expect(result.isOk()).toBe(true);
+  },
   "a mode edit": ({ gameId }) =>
     db.gameMode.create({
       data: { gameId, kind: "sequentialQuiz", draft: {} },
