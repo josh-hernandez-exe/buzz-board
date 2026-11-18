@@ -31,7 +31,7 @@ for (const signedIn of [false, true]) {
     expect(game.format).toBe("individual");
     await expect(host.getByTestId("join-code")).toHaveText(game.code);
     await expect(
-      host.getByRole("button", { name: "Open buzzer" }),
+      host.getByRole("button", { name: "Open buzzer", exact: true }),
     ).toBeVisible();
 
     const playerContext = await browser.newContext();
@@ -64,7 +64,9 @@ for (const signedIn of [false, true]) {
     await expect(card.getByTestId("display-team-score")).toHaveText("0");
 
     // Host opens the buzzer; the player buzzes; the display marks them selected.
-    await host.getByRole("button", { name: "Open buzzer" }).click();
+    await host
+      .getByRole("button", { name: "Open buzzer", exact: true })
+      .click();
     await expect
       .poll(
         async () =>
@@ -109,7 +111,10 @@ for (const signedIn of [false, true]) {
     await host
       .getByRole("button", { name: "Next question", exact: true })
       .click();
-    await host.getByRole("button", { name: "Open buzzer" }).click();
+    await host
+      .getByRole("button", { name: "Open buzzer", exact: true })
+      .click();
+    await expect(host.getByTestId("buzzer-open-state")).toHaveText("Open");
     await expect(player.getByText("Buzzer open: press now!")).toBeVisible();
     await buzzer.click();
     await expect(player.getByText("You buzzed in first!")).toBeVisible();
